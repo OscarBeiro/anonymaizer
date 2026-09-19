@@ -6,6 +6,9 @@ Client-side text anonymization & reversal tool. Zero backend, zero egress.
 one per session, in order. Tick the box when the session is done and tests pass.
 `P8` is repeated once per file format — never batch them.
 
+**The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
+"the §6 Spanish test bench case", read that section from `docs/spec.md`.
+
 **Stack:** Vite + React + TypeScript + Vitest.
 Vite is a build tool, not a framework — right default for a zero-backend SPA.
 Next.js assumes a server; plain esbuild means wiring everything yourself.
@@ -46,7 +49,7 @@ browser libraries. Not worth it.
 
 # Milestone 1 — "Paste & Revert" PoC
 
-### [ ] P0 — Scaffold + CLAUDE.md
+### [x] P0 — Scaffold + CLAUDE.md
 
 > Create a Vite + React + TypeScript app called anonymaizer. Zero backend, no
 > network calls at runtime. Add Vitest. Write a CLAUDE.md stating: all logic runs
