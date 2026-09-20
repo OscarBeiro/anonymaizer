@@ -1,11 +1,69 @@
 # Milestone 3 — Document parsers
 
-**Backlog item carried over from P7d:** evaluate an alternative in-browser
-ONNX runtime for the NER worker that avoids `onnxruntime-web`'s vulnerable
-`protobufjs` dependency (critical advisory, tracked in P7d's notes above) —
-e.g. a newer onnxruntime-web release once it drops/patches protobufjs, or a
-non-transformers.js ONNX loading path. Not blocking M2; revisit once M3's
-parser work is underway or the upstream advisory is patched.
+### [ ] P8sec — Dependency security: transformers.js v2 → v4 (**do this first**)
+
+This is really M2 work — it is the P7d backlog item below, promoted — but M2
+is not being reopened, so it runs first in M3, ahead of P8a.
+
+**Why:** GitHub reported 13 Dependabot advisories on `main` (1 critical, 7
+high, 5 moderate; `npm audit` counts 5, GitHub counts each advisory). All of
+them trace to one root — `@xenova/transformers@2.17.2`, which is unmaintained:
+
+```
+@xenova/transformers 2.17.2
+├─ onnxruntime-web <=1.16 → onnx-proto (abandoned) → protobufjs <=7.6.2
+│                                        ← the critical + most of the highs
+└─ sharp <=0.35.4-rc.0                   ← libvips / libheif highs
+```
+
+No release of `@xenova/transformers` fixes this; `npm audit fix --force`
+tries to *downgrade* to 1.4.2. The successor is `@huggingface/transformers`
+(same authors, v4.3.0), whose onnxruntime-web is 1.31 — `onnx-proto` and
+`protobufjs` are gone entirely — and whose `sharp ^0.35.4` is above the
+vulnerable range.
+
+**Status — started 2026-09-20, left uncommitted in the working tree:**
+
+- [x] Swapped the dependency; `npm audit` reports **0 vulnerabilities**.
+- [x] `src/workers/ner.worker.ts` imports `@huggingface/transformers`;
+      v2's `quantized: true` is v3+'s `dtype: 'q8'` — the same int8 weights,
+      so the cached ~104MB model and its cache keys are unchanged.
+- [x] `env.customCache` survives the move: v4's `CacheInterface` is still
+      `match(key) => Response|undefined` / `put(key, response)`, so
+      `nerModelCache.ts` needed no change beyond a stale comment.
+- [x] Bundle-size trap, found and fixed: onnxruntime-web 1.31's default
+      browser entry embeds ~54MB of `.wasm` via `new URL(...)`, which
+      `viteSingleFile` base64-inlines — the worker went 811kB → **72MB**.
+      `vite.config.ts` now sets the `onnxruntime-web-use-extern-wasm`
+      resolve condition, selecting ort's external-wasm build. Worker is now
+      492kB, *smaller* than the 811kB v2 baseline.
+- [x] `npm run build` and all 176 tests pass.
+
+**What is left — start here tomorrow:**
+
+1. **Pin `wasmPaths`.** With the extern-wasm build, ort fetches its runtime
+   at NER opt-in time (this is what v2 did too, so it is not a new network
+   call — but it is now unpinned). The installed version is
+   `1.31.0-dev.20260914-8d85527a0`; confirm ort's default CDN URL actually
+   resolves for a `-dev` version, and if not set
+   `env.backends.onnx.wasm.wasmPaths` explicitly. A wrong URL fails *only*
+   when a user enables NER, which no test covers.
+2. **Verify NER in a real browser** — `npm run dev`, enable the toggle,
+   confirm: the model downloads, entities come back, the IndexedDB cache
+   reports a hit on reload, and "Delete model" still works. None of the 176
+   tests touch the worker; the whole migration is unverified at runtime.
+3. **Re-check the `file://` single-file path**, since the wasm fetch and the
+   cache both behave differently there — that is why `nerModelCache.ts`
+   exists at all.
+4. Then commit, push, and confirm Dependabot goes quiet on `main`.
+
+**Note:** `npm install` also warns `EBADENGINE` on Node 20.20.2 — something
+in the tree wants newer. Unrelated to the advisories; worth a look separately.
+
+**Backlog item carried over from P7d (superseded by P8sec above, keep until
+it is committed):** evaluate an alternative in-browser ONNX runtime for the
+NER worker that avoids `onnxruntime-web`'s vulnerable `protobufjs`
+dependency.
 
 **Backlog item — placeholder tagging collision.** `reverseText`'s restore
 regex runs case-insensitive (`i` flag) so an LLM that lowercases
