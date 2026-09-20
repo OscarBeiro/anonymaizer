@@ -1,122 +1,88 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useEffect, useState } from 'react';
+import './App.css';
+import { MappingTable } from './components/MappingTable';
+import { PastePanel } from './components/PastePanel';
+import { ReversalPanel } from './components/ReversalPanel';
+import { anonymize } from './core/anonymize';
+import { applyEnabledMappings } from './core/apply';
+import type { CustomDictionaryRule, MappingItem, MappingSession } from './core/types';
+import {
+  loadDictionaryRules,
+  loadSession,
+  newSessionId,
+  saveDictionaryRules,
+  saveSession,
+} from './lib/session';
+
+const emptySession = (): MappingSession => ({
+  sessionId: newSessionId(),
+  createdAt: new Date().toISOString(),
+  inputType: 'PASTE',
+  originalFormat: 'raw_text',
+  mappings: [],
+  rawMarkdown: '',
+  anonymizedMarkdown: '',
+});
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [session, setSession] = useState<MappingSession>(() => loadSession() ?? emptySession());
+  const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
+
+  useEffect(() => saveSession(session), [session]);
+  useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules]);
+
+  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[]) => {
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules);
+    setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
+  };
+
+  const handlePasteChange = (rawMarkdown: string) => {
+    runAnonymize(rawMarkdown, dictionaryRules);
+  };
+
+  const handleToggle = (id: string) => {
+    setSession((prev) => {
+      const mappings: MappingItem[] = prev.mappings.map((m) =>
+        m.id === id ? { ...m, enabled: !m.enabled } : m,
+      );
+      const anonymizedMarkdown = applyEnabledMappings(prev.rawMarkdown, mappings);
+      return { ...prev, mappings, anonymizedMarkdown };
+    });
+  };
+
+  const handleCreateRule = (selectedText: string) => {
+    const trimmed = selectedText.trim();
+    if (!trimmed) return;
+    const rules: CustomDictionaryRule[] = [
+      ...dictionaryRules,
+      { id: `rule_${Date.now()}`, termOrPattern: trimmed, replacementType: 'FIXED', isRegex: false },
+    ];
+    setDictionaryRules(rules);
+    runAnonymize(session.rawMarkdown, rules);
+  };
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app">
+      <header className="app-header">
+        <h1>AnonymAIzer</h1>
+        <p>Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
+      </header>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <main className="app-panels">
+        <PastePanel
+          rawMarkdown={session.rawMarkdown}
+          onChange={handlePasteChange}
+          onCreateRule={handleCreateRule}
+        />
+        <MappingTable
+          mappings={session.mappings}
+          anonymizedText={session.anonymizedMarkdown}
+          onToggle={handleToggle}
+        />
+        <ReversalPanel mappings={session.mappings} />
+      </main>
+    </div>
+  );
 }
 
-export default App
+export default App;

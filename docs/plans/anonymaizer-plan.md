@@ -134,7 +134,7 @@ browser libraries. Not worth it.
 > `NAME_1` all restore; `[NAME_1]` never eats `[NAME_11]`; "Ana" inside
 > "Análisis" survives.
 
-### [ ] P4 — UI
+### [x] P4 — UI
 
 > Build the three panels: smart paste (clipboard `text/html` → Markdown via
 > turndown, plain text passthrough), interactive mapping table with per-row enable
