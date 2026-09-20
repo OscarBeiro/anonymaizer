@@ -397,6 +397,89 @@ on `MappingSession` and are currently never set.
 > file.arrayBuffer()` and passes `file.name`. `TextDecoder` is a
 > platform-neutral global and is fine inside core.
 
+### [x] P7f — Markdown emphasis breaks detection (live bug, fix before M3)
+
+Found while planning M3. Markdown is the right interchange format — block
+structure (headings, lists, tables) is exactly what a parser must preserve, and
+pipes were verified harmless to detection. **Inline emphasis is not.** Two P7a/
+P7b guards, each correct for the input they were written for, misfire on
+turndown's output:
+
+1. `PRECEDING_ATTACHED_RE` (`src/core/detectors.ts:413`) includes `*` and `_`,
+   added so a NAME could not start inside `76****12E`. A leading `_` or `*` now
+   rejects the whole candidate.
+2. `MASK_GLYPHS = '*xX•_'` (`src/core/detectors.ts:175`) makes `**Ester` a valid
+   masked-ID token — a mask run of 2, five alphanumerics. It claims the span at
+   `RUNG.VALIDATED_REGEX` and §4a's whole-candidate drop kills the NAME.
+
+Measured against the current detectors:
+
+```
+"Ester Cuni"        NAME: ["Ester Cuni"]   MASKED_ID: []
+"_Ester Cuni_"      NAME: []               MASKED_ID: []               ← leak
+"*Ester Cuni*"      NAME: []               MASKED_ID: []               ← leak
+"Ester\_Cuni"       NAME: []               MASKED_ID: []               ← leak
+"**Ester** Cuni"    NAME: []               MASKED_ID: ["**Ester**"]    ← "Cuni" leaks
+"**Ester Cuni**"    NAME: []               MASKED_ID: ["**Ester","Cuni**"]
+```
+
+This ships today: `PastePanel`'s turndown path produces these shapes whenever
+someone pastes rich text, and `Ester\_Cuni` is turndown's own character
+escaping, with no bold involved at all. M3 makes it much worse — mammoth and the
+ODF walker emit emphasis on exactly the fields that are PII: letterheads,
+signature blocks, form labels (`**Nombre:** Ester Cuni`), table headers.
+
+> Keep block structure, strip inline decoration. Create
+> `src/lib/htmlToMarkdown.ts` holding the single shared `TurndownService`
+> instance (hoisted out of `PastePanel.tsx`'s module-level singleton, no
+> behaviour change there beyond the rules below), configured to render
+> `strong`/`b`/`em`/`i` as their plain text content and with turndown's
+> character escaping disabled. Emphasis carries nothing an LLM needs from this
+> pipeline; headings, lists and tables do. Every M3 parser then inherits the fix
+> by using this helper instead of constructing its own instance — P8b's docx
+> parser is the first consumer.
+> Extend `src/core/__fixtures__/` with emphasis-wrapped variants of the existing
+> clinical-report shapes: a bolded name in a signature block, an italicized name,
+> a `**Label:** value` form line, and a name containing an underscore that
+> turndown would escape.
+> Write tests first: each row of the table above yields the same detections as
+> its unemphasized form; `76****12E` still yields one `[MASKED_ID_1]` (the guard
+> must keep working for the input it was written for); the §6 negative corpus
+> still yields zero detections.
+
+> **Trap — do not fix this in the detectors.** Teaching each detector to skip
+> Markdown syntax means every one of them grows offset-mapping logic, and the
+> minted placeholders still land next to stray `**`. Normalizing at the ingest
+> boundary is one change in one file; the detectors keep operating on clean
+> prose, which is the assumption §4a is built on.
+
+**Shipped.** `src/lib/htmlToMarkdown.ts` holds the one shared `TurndownService`
+instance: a custom `addRule` unwraps `strong`/`b`/`em`/`i` to plain content
+(added rules run before turndown's built-ins, so this actually takes effect),
+and `escape()` is overridden to drop only the `*`/`_` escape pairs — every
+other default escape (leading `#`/`-`/`>`, backslash, brackets, code fences,
+numbered lists) is kept, since those characters aren't in `MASK_GLYPHS` or
+`PRECEDING_ATTACHED_RE` and there's no detection reason to touch them.
+`headingStyle: 'atx'` was also set, replacing turndown's default mixed style
+(setext underlines for h1/h2, atx `###` from h3 down) with one consistent
+marker — a small independent cleanup, not part of the bug. `PastePanel.tsx`
+now calls `convertHtmlToMarkdown` instead of holding its own
+`TurndownService`; no behaviour change there beyond the fix itself.
+`src/core/__fixtures__/emphasis.ts` adds `EMPHASIS_FIXTURE_HTML`: a bolded
+name in a signature block, an italicized name mid-sentence, a bold `Nombre:`
+label line, and a bold code value containing a literal underscore
+(`REF_2026_01`) to pin the "corrupts plain prose, not just names" half of the
+bug. Tests live in `src/lib/htmlToMarkdown.test.ts` (18 tests): the escape/
+emphasis rules in isolation, `detectNames`/`detectMaskedIds` surviving each
+emphasis form, the masked-ID guard still catching its real target
+(`76****12E`), and a full-pipeline regression clustering all three spellings
+of the fixture's name behind one placeholder. All pre-existing tests (176
+total) and `npm run lint`/`npm run build` still pass unchanged.
+One test simplification made along the way: table conversion was dropped from
+scope here — plain turndown has no table rule at all (that needs the
+`turndown-plugin-gfm` plugin, not installed), and M3's parsers build their own
+Markdown tables directly rather than routing tabular HTML through this path.
+
 ### Fixtures
 
 There is no bench corpus today — every case is inline in a `.test.ts`, which is
@@ -439,21 +522,273 @@ don't dodge Markdown's own `[[wiki-link]]` syntax so gain nothing, and
 zero-padding fixes nothing the length-sort doesn't already fix. No action
 needed on those three; only the case-collision item above is real.
 
-One prompt per format, one session each. Template:
+One prompt per format, one session each — plus a prep session first, because
+four decisions have to be made once rather than rediscovered (and answered
+differently) in each format session.
 
-### [ ] P8 — `.docx` (mammoth.js)
+## Shared decisions — settled, do not re-litigate in a session
 
-> Add a `.docx` parser in `src/core/parsers/` using mammoth.js, exposing
-> `parse(file): Promise<{markdown, format}>`. Do not touch other parsers or the UI
-> beyond registering it.
+The original one-line-per-format template hid four problems, each of which
+would have blown up mid-session:
 
-Then repeat verbatim, swapping library and format:
+1. **Rule 4 collision.** `src/core/` is pure TypeScript — no React, no DOM; it
+   is the Capacitor insurance. But mammoth, pdfjs, `DOMParser` (pptx/odt) and
+   turndown (eml HTML bodies) are all browser libraries. Every M3 parser except
+   `.csv` would have violated rule 4.
+   → **The registry stays pure in `src/core/parsers/`; concrete parsers live in
+   a new `src/lib/parsers/`.** Rule 4 stays absolute.
+2. **Bundle weight vs. the P6 single-file promise.** Parsers register by import
+   side effect, so a static import graph inlines mammoth + pdfjs + SheetJS +
+   jszip into `index.html` for every user, including the ones who only paste
+   text. → **Lazy-loaded per format via dynamic `import()`.**
+3. **Runtime network risk.** pdfjs-dist fetches cMaps and standard fonts from a
+   CDN by default — a silent breach of hard rules 2 and 3, and only on
+   documents with CJK or embedded fonts. → Handled explicitly in P8c.
+4. **`ParsedDocument` is too thin.** `{ markdown, format }` has no channel for
+   partial failure (an image-only PDF, dropped email attachments, sheet 7 of
+   40), and `format` is a free string feeding `MappingSession.originalFormat`.
+   → **`warnings?: string[]` plus a closed `DocumentFormat` union.**
 
-- [ ] `.pdf` — pdfjs-dist (positional X/Y text reflow into Markdown)
-- [ ] `.eml` — letterparser / eml-parse-js
-- [ ] `.pptx` — jszip + native DOMParser XML processing
-- [ ] `.xlsx` / `.csv` — xlsx (SheetJS)
-- [ ] `.odt` — jszip + native DOMParser XML processing
+A fifth, found while planning: `vitest.config.ts` pins `environment: 'node'`
+and `include: ['src/**/*.test.ts']`. Every DOM-using parser test needs a
+different environment, and no format session would expect to touch test config.
+→ Handled in P8a.
+
+**Order:** `.docx`, `.pdf`, `.odt` first (they match the documents the tool is
+actually being used on), then `.csv` and `.xlsx` as *separate* sessions (csv
+needs no dependency at all), then `.eml` and `.pptx`.
+
+**Scanned/image-only PDFs are out of scope.** OCR means another multi-MB WASM
+model and a second opt-in flow — that is M2-shaped work, not parser work. The
+`.pdf` parser detects "zero extractable text" and warns.
+
+### [ ] P8a — Parser infrastructure (prep session, no new format)
+
+> Widen the parser seam before any real format lands.
+> In `src/core/parsers/index.ts`: add `format: DocumentFormat` (a closed union
+> — `'raw_text' | 'docx' | 'pdf' | 'odt' | 'csv' | 'xlsx' | 'eml' | 'pptx'`,
+> declared in `src/core/types.ts` and used for `MappingSession.originalFormat`)
+> and `warnings?: string[]` to `ParsedDocument`. `DocumentFormat` lives in
+> `types.ts` and is imported by the registry, not the other way round —
+> `MappingSession` should not reach into the registry for the shape of one of
+> its own fields.
+> Change the registry from `Map<string, Parser>` to `Map<string, ParserLoader>`
+> where `ParserLoader = () => Promise<Parser>`; `registerParser` keeps its
+> `(extensions, parser)` shape for eager parsers like plain text, and a new
+> `registerLazyParser(extensions, loader)` takes the loader.
+> `supportedExtensions()` must still answer from the key set without invoking
+> any loader — that is what keeps the drop-zone hint free. `parseDocument`
+> awaits the loader, caches the resolved parser, and on loader rejection throws
+> an error naming the format rather than leaking a chunk-load message.
+> Create `src/lib/parsers/index.ts` as the single registration site the UI
+> imports (`import '../lib/parsers'` from `App.tsx`), each entry one line:
+> `registerLazyParser(['docx'], async () => (await import('./docx')).parse)`.
+> That file must contain **no library imports** — only the thunks.
+> Surface `warnings` in `IngestStep.tsx`: `onFileImport` gains a `warnings`
+> argument and the drop zone renders them as a non-blocking notice, visually
+> distinct from the existing `.form-error`.
+> Update `vitest.config.ts` so `src/lib/parsers/**/*.test.ts` runs under a DOM
+> environment (`environmentMatchGlobs`, or `happy-dom`/`jsdom` as a
+> devDependency) while `src/core/**` stays on `node` — core purity is the point
+> of that split, so keep it explicit in the config comment.
+> Write tests first: `supportedExtensions()` lists a lazily-registered format
+> without calling its loader (assert with a spy); `parseDocument` invokes the
+> loader exactly once across two calls; a rejecting loader produces an error
+> message naming the extension; a parser returning `warnings` round-trips them.
+
+> **Trap — `vite-plugin-singlefile` and dynamic imports.** The plugin's
+> recommended build config sets rollup's `inlineDynamicImports`, which would
+> inline every parser chunk back into `index.html` and erase the whole point of
+> lazy loading. P7d already established the precedent — the NER worker ships as
+> a separate file beside `index.html` ("single-file for everything except the
+> opt-in model"). **This session must verify empirically, not assume**: run
+> `npm run build` and inspect `dist/`. If parser chunks are inlined, configure
+> the plugin to leave them out (its `inlinePattern`/`useRecommendedBuildConfig`
+> options) and confirm a chunk emitted beside `index.html` still loads from a
+> `file://` origin — that is the origin this build is meant to be opened from,
+> and exactly where the NER model cache broke in P7d. Record the measured
+> outcome here the way P7d's "Build output caveat" note does.
+> Two constraints to know before experimenting: rollup rejects
+> `output.manualChunks` together with `inlineDynamicImports`, so that is not a
+> combination to reach for; and if `file://` chunk loading proves impossible,
+> the fallback is the P7d shape — a second rollup entry per heavy parser,
+> emitted beside `index.html` exactly as `ner.worker-*.js` is. Web Workers have
+> no `DOMParser`, so a Worker-based fallback would **not** cover
+> `.odt`/`.pptx`/`.eml`; those parse on the main thread by necessity, and each
+> should carry a one-line comment saying so — "heavy parsing ⇒ worker" is the
+> obvious wrong inference from `ner.worker.ts`.
+
+### [ ] P8b — `.docx` (mammoth.js)
+
+> Add `src/lib/parsers/docx.ts` exporting
+> `parse(bytes: ArrayBuffer, fileName: string): Promise<ParsedDocument>`, using
+> mammoth's `convertToHtml({ arrayBuffer })` and converting the HTML to Markdown
+> with the **existing** turndown dependency — do not add a second HTML→MD
+> library, and do not construct a `TurndownService` here: use the shared
+> `src/lib/htmlToMarkdown.ts` from P7f, which is what keeps emphasis markers out
+> of the string the detectors run offsets over.
+> Collect mammoth's own `messages` array into `warnings` — it reports
+> unsupported styles and dropped images. Return `format: 'docx'`.
+> Register it lazily in `src/lib/parsers/index.ts`; touch no other parser and no
+> UI beyond that one line.
+> Write tests first, against a programmatically built fixture (see Fixtures):
+> headings and lists survive as Markdown; a table becomes a Markdown table;
+> mammoth warnings land in `warnings`; a corrupt/truncated zip throws rather
+> than silently yielding an empty document.
+
+### [ ] P8c — `.pdf` (pdfjs-dist)
+
+> Add `src/lib/parsers/pdf.ts`. Use `pdfjs-dist`'s `getDocument`, walk pages,
+> and reflow `getTextContent()` items into Markdown using their transform —
+> group items into lines by Y proximity, join with spaces, break paragraphs on
+> vertical gaps. Return `format: 'pdf'`.
+> If total extracted text is empty or near-empty, return the empty markdown plus
+> a `warnings` entry saying the PDF appears to be scanned images and that text
+> extraction found nothing — **no OCR**, deliberately out of scope. Warn on page
+> count above a threshold rather than silently taking minutes.
+> Write tests first: a two-page generated PDF reflows into paragraphs in reading
+> order; a two-column layout does not interleave columns; an image-only PDF
+> yields the scanned-document warning and no throw.
+
+> **Trap — pdfjs phones home (hard rules 2 and 3).** By default pdfjs fetches
+> cMaps and standard fonts from a CDN, and resolves its worker by URL. Set
+> `GlobalWorkerOptions.workerSrc` to a bundled worker
+> (`new URL('pdfjs-dist/build/pdf.worker.min.mjs', import.meta.url)`), and pass
+> **no** `cMapUrl`/`standardFontDataUrl` rather than the CDN defaults. A full
+> local cMap bundle is heavy for a tool whose expected input is Latin-script
+> business documents, and we never render — so accept degraded glyph mapping on
+> exotic scripts, add it to `warnings`, and say so in a code comment. **Verify
+> in devtools with the network tab open on a CJK PDF and on a PDF with embedded
+> fonts** — this is the P6 zero-network guarantee, and a default-config pdfjs
+> breaks it only on documents that happen to need those assets.
+
+> **Trap — the build that ships and the build that tests differ.** pdfjs's
+> standard ESM export and its `pdfjs-dist/legacy` build behave differently under
+> Vite/browser vs. Vitest, where `DOMMatrix`/`Path2D` can be missing even in a
+> DOM environment. Confirm which entry `getTextContent()` actually needs on each
+> side before settling on an import path, and do not let the test environment's
+> requirement leak into what ships to the browser.
+
+### [ ] P8d — `.odt` (jszip + DOMParser)
+
+> Add `src/lib/parsers/odt.ts`. Unzip with jszip, read `content.xml`, parse with
+> the native `DOMParser` (this is why the file lives in `src/lib/`), and walk
+> `text:h` / `text:p` / `text:list` into Markdown, mapping `text:h`'s
+> `text:outline-level` to heading depth and `table:table` to Markdown tables.
+> Return `format: 'odt'`. Warn on embedded objects and images that are dropped.
+> Write tests first: heading levels, nested lists, and a table survive; a
+> document with a tracked-change or annotation node does not leak the reviewer's
+> name into the output silently — either include it or warn that it was dropped,
+> but decide and test it, because unreviewed metadata is a privacy leak in a
+> tool whose whole job is privacy.
+
+> **Trap — ODF metadata is PII.** `meta.xml` carries author, initials, editing
+> cycles and often a full name that never appears in the visible text. Decide
+> explicitly whether to extract it (so the anonymizer can *see* it) or drop it,
+> and state the choice in a code comment. The same question returns for `.docx`
+> and `.pptx`; answering it here sets the precedent.
+
+> **Trap — jszip is a shared dependency, not an odt one.** `.pptx` needs it too,
+> and `.eml` may. Install it once here and keep the call shape
+> (`JSZip.loadAsync(bytes)`) identical, so P8h can copy the pattern rather than
+> re-derive it.
+
+### [ ] P8e — `.csv` (no dependency)
+
+> Add `src/lib/parsers/csv.ts` — a hand-rolled RFC 4180 reader (quoted fields,
+> escaped `""`, embedded newlines and commas, `\r\n`), with delimiter sniffing
+> for `,` / `;` / `\t`. Emit a Markdown table. Return `format: 'csv'`.
+> No library: SheetJS is not worth pulling in for this. The parser is small
+> enough to be *nearly* pure — put it in `src/lib/parsers/` anyway, for
+> consistency with its siblings.
+> Warn above a row threshold: a 50k-row CSV becomes an unusable Markdown table
+> and a very slow detection pass.
+> Write tests first: a quoted field containing the delimiter; an embedded
+> newline inside quotes; the `""` escape; a semicolon-delimited European export;
+> a ragged row with fewer cells than the header.
+
+### [ ] P8f — `.xlsx` (SheetJS)
+
+> Add `src/lib/parsers/xlsx.ts` using SheetJS, one Markdown table per sheet with
+> the sheet name as a heading. Return `format: 'xlsx'`. Warn when formulas are
+> flattened to values, and when sheet or row counts exceed a usable threshold.
+> Reuse `csv.ts`'s Markdown-table emitter rather than writing a second one.
+> Write tests first: a two-sheet workbook produces two headed tables; a date
+> cell is not emitted as an Excel serial number; an empty sheet is skipped with
+> a warning.
+
+> **Trap — where SheetJS comes from.** The `xlsx` package on npm is stale and
+> deprecated upstream; SheetJS distributes current builds from their own CDN.
+> A CDN-sourced dependency is an install-time supply-chain decision, not a
+> runtime network call, but it still needs a conscious choice: pin the npm
+> version and accept it, or vendor the CDN build. Decide before installing and
+> record which, the way P7d recorded the protobufjs advisory.
+
+### [ ] P8g — `.eml` (letterparser / eml-parse-js)
+
+> Add `src/lib/parsers/eml.ts`. Parse MIME, prefer the `text/plain` part; when
+> only `text/html` exists, convert it with the shared `src/lib/htmlToMarkdown.ts`
+> from P7f. Prepend a header block (From / To / Cc / Subject / Date) as
+> Markdown — those headers are the densest PII in the file and must reach the
+> detectors. Decode quoted-printable and base64 bodies and honour the declared
+> charset. Return `format: 'eml'`. Warn listing attachment filenames, dropped.
+> Write tests first: a quoted-printable body with accented Spanish decodes
+> correctly; a multipart/alternative message prefers the plain part; headers
+> appear in the output so `EMAIL`/`NAME` detection reaches them; a latin-1
+> message does not produce mojibake.
+
+### [ ] P8h — `.pptx` (jszip + DOMParser)
+
+> Add `src/lib/parsers/pptx.ts`. Unzip, iterate `ppt/slides/slideN.xml` in
+> **numeric** order (not lexicographic — `slide10` must not sort before
+> `slide2`), extract `a:t` text runs grouped by shape, and emit one `## Slide N`
+> section per slide. Include speaker notes from `ppt/notesSlides/` under a
+> sub-heading. Return `format: 'pptx'`. Warn about dropped images and charts.
+> Write tests first: slide order is numeric; text inside a table shape is
+> extracted; speaker notes appear and are labelled; a deck with no notes parts
+> does not throw.
+
+### M3 fixtures
+
+Binary fixtures are **generated, never committed as real documents** — the same
+rule `src/core/__fixtures__/clinicalReport.ts` already states for the clinical
+report. Each format session adds a small builder under
+`src/lib/parsers/__fixtures__/` that constructs a minimal valid file in memory
+(a hand-built OOXML/ODF zip via jszip for docx/odt/pptx; a hand-written minimal
+uncompressed PDF byte string for pdf; a template literal for csv/eml), so the
+suite stays dependency-light and every fixture's contents are readable in the
+diff. Reuse the shapes from `CLINICAL_REPORT_FIXTURE` as the text payload
+wherever a format needs prose, so a parser regression surfaces as a detection
+regression in the same corpus.
+
+### M3 verification
+
+Development runs in Podman (`~/containers/anonymaizer/README.md`) and
+`node_modules` is not installed on the host, so every command below runs
+**inside the container**.
+
+Per session: `npm test` (tests written first, per CLAUDE.md rule 5) and
+`npm run lint`.
+
+At P8a, additionally — this gates the whole milestone:
+
+1. `npm run build`, then inspect `dist/`: confirm parser code is **not** inlined
+   into `index.html`. The pass/fail signal is `dist/index.html`'s byte size
+   before vs. after — record the baseline, and re-check it in every later format
+   session, since a lazy split that silently regresses is invisible otherwise.
+2. Open `dist/index.html` from a `file://` URL, paste text, complete a full
+   sanitize/restore round trip with the network tab open — **zero requests**.
+   Then import a `.txt` file and confirm the lazy path still resolves from
+   `file://`.
+3. Record the measured outcome here, in the style of P7d's "Build output
+   caveat".
+
+At P8c, additionally: import a CJK PDF and a PDF with embedded fonts from the
+`file://` build with the network tab open — still zero requests.
+
+At each format session: `npm run dev`, drop a real document of that format into
+step 1, and confirm step 2 shows sanitized text with sensible placeholders and
+that any warnings render.
 
 ---
 

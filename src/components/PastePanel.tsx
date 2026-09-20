@@ -1,7 +1,5 @@
 import { useRef, useState } from 'react';
-import TurndownService from 'turndown';
-
-const turndown = new TurndownService();
+import { convertHtmlToMarkdown } from '../lib/htmlToMarkdown';
 
 interface PastePanelProps {
   rawMarkdown: string;
@@ -17,7 +15,7 @@ export const PastePanel = ({ rawMarkdown, onChange, onCreateRule }: PastePanelPr
     const html = e.clipboardData.getData('text/html');
     if (html) {
       e.preventDefault();
-      onChange(turndown.turndown(html));
+      onChange(convertHtmlToMarkdown(html));
       return;
     }
     // Plain text: let the browser's default paste behavior run, then read
