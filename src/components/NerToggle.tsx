@@ -4,6 +4,7 @@ interface NerToggleProps {
   enabled: boolean;
   status: NerStatus;
   onToggle: (enabled: boolean) => void;
+  onDeleteModel: () => void;
 }
 
 const statusText = (status: NerStatus): string | null => {
@@ -21,21 +22,40 @@ const statusText = (status: NerStatus): string | null => {
  * P7d opt-in control, revised: once the model is loaded (`status.state ===
  * 'ready'`), the checkbox and its download blurb serve no purpose anymore —
  * there's nothing left to opt into — so they're replaced by a compact
- * "on" indicator plus a way to turn it back off. Re-scanning is automatic
- * from here (App.tsx re-runs NER on every edit once ready), so there is no
- * manual "Re-scan" button to show.
+ * status line. Re-scanning is automatic from here (App.tsx re-runs NER on
+ * every edit once ready), so there is no manual "Re-scan" button to show.
+ *
+ * "Turn off" and "Delete model" are deliberately separate actions: turning
+ * off just stops using the model this session, keeping the ~104MB cached
+ * for an instant re-enable later. Delete actually frees that cache and
+ * forces a full re-download next time — the two must never be conflated.
  */
-export const NerToggle = ({ enabled, status, onToggle }: NerToggleProps) => {
+export const NerToggle = ({ enabled, status, onToggle, onDeleteModel }: NerToggleProps) => {
   const loading = status.state === 'loading';
   const text = statusText(status);
+  const modelDownloaded = status.state === 'ready';
 
-  if (enabled && status.state === 'ready') {
+  if (modelDownloaded) {
     return (
       <div className="ner-toggle ner-toggle-active">
-        <span className="ner-status-ready">🔒 Local AI detection on — model runs fully in your browser, nothing is uploaded</span>
-        <button type="button" className="ner-rescan-button" onClick={() => onToggle(false)}>
-          Turn off
-        </button>
+        {enabled ? (
+          <span className="ner-status-ready">🔒 Local AI detection on — model runs fully in your browser, nothing is uploaded</span>
+        ) : (
+          <label>
+            <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
+            {' '}Local AI detection (model already downloaded — re-enabling is instant)
+          </label>
+        )}
+        <div className="ner-model-actions">
+          {enabled && (
+            <button type="button" className="ner-rescan-button" onClick={() => onToggle(false)}>
+              Turn off
+            </button>
+          )}
+          <button type="button" className="ner-rescan-button ner-delete-button" onClick={onDeleteModel}>
+            Delete model
+          </button>
+        </div>
       </div>
     );
   }

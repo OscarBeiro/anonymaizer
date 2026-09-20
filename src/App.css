@@ -302,6 +302,16 @@
   font-weight: 500;
 }
 
+.ner-model-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.ner-delete-button {
+  color: #b3261e;
+  border-color: #b3261e;
+}
+
 .rule-form {
   display: flex;
   flex-wrap: wrap;

@@ -64,3 +64,15 @@ export const createIndexedDbModelCache = () => ({
     }
   },
 });
+
+// Explicit user action ("Delete downloaded model"), distinct from just
+// turning detection off: turning off keeps the ~104MB cached so re-enabling
+// is instant, this actually frees the space and forces a full re-download
+// next time it's enabled.
+export const deleteModelCache = (): Promise<void> =>
+  new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error as Error);
+    request.onblocked = () => resolve();
+  });

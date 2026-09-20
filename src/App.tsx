@@ -9,6 +9,7 @@ import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { applyEnabledMappings } from './core/apply';
 import type { CustomDictionaryRule, MappingItem, MappingSession } from './core/types';
 import { NerClient, type NerStatus } from './lib/nerClient';
+import { deleteModelCache } from './workers/nerModelCache';
 import {
   loadDictionaryRules,
   loadSession,
@@ -98,6 +99,20 @@ function App() {
       // loaded (in the worker and in IndexedDB) for a fast re-enable.
       runAnonymize(session.rawMarkdown, dictionaryRules);
     }
+  };
+
+  // Distinct from handleNerToggle(false): turning off just stops using the
+  // model this session but keeps it cached for an instant re-enable. This
+  // actually frees the ~104MB — the worker (holding the loaded model in
+  // memory) is torn down and the IndexedDB cache cleared, so the next
+  // enable is a full re-download.
+  const handleDeleteModel = () => {
+    nerClientRef.current?.terminate();
+    nerClientRef.current = null;
+    setNerEnabled(false);
+    setNerStatus({ state: 'idle' });
+    runAnonymize(session.rawMarkdown, dictionaryRules);
+    void deleteModelCache();
   };
 
   const handleToggle = (id: string) => {
@@ -219,7 +234,12 @@ function App() {
 
         {step === 'review' && (
           <>
-            <NerToggle enabled={nerEnabled} status={nerStatus} onToggle={handleNerToggle} />
+            <NerToggle
+              enabled={nerEnabled}
+              status={nerStatus}
+              onToggle={handleNerToggle}
+              onDeleteModel={handleDeleteModel}
+            />
             <ReviewStep
               anonymizedText={session.anonymizedMarkdown}
               mappings={session.mappings}
