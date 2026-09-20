@@ -68,7 +68,7 @@ browser libraries. Not worth it.
 > client-side; `src/core/` is pure TypeScript with no React or DOM imports; every
 > core module ships with tests; no dependency may make a network request.
 
-### [ ] P1a — Types + deterministic detectors + span arbitration
+### [x] P1a — Types + deterministic detectors + span arbitration
 
 > In `src/core/`, implement the `MappingItem`, `MappingSession` and
 > `CustomDictionaryRule` types [paste §3 of the spec], including the open
