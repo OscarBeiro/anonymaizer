@@ -67,6 +67,16 @@ Not in scope for M1. Recorded here so they aren't lost.
   where the data lives (bundled vs. user-editable/importable, similar to
   custom dictionary rules).
 
+  Genuinely ambiguous cases complicate this further: "June", "May" and
+  Spanish "Amparo"/"Paz"/"Alba"/"Mercedes" are common given names *and*
+  calendar/common words — the stopword approach is precision-first by
+  design (§4a), so blanket-listing them trades a name false-positive for a
+  guaranteed miss on anyone actually named June. A stopword pack alone
+  can't resolve this; it needs either context (M2's NER model, which this
+  is explicitly a stopgap for) or a narrower rule than "reject the whole
+  word" — e.g. only treat "June"/"May" as the month sense when followed by
+  a day/year number, leaving the bare capitalized word available to NAME.
+
 ## Mobile
 
 Path is Vite + React → **Capacitor**: same build wrapped in a native iOS/Android
