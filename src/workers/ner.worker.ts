@@ -10,10 +10,20 @@
 // or the model.
 import { env, pipeline, type TokenClassificationPipeline } from '@xenova/transformers';
 import { aggregateBioTokens, type NerEntity, type RawNerToken } from '../core/ner';
+import { createIndexedDbModelCache } from './nerModelCache';
 
 // Never look for a locally-bundled copy — the model is deliberately not part
 // of the single-file build (P7d decision log, docs/plans/anonymaizer-plan.md).
 env.allowLocalModels = false;
+
+// IndexedDB-backed cache instead of the library's default Cache Storage API
+// — Cache Storage is unavailable on the `file://` origin this single-file
+// build is meant to be opened from, which silently disabled caching
+// entirely and re-downloaded the ~104MB model on every run. See
+// nerModelCache.ts for the full explanation.
+env.useBrowserCache = false;
+env.useCustomCache = true;
+env.customCache = createIndexedDbModelCache();
 
 export type NerWorkerRequest = { type: 'run'; text: string };
 

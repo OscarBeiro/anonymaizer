@@ -290,6 +290,18 @@
   cursor: pointer;
 }
 
+.ner-toggle-active {
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: var(--accent-bg);
+}
+
+.ner-status-ready {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
 .rule-form {
   display: flex;
   flex-wrap: wrap;

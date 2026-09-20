@@ -305,6 +305,17 @@ control states the ~104MB size and stays disabled mid-download so nothing
 half-loaded can be triggered twice; the rest of the app keeps working on the
 M1/P7a-c heuristics regardless of opt-in state, since NER is additive.
 
+**Fixed (post-M2, wizard follow-up session):** the model was being
+re-downloaded on every run, not just "first opt-in" as decided above. Root
+cause: `@xenova/transformers`'s default cache (`env.useBrowserCache`) uses
+the browser's Cache Storage API, which is unavailable on the `file://`
+origin this single-file build is meant to be opened from — `caches` is
+`undefined` there in most browsers, so caching silently never engaged.
+Fixed by switching to `env.useCustomCache` with an IndexedDB-backed adapter
+(`src/workers/nerModelCache.ts`) implementing the same `match`/`put`
+contract as the Web Cache API — IndexedDB, unlike Cache Storage, works on
+`file://`. Wired in `src/workers/ner.worker.ts`.
+
 **Known risk, tracked, not blocking:** `npm install @xenova/transformers`
 pulls in `onnxruntime-web` → `protobufjs` with a **critical** advisory
 (code injection / prototype pollution parsing a protobuf schema) — live in

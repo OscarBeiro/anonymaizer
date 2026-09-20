@@ -65,14 +65,6 @@ function App() {
     }));
   };
 
-  const handlePasteChange = (rawMarkdown: string) => {
-    // NER never runs implicitly on every keystroke/paste — inference is too
-    // heavy for that. Toggling it on, or the explicit "Re-scan" button,
-    // are the only triggers; a plain edit falls back to the M1/P7a-c
-    // heuristics until the user asks for another NER pass.
-    runAnonymize(rawMarkdown, dictionaryRules);
-  };
-
   const runNerScan = async (rawMarkdown: string, rules: CustomDictionaryRule[]) => {
     nerClientRef.current ??= new NerClient();
     try {
@@ -85,13 +77,27 @@ function App() {
     }
   };
 
-  const handleNerToggle = (checked: boolean) => {
-    setNerEnabled(checked);
-    if (checked) void runNerScan(session.rawMarkdown, dictionaryRules);
+  const handlePasteChange = (rawMarkdown: string) => {
+    // Once the model is loaded and opted into, every edit re-scans with it
+    // automatically — no separate "Re-scan" button to remember to press.
+    // Before that (not enabled, or still downloading) this falls back to
+    // the instant M1/P7a-c regex heuristics.
+    if (nerEnabled && nerStatus.state === 'ready') {
+      void runNerScan(rawMarkdown, dictionaryRules);
+    } else {
+      runAnonymize(rawMarkdown, dictionaryRules);
+    }
   };
 
-  const handleNerRescan = () => {
-    void runNerScan(session.rawMarkdown, dictionaryRules);
+  const handleNerToggle = (checked: boolean) => {
+    setNerEnabled(checked);
+    if (checked) {
+      void runNerScan(session.rawMarkdown, dictionaryRules);
+    } else {
+      // Falls back to the instant M1/P7a-c heuristics — the model stays
+      // loaded (in the worker and in IndexedDB) for a fast re-enable.
+      runAnonymize(session.rawMarkdown, dictionaryRules);
+    }
   };
 
   const handleToggle = (id: string) => {
@@ -166,7 +172,11 @@ function App() {
 
   const updateRules = (rules: CustomDictionaryRule[]) => {
     setDictionaryRules(rules);
-    runAnonymize(session.rawMarkdown, rules);
+    if (nerEnabled && nerStatus.state === 'ready') {
+      void runNerScan(session.rawMarkdown, rules);
+    } else {
+      runAnonymize(session.rawMarkdown, rules);
+    }
   };
 
   const handleCreateRule = (selectedText: string) => {
@@ -209,13 +219,7 @@ function App() {
 
         {step === 'review' && (
           <>
-            <NerToggle
-              enabled={nerEnabled}
-              status={nerStatus}
-              canRescan={nerStatus.state === 'ready' && session.rawMarkdown.length > 0}
-              onToggle={handleNerToggle}
-              onRescan={handleNerRescan}
-            />
+            <NerToggle enabled={nerEnabled} status={nerStatus} onToggle={handleNerToggle} />
             <ReviewStep
               anonymizedText={session.anonymizedMarkdown}
               mappings={session.mappings}
