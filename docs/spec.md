@@ -2,7 +2,7 @@
 
 Client-Side Text Anonymization & Reversal Tool.
 
-> Source of truth for the `P` prompts in `docs/plans/anonymaizer-plan.md`.
+> Source of truth for the `P` prompts in the `docs/plans/` milestone files.
 > Where the plan says "[paste §3 of the spec]" or "the §6 Spanish test bench
 > case", it means the sections below.
 >

@@ -44,7 +44,7 @@ export const createIndexedDbModelCache = () => ({
       // A cache miss (including a failed lookup) just means "download it" —
       // never let a caching problem break NER itself. Logged (not silent)
       // so a real persistent cache failure is provable via devtools instead
-      // of guessed at — see docs/plans/anonymaizer-plan.md's P7d notes.
+      // of guessed at — see docs/plans/m2-detection-ner.md's P7d notes.
       console.warn('[NER cache] match failed, falling back to network', key, err);
       return undefined;
     }

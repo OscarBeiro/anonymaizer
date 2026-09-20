@@ -7,7 +7,7 @@ import { convertHtmlToMarkdown } from './htmlToMarkdown';
 // P7f: turndown's defaults corrupt exactly the char classes the M2 detectors
 // use to recognize masked IDs and NAME boundaries (`*`, `_`). These tests
 // pin the fix at the ingest boundary, not in the detectors — see the "Trap"
-// note on P7f in docs/plans/anonymaizer-plan.md for why.
+// note on P7f in docs/plans/m2-detection-ner.md for why.
 describe('convertHtmlToMarkdown', () => {
   it.each([
     ['<strong>Ester Cuni</strong>', 'Ester Cuni'],

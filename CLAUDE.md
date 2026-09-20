@@ -2,8 +2,11 @@
 
 Client-side text anonymization & reversal tool. Vite + React + TypeScript + Vitest.
 
-The development plan lives at `docs/plans/anonymaizer-plan.md` — one `P` block
-per session, in order. Tick the box when the session is done and its tests pass.
+The development plan lives in `docs/plans/`: `anonymaizer-plan.md` is the index
+and the cross-cutting material, with one file per milestone beside it
+(`m3-parsers.md`, `m4-export-i18n.md`, …). Read the index *and* your milestone's
+file — one `P` block per session, in order. Tick the box when the session is
+done and its tests pass.
 
 ## Hard rules
 
