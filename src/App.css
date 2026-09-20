@@ -76,8 +76,7 @@
 }
 
 .ingest-step,
-.review-step,
-.review-right {
+.review-step {
   display: flex;
   flex-direction: column;
   gap: 16px;

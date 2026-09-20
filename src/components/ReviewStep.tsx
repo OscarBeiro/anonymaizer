@@ -13,7 +13,13 @@ interface ReviewStepProps {
   onRulesChange: (rules: CustomDictionaryRule[]) => void;
 }
 
-type ReviewSubStep = 'rules' | 'sanitized';
+type ReviewSubStep = 'rules' | 'placeholders' | 'sanitized';
+
+const SUB_STEPS: { id: ReviewSubStep; label: string }[] = [
+  { id: 'rules', label: '2.1 Rules' },
+  { id: 'placeholders', label: '2.2 Placeholders' },
+  { id: 'sanitized', label: '2.3 Sanitized text' },
+];
 
 export const ReviewStep = ({
   anonymizedText,
@@ -29,32 +35,25 @@ export const ReviewStep = ({
   return (
     <div className="review-step">
       <nav className="review-sub-nav">
-        <button
-          type="button"
-          className={subStep === 'rules' ? 'review-sub-nav-button review-sub-nav-active' : 'review-sub-nav-button'}
-          onClick={() => setSubStep('rules')}
-        >
-          2.1 Rules
-        </button>
-        <button
-          type="button"
-          className={subStep === 'sanitized' ? 'review-sub-nav-button review-sub-nav-active' : 'review-sub-nav-button'}
-          onClick={() => setSubStep('sanitized')}
-        >
-          2.2 Sanitized text
-        </button>
+        {SUB_STEPS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            className={s.id === subStep ? 'review-sub-nav-button review-sub-nav-active' : 'review-sub-nav-button'}
+            onClick={() => setSubStep(s.id)}
+          >
+            {s.label}
+          </button>
+        ))}
       </nav>
 
       {subStep === 'rules' && <RulesEditor rules={dictionaryRules} onChange={onRulesChange} />}
 
-      {subStep === 'sanitized' && (
-        <div className="split">
-          <SanitizedTextPanel anonymizedText={anonymizedText} />
-          <div className="review-right">
-            <MappingList mappings={mappings} onToggle={onToggle} onSplit={onSplit} onMerge={onMerge} />
-          </div>
-        </div>
+      {subStep === 'placeholders' && (
+        <MappingList mappings={mappings} onToggle={onToggle} onSplit={onSplit} onMerge={onMerge} />
       )}
+
+      {subStep === 'sanitized' && <SanitizedTextPanel anonymizedText={anonymizedText} />}
     </div>
   );
 };
