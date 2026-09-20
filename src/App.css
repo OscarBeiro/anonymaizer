@@ -96,6 +96,30 @@
   align-self: flex-start;
 }
 
+.ner-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 0.9rem;
+}
+
+.ner-status {
+  color: var(--text-secondary, #666);
+  font-size: 0.85rem;
+}
+
+.ner-status-error {
+  color: #b3261e;
+}
+
+.ner-rescan-button {
+  font-size: 0.85rem;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
 .rule-form {
   display: flex;
   flex-wrap: wrap;

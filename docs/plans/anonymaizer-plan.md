@@ -272,7 +272,7 @@ before the NER worker** — the model then only has to solve what a regex can't.
 > This also settles the **accent/diacritic normalization** item in the backlog
 > above — implement it once here and reuse it for dictionary matching.
 
-### [ ] P7d — NER worker
+### [x] P7d — NER worker
 
 > Add `src/workers/ner.worker.ts` using @xenova/transformers with a quantized
 > bert-base-NER ONNX model. Worker-only, lazy-loaded on user opt-in. Merge results
@@ -285,9 +285,50 @@ before the NER worker** — the model then only has to solve what a regex can't.
 > encodes a fact the model cannot know (that this run of capitalized words is a
 > statute title). NER output feeds the P7c clusterer like any other NAME span.
 
-**Decide before starting P7d:** the model is tens of MB and can't live inside a
-single-file HTML bundle. Either the PWA caches it on first opt-in, or M2 ships as
-a separate build target.
+**Decided:** the PWA caches the model on first opt-in (single build target
+stays the artifact). Checked against Hugging Face directly: the quantized
+ONNX model (`Xenova/bert-base-NER`, `model_quantized.onnx`) is **~104MB** —
+smaller quantizations (q4/bnb4) came out *larger* for this model due to export
+overhead, so quantized/int8 is in fact the smallest usable option. The opt-in
+control states the ~104MB size and stays disabled mid-download so nothing
+half-loaded can be triggered twice; the rest of the app keeps working on the
+M1/P7a-c heuristics regardless of opt-in state, since NER is additive.
+
+**Known risk, tracked, not blocking:** `npm install @xenova/transformers`
+pulls in `onnxruntime-web` → `protobufjs` with a **critical** advisory
+(code injection / prototype pollution parsing a protobuf schema) — live in
+the runtime path, since ONNX model files are protobuf. Accepted for now: the
+model URL is hardcoded to Xenova's official HF repo, not attacker-controlled
+input: the realistic exposure needs a compromised CDN/MITM, not a malicious
+document being anonymized. `npm audit fix --force` only offers a downgrade to
+`@xenova/transformers@1.4.2`, breaking against the pipeline API used here.
+**Revisit when transformers.js/onnxruntime-web cuts a patched release, or
+when M3 evaluates an alternative in-browser ONNX runtime that avoids this
+protobufjs path** (candidate for the M3 backlog, not solved here).
+
+**Build output caveat:** `vite-plugin-singlefile` does not inline
+`src/workers/ner.worker.ts` — it stays a separate ~810KB chunk
+(`dist/ner.worker-*.js`) alongside `dist/index.html`. That's the right
+outcome (the transformers.js library only loads for users who opt in,
+instead of adding ~810KB to every load), but it means the P6 "one portable
+HTML file" guarantee now has an exception: shipping NER means shipping two
+files, not one. `index.html` alone still works standalone with NER simply
+unavailable — the worker file only matters if the user opts in — so this
+doesn't regress the offline-core promise, just narrows "single-file" to
+"single-file for everything except the opt-in model."
+
+Implementation notes for anyone revisiting this: the installed
+`@xenova/transformers` (2.17.2) has no `aggregation_strategy` option, so the
+worker gets raw per-token BIO predictions (`B-PER`/`I-PER`/…) and
+`aggregateBioTokens` (`src/core/ner.ts`, pure, unit-tested) does the merge
+into whole entities itself — this is also what made "mock the pipeline, test
+the merge logic" straightforward: every merge/threshold/ladder-priority
+decision lives in `src/core/ner.ts` and `anonymizeWithNer`
+(`src/core/anonymize.ts`), fully testable with hand-built `NerEntity[]`
+fixtures, no model or worker involved. Only `src/workers/ner.worker.ts` (the
+actual `pipeline()` call) and `src/lib/nerClient.ts` (the `Worker` wrapper)
+are unverified by the test suite — those need one manual `npm run dev` check
+with the opt-in box actually ticked.
 
 ### [ ] P7e — Wizard UI (after P7c, so the mapping table is reshaped once)
 
@@ -349,6 +390,32 @@ values.
 ---
 
 # Milestone 3 — Document parsers
+
+**Backlog item carried over from P7d:** evaluate an alternative in-browser
+ONNX runtime for the NER worker that avoids `onnxruntime-web`'s vulnerable
+`protobufjs` dependency (critical advisory, tracked in P7d's notes above) —
+e.g. a newer onnxruntime-web release once it drops/patches protobufjs, or a
+non-transformers.js ONNX loading path. Not blocking M2; revisit once M3's
+parser work is underway or the upstream advisory is patched.
+
+**Backlog item — placeholder tagging collision.** `reverseText`'s restore
+regex runs case-insensitive (`i` flag) so an LLM that lowercases
+`[name_1]` in its reply still restores — but that means two custom
+dictionary categories differing only by case (`Custom` vs `CUSTOM`,
+user-defined via `CustomDictionaryRule.targetCategory`) can collide on
+restore. Fix is to canonicalize category casing when a custom rule mints
+one (or reject a case-only collision at rule-creation time). Not a risk for
+the built-in categories (`NAME`, `EMAIL`, …), which are all fixed and
+distinct; only user-defined `CATEGORY`-type rules can produce this.
+The other tagging question raised alongside this — whether `[NAME_1]` risks
+colliding with literal bracketed text already in a document, whether
+double brackets (`[[NAME_1]]`) would help, and whether the counter should
+be zero-padded — was answered in-session: the existing length-descending
+placeholder sort already prevents `[NAME_1]`/`[NAME_11]` prefix-eating
+(that's the P3 spec-trap fix, not a bracket-style concern), double brackets
+don't dodge Markdown's own `[[wiki-link]]` syntax so gain nothing, and
+zero-padding fixes nothing the length-sort doesn't already fix. No action
+needed on those three; only the case-collision item above is real.
 
 One prompt per format, one session each. Template:
 

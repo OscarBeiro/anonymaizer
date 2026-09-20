@@ -79,6 +79,8 @@ export const RUNG = {
   ID_CODE: 3, // label-anchored codes (P7b), e.g. "Colegiada T-04250"
   ADDRESS: 4,
   COMPANY: 5, // suffix and prefix forms
+  NER: 5.5, // opt-in model (P7d) — outranks NAME and the ALL-CAPS COMPANY
+            // guess it supersedes, but not the checksum/shape detectors above
   NAME: 6,
   COMPANY_ACRONYM: 7, // ALL-CAPS heuristic, off by default
 } as const;
