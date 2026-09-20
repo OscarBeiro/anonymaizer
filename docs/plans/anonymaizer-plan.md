@@ -77,6 +77,17 @@ Not in scope for M1. Recorded here so they aren't lost.
   word" — e.g. only treat "June"/"May" as the month sense when followed by
   a day/year number, leaving the bare capitalized word available to NAME.
 
+- **Simplified wildcard syntax for custom dictionary rules, default mode
+  (M4?).** Full regex is the current `isRegex` option, but the target user
+  is office staff, not engineers — raw regex is the wrong default surface.
+  Proposed: a glob-like mini-syntax as the default (non-regex) rule type,
+  e.g. `TG-*` (matches everything after `TG-` up to the next whitespace)
+  and `TG-??` (matches exactly two characters after `TG-`). This compiles
+  down to a real regex internally — `*` → `\S*`, `?` → `\S` — so it's a thin
+  UI/parsing layer over the existing `isRegex` path, not a new detection
+  engine. Full regex stays available as an "advanced mode" toggle next to
+  it (`RulesEditor.tsx`'s existing `isRegex` checkbox), not removed.
+
 ## Mobile
 
 Path is Vite + React → **Capacitor**: same build wrapped in a native iOS/Android
