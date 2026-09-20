@@ -10,7 +10,12 @@ interface NerToggleProps {
 const statusText = (status: NerStatus): string | null => {
   switch (status.state) {
     case 'loading':
-      return status.detail ? `Downloading model, once only… (${status.detail})` : 'Downloading model (~104MB, once only)…';
+      // Deliberately not "Downloading…": @xenova/transformers fires this
+      // same progress event whether the model comes from the network or
+      // from our IndexedDB cache — it gives no cache-hit signal — so a
+      // returning user who already has it cached sees this too, briefly.
+      // Claiming "downloading" every time would be a false alarm.
+      return status.detail ? `Loading model… (${status.detail})` : 'Loading model…';
     case 'error':
       return `NER failed: ${status.message}`;
     default:

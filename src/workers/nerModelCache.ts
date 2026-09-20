@@ -38,10 +38,14 @@ export const createIndexedDbModelCache = () => ({
         req.onerror = () => reject(req.error as Error);
       });
       db.close();
+      if (entry) console.info(`[NER cache] hit: ${key}`);
       return entry ? new Response(entry.body, { headers: entry.headers }) : undefined;
-    } catch {
+    } catch (err) {
       // A cache miss (including a failed lookup) just means "download it" —
-      // never let a caching problem break NER itself.
+      // never let a caching problem break NER itself. Logged (not silent)
+      // so a real persistent cache failure is provable via devtools instead
+      // of guessed at — see docs/plans/anonymaizer-plan.md's P7d notes.
+      console.warn('[NER cache] match failed, falling back to network', key, err);
       return undefined;
     }
   },
@@ -58,9 +62,11 @@ export const createIndexedDbModelCache = () => ({
         tx.onerror = () => reject(tx.error as Error);
       });
       db.close();
-    } catch {
+      console.info(`[NER cache] stored: ${key} (${(body.byteLength / 1e6).toFixed(1)}MB)`);
+    } catch (err) {
       // Best-effort — e.g. IndexedDB quota exceeded. Model still loaded
-      // fine this run, it'll just re-download next time.
+      // fine this run, but it WILL re-download next time — surface that.
+      console.warn('[NER cache] put failed, will re-download next time', key, err);
     }
   },
 });
