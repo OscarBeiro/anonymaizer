@@ -15,6 +15,12 @@ describe('detectEmails', () => {
     expect(spans).toHaveLength(1);
     expect(spans[0]).toMatchObject({ text: 'oscar@example.com', category: 'EMAIL' });
   });
+
+  it('does not swallow a leading Markdown bold marker into the match', () => {
+    const spans = detectEmails('reach out **clara@example.com** any time');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].text).toBe('clara@example.com');
+  });
 });
 
 describe('detectPhones', () => {
@@ -45,6 +51,17 @@ describe('detectAddresses', () => {
     const spans = detectAddresses('Calle Mayor 5');
     expect(spans).toHaveLength(1);
     expect(spans[0].text).toBe('Calle Mayor 5');
+  });
+
+  it('matches a US/UK-style number-first address', () => {
+    const spans = detectAddresses('I live at 742 Evergreen Terrace, Springfield, OR 97477.');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].text).toBe('742 Evergreen Terrace, Springfield, OR 97477');
+  });
+
+  it('does not fire on an ordinary "<number> <Capitalized word>" sequence', () => {
+    const spans = detectAddresses('We shipped 12 Widgets last week.');
+    expect(spans).toHaveLength(0);
   });
 });
 
@@ -84,6 +101,12 @@ describe('detectIbans', () => {
   it('discards an invalid checksum outright', () => {
     const spans = detectIbans('transfiere a ES9121000418450200051333 hoy');
     expect(spans).toHaveLength(0);
+  });
+
+  it('matches a German IBAN whose last display group is shorter than 4 chars', () => {
+    const spans = detectIbans('IBAN: DE89 3704 0044 0532 0130 00');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].text).toBe('DE89 3704 0044 0532 0130 00');
   });
 });
 

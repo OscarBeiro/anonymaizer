@@ -59,4 +59,13 @@ describe('runDetectionPipeline', () => {
     expect(mappings.some((m) => m.category === 'NAME')).toBe(false);
     expect(anonymizedText).toBe('[COMPANY_1] facturó a [COMPANY_2] en [ADDRESS_1].');
   });
+
+  it('dedups a greeting-prefixed name mention with a bare one into a single placeholder', () => {
+    const text = 'Dear Clara Vance, thank you. Regards, Clara Vance.';
+    const candidates = runAllDetectors(text);
+    const { mappings, anonymizedText } = runDetectionPipeline(text, candidates);
+
+    expect(mappings.filter((m) => m.category === 'NAME')).toHaveLength(1);
+    expect(anonymizedText).toBe('Dear [NAME_1], thank you. Regards, [NAME_1].');
+  });
 });

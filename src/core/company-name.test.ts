@@ -64,4 +64,20 @@ describe('detectNames', () => {
     const spans = detectNames('Hola, Estimado Señor, le escribo por este motivo.');
     expect(spans).toHaveLength(0);
   });
+
+  it('peels a leading English greeting off instead of swallowing the name with it', () => {
+    const spans = detectNames('Dear Clara Vance, thank you for reaching out.');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].text).toBe('Clara Vance');
+  });
+
+  it('does not treat a "Label:" line as a name', () => {
+    const spans = detectNames('Phone Number: 555-0100');
+    expect(spans).toHaveLength(0);
+  });
+
+  it('does not chain a name across a line break into the next field label', () => {
+    const spans = detectNames('Name: Clara Vance\n\nEmail: clara@example.com');
+    expect(spans.map((s) => s.text)).toContain('Clara Vance');
+  });
 });

@@ -16,7 +16,11 @@ const collect = (
   return spans;
 };
 
-const EMAIL_REGEX = /[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)+/g;
+// Deliberately narrower than full RFC 5322: the exotic local-part chars
+// (!#$%&'*/=^_`{|}~) are almost never real emails and, in the case of `*`,
+// actively swallow adjacent Markdown bold markers (`**clara@x.com**`) into
+// the match, leaving broken syntax behind after substitution.
+const EMAIL_REGEX = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
 
 export const detectEmails = (text: string): DetectedSpan[] =>
   collect(new RegExp(EMAIL_REGEX), text, (m) => ({
@@ -51,17 +55,36 @@ const STREET_KEYWORDS = [
   'Street', 'Avenue', 'Road', 'Rd',
 ];
 
+// Same-line whitespace only. A generic \s matches newlines, which lets a
+// multi-word heuristic match chain across lines in a structured document
+// (a "Name: Clara Vance" line followed by "Email: ..." would otherwise
+// merge into one bogus candidate) — addresses, company names and person
+// names are always single-line entities.
+const WS = '[ \\t]';
+
 const ADDRESS_REGEX = new RegExp(
   `(?:${STREET_KEYWORDS.map((k) => k.replace('/', '\\/')).join('|')})` +
-    `\\s+\\p{Lu}\\p{L}*(?:\\s+\\p{Lu}\\p{L}*)*` +
-    `\\s+\\d+[A-Za-z]?` +
-    `(?:,?\\s*\\d{5})?` +
-    `(?:,?\\s*\\p{Lu}\\p{L}*)?`,
+    `${WS}+\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*)*` +
+    `${WS}+\\d+[A-Za-z]?` +
+    `(?:,?${WS}*\\d{5})?` +
+    `(?:,?${WS}*\\p{Lu}\\p{L}*)?`,
   'gu',
 );
 
-export const detectAddresses = (text: string): DetectedSpan[] =>
-  collect(new RegExp(ADDRESS_REGEX), text, (m) => ({
+// US/UK-style number-first address: "742 Evergreen Terrace, Springfield, OR
+// 97477". No street keyword to anchor on here, so city + 2-letter state +
+// ZIP are required (not optional, unlike the keyword-form's locality) to
+// keep this precision-first — that trailing shape is distinctive enough to
+// not fire on ordinary "<number> <Capitalized word>" text.
+const US_ADDRESS_REGEX = new RegExp(
+  `\\b\\d+${WS}+\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*){0,3}` +
+    `,${WS}*\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*)*` +
+    `,${WS}*[A-Z]{2}${WS}+\\d{5}(?:-\\d{4})?\\b`,
+  'gu',
+);
+
+export const detectAddresses = (text: string): DetectedSpan[] => {
+  const build = (m: RegExpExecArray): DetectedSpan => ({
     start: m.index,
     end: m.index + m[0].length,
     category: 'ADDRESS',
@@ -69,7 +92,12 @@ export const detectAddresses = (text: string): DetectedSpan[] =>
     confidence: 1,
     source: 'regex',
     rung: RUNG.ADDRESS,
-  }));
+  });
+  return [
+    ...collect(new RegExp(ADDRESS_REGEX), text, build),
+    ...collect(new RegExp(US_ADDRESS_REGEX), text, build),
+  ];
+};
 
 const DNI_REGEX = /\b\d{8}[A-Za-z]\b/g;
 const NIE_REGEX = /\b[XYZxyz]\d{7}[A-Za-z]\b/g;
@@ -102,7 +130,10 @@ export const detectNie = (text: string): DetectedSpan[] =>
     };
   });
 
-const IBAN_REGEX = /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){2,7}\b/g;
+// Group width is 1-4, not a fixed 4: several countries' conventional
+// display grouping ends in a short trailing group (German IBANs, e.g.
+// "DE89 3704 0044 0532 0130 00", end in a 2-char group).
+const IBAN_REGEX = /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{1,4}){2,7}\b/g;
 
 export const detectIbans = (text: string): DetectedSpan[] =>
   collect(new RegExp(IBAN_REGEX), text, (m) => {
@@ -157,7 +188,7 @@ const COMPANY_SUFFIXES = [
 ];
 
 const COMPANY_SUFFIX_REGEX = new RegExp(
-  `\\p{Lu}\\p{L}*(?:\\s+\\p{Lu}\\p{L}*)*,?\\s+(?:${COMPANY_SUFFIXES.join('|')})(?=[\\s.,;:!?)]|$)`,
+  `\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*)*,?${WS}+(?:${COMPANY_SUFFIXES.join('|')})(?=[\\s.,;:!?)]|$)`,
   'gu',
 );
 
@@ -167,7 +198,7 @@ const COMPANY_PREFIXES = [
 ];
 
 const COMPANY_PREFIX_REGEX = new RegExp(
-  `\\b(?:${COMPANY_PREFIXES.join('|')})\\s+\\p{Lu}\\p{L}*(?:\\s+\\p{Lu}\\p{L}*)*`,
+  `\\b(?:${COMPANY_PREFIXES.join('|')})${WS}+\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*)*`,
   'gu',
 );
 
@@ -221,17 +252,21 @@ const NAME_STOPWORDS = new Set([
   // months
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto',
   'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
-  // common sentence-starters
+  // common sentence-starters (ES)
   'Hola', 'Estimado', 'Estimada', 'Buenos', 'Buenas', 'Saludos', 'Gracias',
   'Atentamente', 'El', 'La', 'Los', 'Las', 'Un', 'Una', 'Por', 'Para',
   'Cuando', 'Aunque', 'Además', 'También', 'Sin', 'Pero', 'Señor', 'Señora',
+  // common sentence-starters (EN) — greetings/sign-offs precede a name often
+  // enough (emails, letters) that they need to be peeled off, not just
+  // rejected wholesale.
+  'Dear', 'Hello', 'Hi', 'Regards', 'Sincerely', 'Best', 'Thanks', 'Yours',
 ]);
 
 const NAME_TOKEN = '\\p{Lu}\\p{L}*(?:-\\p{Lu}\\p{L}*)?';
 const NAME_MAX_TOKENS = 6;
 
 const NAME_REGEX = new RegExp(
-  `${NAME_TOKEN}(?:\\s+(?:(?:${NAME_PARTICLES.join('|')})\\s+)?${NAME_TOKEN}){0,${NAME_MAX_TOKENS - 1}}`,
+  `${NAME_TOKEN}(?:${WS}+(?:(?:${NAME_PARTICLES.join('|')})${WS}+)?${NAME_TOKEN}){0,${NAME_MAX_TOKENS - 1}}`,
   'gu',
 );
 
@@ -245,16 +280,38 @@ const isSentenceInitial = (text: string, index: number): boolean => {
 const tokenCount = (match: string): number =>
   match.split(/\s+/).filter((word) => !NAME_PARTICLES.includes(word)).length;
 
+const LEADING_WORD_RE = /^(\S+)(\s*)/;
+
+/**
+ * A leading stopword ("Dear", "Estimado") must not swallow a real name
+ * into one bogus match ("Dear Clara Vance" would otherwise dedup as a
+ * different string than "Clara Vance" and mint a second placeholder) — so
+ * it's peeled off the front, not used to reject the whole candidate.
+ */
+const stripLeadingStopwords = (matchText: string, start: number): { text: string; start: number } => {
+  let text = matchText;
+  let offset = start;
+  for (;;) {
+    const leading = LEADING_WORD_RE.exec(text);
+    if (!leading || !NAME_STOPWORDS.has(leading[1])) break;
+    const consumed = leading[0].length;
+    text = text.slice(consumed);
+    offset += consumed;
+  }
+  return { text, start: offset };
+};
+
+const isLabelColon = (text: string, endIndex: number): boolean => text[endIndex] === ':';
+
 export const detectNames = (text: string): DetectedSpan[] =>
   collect(new RegExp(NAME_REGEX), text, (m) => {
-    const matchText = m[0];
+    const { text: matchText, start } = stripLeadingStopwords(m[0], m.index);
     if (tokenCount(matchText) < 2) return null;
-    if (isSentenceInitial(text, m.index)) return null;
-    const firstWord = matchText.split(/\s+/)[0];
-    if (NAME_STOPWORDS.has(firstWord)) return null;
+    if (isSentenceInitial(text, start)) return null;
+    if (isLabelColon(text, start + matchText.length)) return null;
     return {
-      start: m.index,
-      end: m.index + matchText.length,
+      start,
+      end: start + matchText.length,
       category: 'NAME',
       text: matchText,
       confidence: 0.6,
