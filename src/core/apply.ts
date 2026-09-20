@@ -10,6 +10,9 @@ const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$
  * sorted by originalText length descending (same collision-avoidance
  * principle as the reversal engine) so a shorter accepted text can never eat
  * part of a longer one.
+ *
+ * Word-boundaried for the same reason reverseText is: an unbounded global
+ * replace of "Ana" would also rewrite it inside "Análisis".
  */
 export const applyEnabledMappings = (rawText: string, mappings: MappingItem[]): string => {
   const enabled = [...mappings]
@@ -18,7 +21,7 @@ export const applyEnabledMappings = (rawText: string, mappings: MappingItem[]): 
 
   let result = rawText;
   for (const item of enabled) {
-    const regex = new RegExp(escapeRegex(item.originalText), 'g');
+    const regex = new RegExp(`\\b${escapeRegex(item.originalText)}\\b`, 'g');
     result = result.replace(regex, item.placeholder);
   }
   return result;

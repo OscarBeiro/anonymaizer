@@ -7,13 +7,15 @@ export interface PipelineResult {
 }
 
 /**
- * §4a end to end: arbitrate candidate spans, dedup into mappings, then
- * substitute right-to-left using each accepted span's minted placeholder.
- * Spans whose mapping starts disabled (the ALL-CAPS COMPANY guess) are left
- * untouched in the text — they're offered for review, not applied silently.
+ * §4a end to end: arbitrate candidate spans, drop shields (they exist only to
+ * keep other detectors off their text — never minted, never applied), dedup
+ * the rest into mappings, then substitute right-to-left using each accepted
+ * span's minted placeholder. Spans whose mapping starts disabled (the
+ * ALL-CAPS COMPANY guess) are left untouched in the text — they're offered
+ * for review, not applied silently.
  */
 export const runDetectionPipeline = (text: string, candidates: DetectedSpan[]): PipelineResult => {
-  const accepted = arbitrateSpans(candidates);
+  const accepted = arbitrateSpans(candidates).filter((span) => !span.shield);
   const mappings = buildMappings(accepted);
 
   const enabledTexts = new Set(mappings.filter((m) => m.enabled).map((m) => m.originalText));

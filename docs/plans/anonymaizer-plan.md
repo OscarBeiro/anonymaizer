@@ -200,7 +200,7 @@ reduce to five root causes, all reproducible from the M1 code:
 Only R2 genuinely needs context. The rest are deterministic, so **P7a–P7c land
 before the NER worker** — the model then only has to solve what a regex can't.
 
-### [ ] P7a — NAME precision: token floor, boundaries, shield spans
+### [x] P7a — NAME precision: token floor, boundaries, shield spans
 
 > Fix R1 and R5 and introduce shield spans. `NAME_TOKEN` becomes
 > `\p{Lu}\p{L}+` (≥2 letters) plus an explicit initial form (`\p{Lu}\.`, so

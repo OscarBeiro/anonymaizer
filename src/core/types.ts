@@ -52,15 +52,24 @@ export interface DetectedSpan {
   // Heuristics that must land disabled by default (ALL-CAPS COMPANY guess)
   // set this false; every other detector omits it and defaults to true.
   enabled?: boolean;
+  // A shield claims a span to keep every other detector off it, then is
+  // itself dropped before minting (never becomes a MappingItem, never
+  // appears in the anonymized text). It exists for text that a heuristic
+  // would otherwise misread as PII — a statute citation, a job title, a
+  // timestamp — where the fix is "nothing should touch this", not "tag it
+  // as some other category".
+  shield?: true;
 }
 
 // §4a priority ladder, highest priority first. Detectors tag their spans with
 // the matching rung number.
 export const RUNG = {
   DICTIONARY: 0,
-  VALIDATED_REGEX: 1, // EMAIL / IBAN / CREDIT_CARD / DNI / NIE / PHONE
-  ADDRESS: 2,
-  COMPANY: 3, // suffix and prefix forms
-  NAME: 4,
-  COMPANY_ACRONYM: 5, // ALL-CAPS heuristic, off by default
+  SHIELD: 1, // legal citations / professional titles / date-time — never minted
+  VALIDATED_REGEX: 2, // EMAIL / IBAN / CREDIT_CARD / DNI / NIE / PHONE / MASKED_ID
+  ID_CODE: 3, // label-anchored codes (P7b), e.g. "Colegiada T-04250"
+  ADDRESS: 4,
+  COMPANY: 5, // suffix and prefix forms
+  NAME: 6,
+  COMPANY_ACRONYM: 7, // ALL-CAPS heuristic, off by default
 } as const;

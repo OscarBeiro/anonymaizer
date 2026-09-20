@@ -262,7 +262,24 @@ const NAME_STOPWORDS = new Set([
   'Dear', 'Hello', 'Hi', 'Regards', 'Sincerely', 'Best', 'Thanks', 'Yours',
 ]);
 
-const NAME_TOKEN = '\\p{Lu}\\p{L}*(?:-\\p{Lu}\\p{L}*)?';
+// Professional-title lexemes (also used by detectProfessionalTitles below to
+// shield a title + its closed qualifier list). A bare title immediately
+// before a real name — "Psicóloga Ester Cuni" — must not pull that title
+// into the NAME candidate, so it is peeled off the front the same way a
+// stopword is, not excluded by rejecting the whole match.
+const TITLE_LEXEMES = [
+  'Psicólogo', 'Psicóloga', 'Médico', 'Médica', 'Abogado', 'Abogada',
+  'Ingeniero', 'Ingeniera', 'Graduado', 'Graduada', 'Licenciado', 'Licenciada',
+  'Trabajador Social', 'Trabajadora Social', 'Técnico', 'Técnica', 'Perito',
+  'Colegiado', 'Colegiada',
+];
+
+// At least two letters per token, with one explicit exception for a real
+// initial ("J." in "J. Smith") — otherwise a lone capital letter left behind
+// by a masked ID or a code (the "E" in "76****12E") is itself a valid token,
+// and picks up a real name's tokenCount>=2 floor for free by combining with
+// whatever capitalized word happens to follow it.
+const NAME_TOKEN = '(?:\\p{Lu}\\p{L}+(?:-\\p{Lu}\\p{L}+)?|\\p{Lu}\\.)';
 const NAME_MAX_TOKENS = 6;
 
 const NAME_REGEX = new RegExp(
@@ -280,20 +297,26 @@ const isSentenceInitial = (text: string, index: number): boolean => {
 const tokenCount = (match: string): number =>
   match.split(/\s+/).filter((word) => !NAME_PARTICLES.includes(word)).length;
 
-const LEADING_WORD_RE = /^(\S+)(\s*)/;
+// Longest phrase first so "Trabajador Social" matches whole rather than
+// stopping at "Trabajador" (which isn't itself in either list).
+const LEADING_LABELS = [...TITLE_LEXEMES, ...NAME_STOPWORDS].sort((a, b) => b.length - a.length);
+const LEADING_LABEL_RE = new RegExp(`^(?:${LEADING_LABELS.join('|')})\\b${WS}*`, 'u');
 
 /**
- * A leading stopword ("Dear", "Estimado") must not swallow a real name
- * into one bogus match ("Dear Clara Vance" would otherwise dedup as a
- * different string than "Clara Vance" and mint a second placeholder) — so
- * it's peeled off the front, not used to reject the whole candidate.
+ * A leading stopword ("Dear", "Estimado") or bare professional title
+ * ("Psicóloga") must not swallow a real name into one bogus match — "Dear
+ * Clara Vance" would otherwise dedup as a different string than "Clara
+ * Vance" and mint a second placeholder, and "Psicóloga Ester Cuni" would
+ * lose the name entirely once detectProfessionalTitles' shield claims
+ * "Psicóloga" and arbitration drops the whole overlapping NAME candidate. So
+ * both are peeled off the front here, not used to reject the whole match.
  */
-const stripLeadingStopwords = (matchText: string, start: number): { text: string; start: number } => {
+const stripLeadingLabels = (matchText: string, start: number): { text: string; start: number } => {
   let text = matchText;
   let offset = start;
   for (;;) {
-    const leading = LEADING_WORD_RE.exec(text);
-    if (!leading || !NAME_STOPWORDS.has(leading[1])) break;
+    const leading = LEADING_LABEL_RE.exec(text);
+    if (!leading) break;
     const consumed = leading[0].length;
     text = text.slice(consumed);
     offset += consumed;
@@ -303,12 +326,24 @@ const stripLeadingStopwords = (matchText: string, start: number): { text: string
 
 const isLabelColon = (text: string, endIndex: number): boolean => text[endIndex] === ':';
 
+// Rejects a candidate that starts mid-token — right after a letter, digit, or
+// a masking character (*, ·, •). Without this, a NAME match can begin inside
+// a masked ID or a code (e.g. picking up the trailing check letter of
+// "76****12E") and never shows up as a standalone single-token match to be
+// caught by the token floor above, because it borrows a following word to
+// clear the two-token minimum.
+const PRECEDING_ATTACHED_RE = /[\p{L}\p{N}*·•_]$/u;
+
+const startsAttachedToPrevious = (text: string, index: number): boolean =>
+  index > 0 && PRECEDING_ATTACHED_RE.test(text[index - 1]);
+
 export const detectNames = (text: string): DetectedSpan[] =>
   collect(new RegExp(NAME_REGEX), text, (m) => {
-    const { text: matchText, start } = stripLeadingStopwords(m[0], m.index);
+    const { text: matchText, start } = stripLeadingLabels(m[0], m.index);
     if (tokenCount(matchText) < 2) return null;
     if (isSentenceInitial(text, start)) return null;
     if (isLabelColon(text, start + matchText.length)) return null;
+    if (startsAttachedToPrevious(text, start)) return null;
     return {
       start,
       end: start + matchText.length,
@@ -320,6 +355,105 @@ export const detectNames = (text: string): DetectedSpan[] =>
     };
   });
 
+// --- Shields ---------------------------------------------------------------
+//
+// A shield is an ordinary span that wins §4a arbitration like any other, but
+// is dropped before mints and before substitution (see runDetectionPipeline).
+// It exists for text a heuristic would otherwise misread as PII — the fix
+// here is "nothing should touch this", not "tag it as some other category".
+
+// Longest/most-specific first, same reasoning as COMPANY_SUFFIXES: alternation
+// must not stop at "Real Decreto" before trying "Real Decreto Legislativo".
+const LEGAL_HEADS = [
+  'Ley Orgánica', 'Real Decreto Legislativo', 'Real Decreto', 'Reglamento',
+  'Directiva', 'Convenio', 'Convención', 'Texto Refundido', 'Estatuto',
+  'Orden', 'Resolución', 'Sentencia', 'Ley', 'artículo', 'art\\.',
+];
+
+// A citation continues with connector words, more capitalized words, or a
+// numeric/instrument reference such as "1/2013" or "2000/78/CE".
+const LEGAL_CONTINUATION =
+  '(?:de|del|la|las|los|y|\\p{Lu}\\p{L}*|\\d+(?:\\/(?:\\d+|CE|UE))*)';
+
+const LEGAL_CITATION_REGEX = new RegExp(
+  `\\b(?:${LEGAL_HEADS.join('|')})(?:${WS}+${LEGAL_CONTINUATION})*`,
+  'gu',
+);
+
+export const detectLegalCitations = (text: string): DetectedSpan[] =>
+  collect(new RegExp(LEGAL_CITATION_REGEX), text, (m) => ({
+    start: m.index,
+    end: m.index + m[0].length,
+    category: 'SHIELD',
+    text: m[0],
+    confidence: 1,
+    source: 'regex',
+    rung: RUNG.SHIELD,
+    shield: true,
+  }));
+
+// TITLE_LEXEMES is declared above, near NAME_STOPWORDS — detectNames' leading
+// -label strip needs it before this point in the file.
+
+// Deliberately closed: a title lexeme followed by an open capitalized run
+// (like NAME's own shape) would swallow a real name that immediately follows
+// the title — "Psicóloga Ester Cuni" must still yield a NAME. Only words on
+// this list continue the shield past the bare title.
+const TITLE_QUALIFIERS = [
+  'General', 'Sanitaria', 'Sanitario', 'Clínica', 'Clínico', 'Forense',
+  'Laboral', 'Social', 'Titular', 'Superior',
+];
+
+const PROFESSIONAL_TITLE_REGEX = new RegExp(
+  `\\b(?:${TITLE_LEXEMES.join('|')})(?:${WS}+(?:${TITLE_QUALIFIERS.join('|')}))*`,
+  'gu',
+);
+
+export const detectProfessionalTitles = (text: string): DetectedSpan[] =>
+  collect(new RegExp(PROFESSIONAL_TITLE_REGEX), text, (m) => ({
+    start: m.index,
+    end: m.index + m[0].length,
+    category: 'SHIELD',
+    text: m[0],
+    confidence: 1,
+    source: 'regex',
+    rung: RUNG.SHIELD,
+    shield: true,
+  }));
+
+// Dates and timestamps that would otherwise pass PHONE's digit-count check
+// (e.g. a signature block's "2026.09.18 13:42:10"). Shielding the whole
+// date/time run is cheaper and more robust than teaching PHONE to recognize
+// every date shape, and it protects the surrounding line from NAME too.
+const DATE_TIME_REGEX = new RegExp(
+  '\\b(?:' +
+    `\\d{4}[.\\-/]\\d{2}[.\\-/]\\d{2}(?:${WS}+\\d{2}:\\d{2}(?::\\d{2})?)?` +
+    '|' +
+    `\\d{2}[.\\-/]\\d{2}[.\\-/]\\d{4}(?:${WS}+\\d{2}:\\d{2}(?::\\d{2})?)?` +
+    '|' +
+    '\\d{2}:\\d{2}:\\d{2}' +
+    ')\\b',
+  'g',
+);
+
+export const detectDateTimes = (text: string): DetectedSpan[] =>
+  collect(new RegExp(DATE_TIME_REGEX), text, (m) => ({
+    start: m.index,
+    end: m.index + m[0].length,
+    category: 'SHIELD',
+    text: m[0],
+    confidence: 1,
+    source: 'regex',
+    rung: RUNG.SHIELD,
+    shield: true,
+  }));
+
+export const runShieldDetectors = (text: string): DetectedSpan[] => [
+  ...detectLegalCitations(text),
+  ...detectProfessionalTitles(text),
+  ...detectDateTimes(text),
+];
+
 export const runHeuristicDetectors = (text: string): DetectedSpan[] => [
   ...detectCompanies(text),
   ...detectNames(text),
@@ -327,6 +461,7 @@ export const runHeuristicDetectors = (text: string): DetectedSpan[] => [
 ];
 
 export const runAllDetectors = (text: string): DetectedSpan[] => [
+  ...runShieldDetectors(text),
   ...runDeterministicDetectors(text),
   ...runHeuristicDetectors(text),
 ];

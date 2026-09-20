@@ -80,4 +80,22 @@ describe('detectNames', () => {
     const spans = detectNames('Name: Clara Vance\n\nEmail: clara@example.com');
     expect(spans.map((s) => s.text)).toContain('Clara Vance');
   });
+
+  it('rejects a single-letter token even when it clears the two-token floor by borrowing a following word', () => {
+    // The masked DNI's trailing check letter ("E") combining with a real
+    // capitalized word right after it must not read as a NAME.
+    const spans = detectNames('DNI 45****78Q. E Ferreiro firmó el documento.');
+    expect(spans.some((s) => s.text.startsWith('E '))).toBe(false);
+  });
+
+  it('does not start a match attached to the previous character (masked ID boundary)', () => {
+    const spans = detectNames('DNI 45****78Q evaluado por Laura Ferreiro.');
+    expect(spans.some((s) => s.text.includes('Q evaluado') || /^Q\b/.test(s.text))).toBe(false);
+    expect(spans.some((s) => s.text === 'Laura Ferreiro')).toBe(true);
+  });
+
+  it('still matches a real initial-form name ("J. Smith")', () => {
+    const spans = detectNames('Contactado por J. Smith ayer.');
+    expect(spans.some((s) => s.text === 'J. Smith')).toBe(true);
+  });
 });
