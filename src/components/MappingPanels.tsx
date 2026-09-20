@@ -1,15 +1,33 @@
 import { useState } from 'react';
 import type { MappingItem } from '../core/types';
 
-interface MappingTableProps {
-  mappings: MappingItem[];
+interface SanitizedTextPanelProps {
   anonymizedText: string;
+}
+
+export const SanitizedTextPanel = ({ anonymizedText }: SanitizedTextPanelProps) => (
+  <section className="panel">
+    <h2>Sanitized text</h2>
+    <textarea className="panel-textarea" readOnly value={anonymizedText} />
+    <button
+      type="button"
+      className="copy-button"
+      disabled={!anonymizedText}
+      onClick={() => navigator.clipboard.writeText(anonymizedText)}
+    >
+      Copy sanitized text
+    </button>
+  </section>
+);
+
+interface MappingListProps {
+  mappings: MappingItem[];
   onToggle: (id: string) => void;
   onSplit: (id: string) => void;
   onMerge: (ids: string[]) => void;
 }
 
-export const MappingTable = ({ mappings, anonymizedText, onToggle, onSplit, onMerge }: MappingTableProps) => {
+export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingListProps) => {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const toggleSelected = (id: string) => {
@@ -33,18 +51,10 @@ export const MappingTable = ({ mappings, anonymizedText, onToggle, onSplit, onMe
 
   return (
     <section className="panel">
-      <h2>2. Review &amp; copy</h2>
-      <textarea className="panel-textarea" readOnly value={anonymizedText} />
-      <button
-        type="button"
-        className="copy-button"
-        disabled={!anonymizedText}
-        onClick={() => navigator.clipboard.writeText(anonymizedText)}
-      >
-        Copy sanitized text
-      </button>
-
-      {mappings.length > 0 && (
+      <h2>Placeholders</h2>
+      {mappings.length === 0 ? (
+        <p className="empty-hint">Nothing detected yet.</p>
+      ) : (
         <>
           <button type="button" className="merge-button" disabled={!canMerge} onClick={handleMerge}>
             Merge selected ({selected.size})

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import './App.css';
-import { MappingTable } from './components/MappingTable';
+import { IngestStep } from './components/IngestStep';
 import { NerToggle } from './components/NerToggle';
-import { PastePanel } from './components/PastePanel';
 import { ReversalPanel } from './components/ReversalPanel';
-import { RulesEditor } from './components/RulesEditor';
+import { ReviewStep } from './components/ReviewStep';
+import { StepNav } from './components/StepNav';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { applyEnabledMappings } from './core/apply';
 import type { CustomDictionaryRule, MappingItem, MappingSession } from './core/types';
@@ -12,9 +12,12 @@ import { NerClient, type NerStatus } from './lib/nerClient';
 import {
   loadDictionaryRules,
   loadSession,
+  loadStep,
   newSessionId,
   saveDictionaryRules,
   saveSession,
+  saveStep,
+  type WizardStep,
 } from './lib/session';
 
 const emptySession = (): MappingSession => ({
@@ -30,6 +33,7 @@ const emptySession = (): MappingSession => ({
 function App() {
   const [session, setSession] = useState<MappingSession>(() => loadSession() ?? emptySession());
   const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
+  const [step, setStep] = useState<WizardStep>(() => loadStep());
 
   // P7d: opt-in only, never loaded or run automatically. A ref (not state)
   // for the client itself — it owns a real Worker, which must survive
@@ -40,11 +44,25 @@ function App() {
 
   useEffect(() => saveSession(session), [session]);
   useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules]);
+  useEffect(() => saveStep(step), [step]);
   useEffect(() => () => nerClientRef.current?.terminate(), []);
 
   const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[]) => {
     const { mappings, anonymizedText } = anonymize(rawMarkdown, rules);
     setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
+  };
+
+  const handleFileImport = (rawMarkdown: string, format: string, fileName: string) => {
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules);
+    setSession((prev) => ({
+      ...prev,
+      rawMarkdown,
+      mappings,
+      anonymizedMarkdown: anonymizedText,
+      inputType: 'FILE',
+      fileName,
+      originalFormat: format,
+    }));
   };
 
   const handlePasteChange = (rawMarkdown: string) => {
@@ -169,31 +187,44 @@ function App() {
         <p>Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
       </header>
 
-      <NerToggle
-        enabled={nerEnabled}
-        status={nerStatus}
-        canRescan={nerStatus.state === 'ready' && session.rawMarkdown.length > 0}
-        onToggle={handleNerToggle}
-        onRescan={handleNerRescan}
+      <StepNav
+        step={step}
+        canReview={session.rawMarkdown.length > 0}
+        canRestore={session.mappings.length > 0}
+        onSelect={setStep}
       />
 
-      <main className="app-panels">
-        <PastePanel
+      {step === 'ingest' && (
+        <IngestStep
           rawMarkdown={session.rawMarkdown}
           onChange={handlePasteChange}
           onCreateRule={handleCreateRule}
+          onFileImport={handleFileImport}
         />
-        <MappingTable
-          mappings={session.mappings}
-          anonymizedText={session.anonymizedMarkdown}
-          onToggle={handleToggle}
-          onSplit={handleSplit}
-          onMerge={handleMerge}
-        />
-        <ReversalPanel mappings={session.mappings} />
-      </main>
+      )}
 
-      <RulesEditor rules={dictionaryRules} onChange={updateRules} />
+      {step === 'review' && (
+        <>
+          <NerToggle
+            enabled={nerEnabled}
+            status={nerStatus}
+            canRescan={nerStatus.state === 'ready' && session.rawMarkdown.length > 0}
+            onToggle={handleNerToggle}
+            onRescan={handleNerRescan}
+          />
+          <ReviewStep
+            anonymizedText={session.anonymizedMarkdown}
+            mappings={session.mappings}
+            dictionaryRules={dictionaryRules}
+            onToggle={handleToggle}
+            onSplit={handleSplit}
+            onMerge={handleMerge}
+            onRulesChange={updateRules}
+          />
+        </>
+      )}
+
+      {step === 'restore' && <ReversalPanel mappings={session.mappings} />}
     </div>
   );
 }

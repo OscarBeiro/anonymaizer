@@ -2,6 +2,20 @@ import type { CustomDictionaryRule, MappingSession } from '../core/types';
 
 const SESSION_KEY = 'anonymaizer.session';
 const RULES_KEY = 'anonymaizer.dictionaryRules';
+const STEP_KEY = 'anonymaizer.step';
+
+// Wizard position is UI state, not part of the spec §3 MappingSession data
+// contract — kept under its own localStorage key.
+export type WizardStep = 'ingest' | 'review' | 'restore';
+
+export const loadStep = (): WizardStep => {
+  const raw = localStorage.getItem(STEP_KEY);
+  return raw === 'review' || raw === 'restore' ? raw : 'ingest';
+};
+
+export const saveStep = (step: WizardStep): void => {
+  localStorage.setItem(STEP_KEY, step);
+};
 
 export const loadSession = (): MappingSession | null => {
   try {

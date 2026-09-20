@@ -330,7 +330,7 @@ actual `pipeline()` call) and `src/lib/nerClient.ts` (the `Worker` wrapper)
 are unverified by the test suite — those need one manual `npm run dev` check
 with the opt-in box actually ticked.
 
-### [ ] P7e — Wizard UI (after P7c, so the mapping table is reshaped once)
+### [x] P7e — Wizard UI (after P7c, so the mapping table is reshaped once)
 
 The M1 layout renders all three panels in a 3-column grid (`.app-panels`,
 `src/App.css`) with the rules editor as a fourth block below. On a real document
