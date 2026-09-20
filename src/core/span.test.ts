@@ -43,15 +43,15 @@ describe('buildMappings', () => {
     const c = span({ start: 20, end: 27, text: 'a@b.com', category: 'EMAIL' });
     const mappings = buildMappings([a, b, c]);
     expect(mappings).toHaveLength(1);
-    expect(mappings[0].placeholder).toBe('[EMAIL_1]');
+    expect(mappings[0].placeholder).toBe('[[EMAIL_001]]');
   });
 
   it('assigns per-category counters in order of first occurrence', () => {
     const first = span({ start: 0, end: 5, text: 'one@x.com', category: 'EMAIL' });
     const second = span({ start: 10, end: 19, text: 'two@x.com', category: 'EMAIL' });
     const mappings = buildMappings([second, first]);
-    expect(mappings.map((m) => m.placeholder)).toEqual(['[EMAIL_1]', '[EMAIL_2]']);
-    expect(mappings.find((m) => m.originalText === 'one@x.com')?.placeholder).toBe('[EMAIL_1]');
+    expect(mappings.map((m) => m.placeholder)).toEqual(['[[EMAIL_001]]', '[[EMAIL_002]]']);
+    expect(mappings.find((m) => m.originalText === 'one@x.com')?.placeholder).toBe('[[EMAIL_001]]');
   });
 });
 

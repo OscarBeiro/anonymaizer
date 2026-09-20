@@ -41,7 +41,7 @@ describe('field report regression — P7a + P7b + P7c', () => {
       expect.arrayContaining(['Laura Ferreiro', 'FERREIRO IGLESIAS LAURA', 'Laura Ferreiro Iglesias']),
     );
     // One placeholder covers every mention.
-    expect(anonymizedText.match(/\[NAME_1\]/g)).toHaveLength(3);
+    expect(anonymizedText.match(/\[\[NAME_001\]\]/g)).toHaveLength(3);
   });
 
   it('does not misread the signature timestamp as a phone number (R5)', () => {
@@ -50,8 +50,8 @@ describe('field report regression — P7a + P7b + P7c', () => {
   });
 
   it('redacts the label-anchored codes but keeps their labels readable (R3)', () => {
-    expect(anonymizedText).toContain('Expediente [ID_CODE_1]');
-    expect(anonymizedText).toContain('Colegiada [ID_CODE_2]');
+    expect(anonymizedText).toContain('Expediente [[ID_CODE_001]]');
+    expect(anonymizedText).toContain('Colegiada [[ID_CODE_002]]');
     expect(anonymizedText).not.toContain('T-09310');
     expect(anonymizedText).not.toContain('EV-014/2026');
   });

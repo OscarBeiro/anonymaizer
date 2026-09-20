@@ -8,20 +8,20 @@ describe('runDetectionPipeline', () => {
     const candidates = runDeterministicDetectors(text);
     const { mappings, anonymizedText } = runDetectionPipeline(text, candidates);
 
-    expect(mappings.map((m) => m.placeholder)).toEqual(['[EMAIL_1]', '[ADDRESS_1]']);
+    expect(mappings.map((m) => m.placeholder)).toEqual(['[[EMAIL_001]]', '[[ADDRESS_001]]']);
     expect(anonymizedText).toBe(
-      'Hola, soy Oscar Beiro. Mi correo es [EMAIL_1] y vivo en [ADDRESS_1].',
+      'Hola, soy Oscar Beiro. Mi correo es [[EMAIL_001]] y vivo en [[ADDRESS_001]].',
     );
   });
 
-  it('dedups the same email occurring three times into one [EMAIL_1]', () => {
+  it('dedups the same email occurring three times into one [[EMAIL_001]]', () => {
     const text = 'a@b.com y otra vez a@b.com y de nuevo a@b.com.';
     const candidates = runDeterministicDetectors(text);
     const { mappings, anonymizedText } = runDetectionPipeline(text, candidates);
 
     expect(mappings).toHaveLength(1);
-    expect(mappings[0].placeholder).toBe('[EMAIL_1]');
-    expect(anonymizedText).toBe('[EMAIL_1] y otra vez [EMAIL_1] y de nuevo [EMAIL_1].');
+    expect(mappings[0].placeholder).toBe('[[EMAIL_001]]');
+    expect(anonymizedText).toBe('[[EMAIL_001]] y otra vez [[EMAIL_001]] y de nuevo [[EMAIL_001]].');
   });
 
   it('the full §6 Spanish bench case now includes the name', () => {
@@ -30,10 +30,10 @@ describe('runDetectionPipeline', () => {
     const { mappings, anonymizedText } = runDetectionPipeline(text, candidates);
 
     expect(anonymizedText).toBe(
-      'Hola, soy [NAME_1]. Mi correo es [EMAIL_1] y vivo en [ADDRESS_1].',
+      'Hola, soy [[NAME_001]]. Mi correo es [[EMAIL_001]] y vivo en [[ADDRESS_001]].',
     );
     expect(mappings.filter((m) => m.enabled).map((m) => m.placeholder).sort()).toEqual(
-      ['[ADDRESS_1]', '[EMAIL_1]', '[NAME_1]'].sort(),
+      ['[[ADDRESS_001]]', '[[EMAIL_001]]', '[[NAME_001]]'].sort(),
     );
   });
 
@@ -54,10 +54,10 @@ describe('runDetectionPipeline', () => {
     const { mappings, anonymizedText } = runDetectionPipeline(text, candidates);
 
     expect(mappings.map((m) => m.placeholder).sort()).toEqual(
-      ['[COMPANY_1]', '[COMPANY_2]', '[ADDRESS_1]'].sort(),
+      ['[[COMPANY_001]]', '[[COMPANY_002]]', '[[ADDRESS_001]]'].sort(),
     );
     expect(mappings.some((m) => m.category === 'NAME')).toBe(false);
-    expect(anonymizedText).toBe('[COMPANY_1] facturó a [COMPANY_2] en [ADDRESS_1].');
+    expect(anonymizedText).toBe('[[COMPANY_001]] facturó a [[COMPANY_002]] en [[ADDRESS_001]].');
   });
 
   it('dedups a greeting-prefixed name mention with a bare one into a single placeholder', () => {
@@ -66,6 +66,14 @@ describe('runDetectionPipeline', () => {
     const { mappings, anonymizedText } = runDetectionPipeline(text, candidates);
 
     expect(mappings.filter((m) => m.category === 'NAME')).toHaveLength(1);
-    expect(anonymizedText).toBe('Dear [NAME_1], thank you. Regards, [NAME_1].');
+    expect(anonymizedText).toBe('Dear [[NAME_001]], thank you. Regards, [[NAME_001]].');
+  });
+
+  it('arbitrates a dotted DNI over the overlapping PHONE_REGEX match by longest span', () => {
+    const text = 'mi dni es 76.123.312-M gracias';
+    const candidates = runAllDetectors(text);
+    const { mappings } = runDetectionPipeline(text, candidates);
+
+    expect(mappings.map((m) => m.category)).toEqual(['DNI']);
   });
 });

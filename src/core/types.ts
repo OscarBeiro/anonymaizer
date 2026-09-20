@@ -11,7 +11,7 @@ export type Category = KnownCategory | (string & {});
 export interface MappingItem {
   id: string;
   originalText: string; // the canonical variant — variants[0]
-  placeholder: string; // e.g., "[NAME_1]", "[ADDRESS_1]"
+  placeholder: string; // e.g., "[[NAME_001]]", "[[ADDRESS_001]]"
   category: Category;
   confidence: number; // 1.0 dictionary/manual & checksum-validated regex;
                        // < 1.0 heuristic regex (NAME 0.6, ALL-CAPS COMPANY 0.4) and NER
@@ -42,7 +42,7 @@ export interface CustomDictionaryRule {
   id: string;
   termOrPattern: string;
   replacementType: 'FIXED' | 'CATEGORY';
-  targetCategory?: string; // e.g., "PROJECT_NAME" -> [PROJECT_NAME_1]
+  targetCategory?: string; // e.g., "PROJECT_NAME" -> [[PROJECT_NAME_001]]
   isRegex: boolean;
 }
 

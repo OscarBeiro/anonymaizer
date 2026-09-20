@@ -16,6 +16,11 @@ const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$
  * document that said "Ester Cuni" in one place and "Ester Cuni Peirote" in
  * another comes back with the canonical spelling in both. That's the
  * accepted cost of one-person-one-placeholder.
+ *
+ * Placeholders mint as double-bracket, zero-padded (e.g. `[[NAME_001]]`),
+ * but an AI's reply is lossy/inconsistent about markup, so restoration
+ * tolerates 0–2 brackets on each side and leading zeros dropped from the
+ * counter (`[[NAME_001]]`, `[NAME_001]`, `[NAME_1]`, `NAME_1` all restore).
  */
 export const reverseText = (aiResponse: string, mappings: MappingItem[]): string => {
   let restored = aiResponse;
@@ -26,8 +31,15 @@ export const reverseText = (aiResponse: string, mappings: MappingItem[]): string
 
   for (const item of activeMappings) {
     const tokenRaw = item.placeholder.replace(/[[\]]/g, '');
-    const flexibleToken = escapeRegex(tokenRaw).replace(/_/g, '[\\s_]?');
-    const flexibleRegex = new RegExp(`\\[?\\b${flexibleToken}\\b\\]?`, 'gi');
+    const lastUnderscore = tokenRaw.lastIndexOf('_');
+    const prefix = tokenRaw.slice(0, lastUnderscore);
+    const digits = tokenRaw.slice(lastUnderscore + 1);
+    const unpaddedDigits = String(Number(digits));
+    const escapedPrefix = escapeRegex(prefix).replace(/_/g, '[\\s_]?');
+    const flexibleRegex = new RegExp(
+      `\\[{0,2}\\b${escapedPrefix}[\\s_]?0{0,2}${unpaddedDigits}\\b\\]{0,2}`,
+      'gi',
+    );
 
     restored = restored.replace(flexibleRegex, item.originalText);
   }

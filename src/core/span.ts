@@ -70,7 +70,7 @@ export const buildMappings = (spans: DetectedSpan[]): MappingItem[] => {
     const item: MappingItem = {
       id: `${span.category}_${count}`,
       originalText: key,
-      placeholder: `[${span.category}_${count}]`,
+      placeholder: `[[${span.category}_${String(count).padStart(3, '0')}]]`,
       category: span.category,
       confidence: span.confidence,
       source: span.source,

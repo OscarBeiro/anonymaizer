@@ -127,7 +127,7 @@ function App() {
       let counter = nextCounter(prev.mappings, target.category);
       const split: MappingItem[] = target.variants.map((variant) => ({
         id: `${target.category}_${counter}`,
-        placeholder: `[${target.category}_${counter++}]`,
+        placeholder: `[[${target.category}_${String(counter++).padStart(3, '0')}]]`,
         originalText: variant,
         category: target.category,
         confidence: target.confidence,

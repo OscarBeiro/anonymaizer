@@ -16,8 +16,8 @@ describe('anonymize', () => {
     ];
     const { mappings, anonymizedText } = anonymize('El proyecto Project Alpha arranca mañana.', rules);
     expect(mappings).toHaveLength(1);
-    expect(mappings[0]).toMatchObject({ category: 'CUSTOM', placeholder: '[CUSTOM_1]' });
-    expect(anonymizedText).toBe('El proyecto [CUSTOM_1] arranca mañana.');
+    expect(mappings[0]).toMatchObject({ category: 'CUSTOM', placeholder: '[[CUSTOM_001]]' });
+    expect(anonymizedText).toBe('El proyecto [[CUSTOM_001]] arranca mañana.');
   });
 
   it('a dictionary term overlapping a regex hit wins the whole span', () => {
@@ -31,7 +31,7 @@ describe('anonymize', () => {
 
     expect(mappings).toHaveLength(1);
     expect(mappings[0]).toMatchObject({ category: 'CUSTOM', originalText: 'Fernando Olmedo' });
-    expect(anonymizedText).toBe('Vivo en Rúa [CUSTOM_1] 12, Pontevedra.');
+    expect(anonymizedText).toBe('Vivo en Rúa [[CUSTOM_001]] 12, Pontevedra.');
   });
 
   it('runs the deterministic + heuristic detectors when there are no rules', () => {

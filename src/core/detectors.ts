@@ -99,7 +99,7 @@ export const detectAddresses = (text: string): DetectedSpan[] => {
   ];
 };
 
-const DNI_REGEX = /\b\d{8}[A-Za-z]\b/g;
+const DNI_REGEX = /\b\d{2}\.?\d{3}\.?\d{3}-?[A-Za-z]\b/g;
 const NIE_REGEX = /\b[XYZxyz]\d{7}[A-Za-z]\b/g;
 
 export const detectDni = (text: string): DetectedSpan[] =>
@@ -200,7 +200,7 @@ export const detectMaskedIds = (text: string): DetectedSpan[] =>
 // membership number, a case/expediente reference. The label word is the only
 // thing that makes these recognizable as PII at all, so it is what anchors
 // the match; only the code itself becomes a span (and a placeholder) — the
-// label stays in the text so "Colegiada [ID_CODE_1]" still reads.
+// label stays in the text so "Colegiada [[ID_CODE_001]]" still reads.
 // Longest/most specific first, same reasoning as COMPANY_SUFFIXES: "Nº
 // Colegiado" before the bare "Nº".
 const ID_CODE_TRIGGERS = [

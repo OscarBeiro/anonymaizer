@@ -76,6 +76,30 @@ describe('detectDni', () => {
     const spans = detectDni('mi dni es 12345678A gracias');
     expect(spans).toHaveLength(0);
   });
+
+  it('accepts a dotted-and-dashed DNI', () => {
+    const spans = detectDni('mi dni es 76.123.312-M gracias');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].category).toBe('DNI');
+  });
+
+  it('accepts a dotted DNI without the trailing dash', () => {
+    const spans = detectDni('mi dni es 76.123.312M gracias');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].category).toBe('DNI');
+  });
+
+  it('discards a dotted DNI with an invalid checksum', () => {
+    // 76.123.312-E is checksum-invalid (76123312 % 23 -> 'M', not 'E') —
+    // intentionally rejected even though the regex now matches its shape.
+    const spans = detectDni('mi dni es 76.123.312-E gracias');
+    expect(spans).toHaveLength(0);
+  });
+
+  it('still accepts the plain ungrouped form', () => {
+    const spans = detectDni('mi dni es 12345678Z gracias');
+    expect(spans).toHaveLength(1);
+  });
 });
 
 describe('detectNie', () => {

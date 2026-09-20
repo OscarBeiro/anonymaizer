@@ -31,7 +31,7 @@ export const ibanCheck = (iban: string): boolean => {
 const DNI_LETTERS = 'TRWAGMYFPDXBNJZSQVHLCKE';
 
 export const dniNieCheck = (value: string): boolean => {
-  const normalized = value.replace(/[\s-]/g, '').toUpperCase();
+  const normalized = value.replace(/[\s.-]/g, '').toUpperCase();
   const dniMatch = /^(\d{8})([A-Z])$/.exec(normalized);
   const nieMatch = /^([XYZ])(\d{7})([A-Z])$/.exec(normalized);
 
