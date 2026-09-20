@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
+import pkg from './package.json' with { type: 'json' }
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -10,6 +11,9 @@ export default defineConfig({
   // stay as separate static files (see public/) for PWA install/offline when
   // served over http; that's orthogonal to bundle inlining.
   plugins: [react(), viteSingleFile()],
+  define: {
+    __APP_VERSION__: JSON.stringify(pkg.version),
+  },
   server: {
     // Bind to all interfaces so the dev server is reachable from outside the
     // Podman container (see ~/containers/anonymaizer/).
