@@ -145,3 +145,131 @@ export const runDeterministicDetectors = (text: string): DetectedSpan[] => [
   ...detectPhones(text),
   ...detectAddresses(text),
 ];
+
+// Legal-form suffixes, longest/most-specific first so alternation doesn't
+// stop at a shorter overlapping prefix (e.g. "SLU" before "SL").
+const COMPANY_SUFFIXES = [
+  'S\\.L\\.U\\.', 'S\\.A\\.U\\.', 'S\\.Coop\\.', 'S\\.L\\.', 'S\\.A\\.',
+  'SLU', 'SAU', 'SCP', 'SL', 'SA',
+  'Inc\\.', 'Inc', 'Ltd\\.', 'Ltd', 'LLC', 'LLP',
+  'Corp\\.', 'Corp', 'PLC', 'GmbH', 'AG', 'mbH', 'BV', 'NV', 'SAS', 'SARL',
+  'Lda', 'Ltda', 'Oy', 'AB', 'A\\/S', 'Pty',
+];
+
+const COMPANY_SUFFIX_REGEX = new RegExp(
+  `\\p{Lu}\\p{L}*(?:\\s+\\p{Lu}\\p{L}*)*,?\\s+(?:${COMPANY_SUFFIXES.join('|')})(?=[\\s.,;:!?)]|$)`,
+  'gu',
+);
+
+const COMPANY_PREFIXES = [
+  'Grupo', 'Banco', 'Fundación', 'Asociación', 'Universidade', 'Universidad',
+  'Instituto', 'Consellería', 'Ayuntamiento', 'Concello',
+];
+
+const COMPANY_PREFIX_REGEX = new RegExp(
+  `\\b(?:${COMPANY_PREFIXES.join('|')})\\s+\\p{Lu}\\p{L}*(?:\\s+\\p{Lu}\\p{L}*)*`,
+  'gu',
+);
+
+export const detectCompanies = (text: string): DetectedSpan[] => {
+  const build = (m: RegExpExecArray): DetectedSpan => ({
+    start: m.index,
+    end: m.index + m[0].length,
+    category: 'COMPANY',
+    text: m[0],
+    confidence: 1,
+    source: 'regex',
+    rung: RUNG.COMPANY,
+  });
+  return [
+    ...collect(new RegExp(COMPANY_SUFFIX_REGEX), text, build),
+    ...collect(new RegExp(COMPANY_PREFIX_REGEX), text, build),
+  ];
+};
+
+const FISCAL_ACRONYM_EXCLUSIONS = new Set([
+  'IVA', 'IRPF', 'NIF', 'CIF', 'DNI', 'NIE', 'IBAN', 'SEPA', 'PDF', 'URL', 'API', 'OK',
+]);
+
+const COMPANY_ACRONYM_REGEX = /\b[A-Z]{2,}\b/g;
+
+export const detectCompanyAcronyms = (text: string): DetectedSpan[] =>
+  collect(new RegExp(COMPANY_ACRONYM_REGEX), text, (m) => {
+    if (FISCAL_ACRONYM_EXCLUSIONS.has(m[0])) return null;
+    return {
+      start: m.index,
+      end: m.index + m[0].length,
+      category: 'COMPANY',
+      text: m[0],
+      confidence: 0.4,
+      source: 'regex',
+      rung: RUNG.COMPANY_ACRONYM,
+      enabled: false,
+    };
+  });
+
+// ES/FR/DE/PT nobiliary/name particles, longest first so "de la"/"von der"/
+// "van der" aren't cut short by their single-word forms.
+const NAME_PARTICLES = [
+  'de la', 'von der', 'van der',
+  'del', 'de', 'y', 'du', 'des', 'le', 'van', 'von', 'da', 'do', 'dos', 'das',
+];
+
+const NAME_STOPWORDS = new Set([
+  // days
+  'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo',
+  // months
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto',
+  'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
+  // common sentence-starters
+  'Hola', 'Estimado', 'Estimada', 'Buenos', 'Buenas', 'Saludos', 'Gracias',
+  'Atentamente', 'El', 'La', 'Los', 'Las', 'Un', 'Una', 'Por', 'Para',
+  'Cuando', 'Aunque', 'Además', 'También', 'Sin', 'Pero', 'Señor', 'Señora',
+]);
+
+const NAME_TOKEN = '\\p{Lu}\\p{L}*(?:-\\p{Lu}\\p{L}*)?';
+const NAME_MAX_TOKENS = 6;
+
+const NAME_REGEX = new RegExp(
+  `${NAME_TOKEN}(?:\\s+(?:(?:${NAME_PARTICLES.join('|')})\\s+)?${NAME_TOKEN}){0,${NAME_MAX_TOKENS - 1}}`,
+  'gu',
+);
+
+const isSentenceInitial = (text: string, index: number): boolean => {
+  let i = index - 1;
+  while (i >= 0 && /\s/.test(text[i])) i--;
+  if (i < 0) return true;
+  return /[.!?]/.test(text[i]);
+};
+
+const tokenCount = (match: string): number =>
+  match.split(/\s+/).filter((word) => !NAME_PARTICLES.includes(word)).length;
+
+export const detectNames = (text: string): DetectedSpan[] =>
+  collect(new RegExp(NAME_REGEX), text, (m) => {
+    const matchText = m[0];
+    if (tokenCount(matchText) < 2) return null;
+    if (isSentenceInitial(text, m.index)) return null;
+    const firstWord = matchText.split(/\s+/)[0];
+    if (NAME_STOPWORDS.has(firstWord)) return null;
+    return {
+      start: m.index,
+      end: m.index + matchText.length,
+      category: 'NAME',
+      text: matchText,
+      confidence: 0.6,
+      source: 'regex',
+      rung: RUNG.NAME,
+    };
+  });
+
+export const runHeuristicDetectors = (text: string): DetectedSpan[] => [
+  ...detectCompanies(text),
+  ...detectNames(text),
+  ...detectCompanyAcronyms(text),
+];
+
+export const runAllDetectors = (text: string): DetectedSpan[] => [
+  ...runDeterministicDetectors(text),
+  ...runHeuristicDetectors(text),
+];

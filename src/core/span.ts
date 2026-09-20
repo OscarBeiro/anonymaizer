@@ -50,7 +50,7 @@ export const buildMappings = (spans: DetectedSpan[]): MappingItem[] => {
       category: span.category,
       confidence: span.confidence,
       source: span.source,
-      enabled: true,
+      enabled: span.enabled ?? true,
     };
     byText.set(span.text, item);
     order.push(item);

@@ -84,7 +84,7 @@ browser libraries. Not worth it.
 > one valid and one invalid-checksum case per validated detector, and a dedup
 > case where the same email occurs three times and yields one `[EMAIL_1]`.
 
-### [ ] P1b — COMPANY + NAME heuristics
+### [x] P1b — COMPANY + NAME heuristics
 
 > Add the two heuristic detectors from §4 of the spec to the P1a ladder.
 > COMPANY by three routes: the widened legal-form suffix list, the prefix forms

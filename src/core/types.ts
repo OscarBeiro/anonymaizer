@@ -49,6 +49,9 @@ export interface DetectedSpan {
   confidence: number;
   source: MappingItem['source'];
   rung: number;
+  // Heuristics that must land disabled by default (ALL-CAPS COMPANY guess)
+  // set this false; every other detector omits it and defaults to true.
+  enabled?: boolean;
 }
 
 // §4a priority ladder, highest priority first. Detectors tag their spans with
