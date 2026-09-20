@@ -40,6 +40,19 @@ here because §5's wording still reads as though it applied to anonymization.
 
 ---
 
+## Backlog (post-MVP)
+
+Not in scope for M1. Recorded here so they aren't lost.
+
+- **Dictionary rule case-insensitivity.** `CustomDictionaryRule` matching is
+  case-sensitive in P2. A per-rule case-insensitive toggle is a natural
+  follow-up.
+- **Accent/diacritic-insensitive dictionary matching.** Normalize both the
+  rule term and candidate text (e.g. á/ä/â → a) before comparison, so a rule
+  written without accents still catches accented occurrences and vice versa.
+  Needs a decision on Unicode normalization (NFD strip-combining-marks vs. a
+  manual map) before implementation.
+
 ## Mobile
 
 Path is Vite + React → **Capacitor**: same build wrapped in a native iOS/Android
@@ -104,7 +117,7 @@ browser libraries. Not worth it.
 > the §6 negative corpus yields zero detections; and the §6 arbitration case
 > yields exactly `[COMPANY_1]`, `[COMPANY_2]`, `[ADDRESS_1]` and no `NAME`.
 
-### [ ] P2 — Tier 1 dictionary + anonymizer
+### [x] P2 — Tier 1 dictionary + anonymizer
 
 > Add `applyDictionary(text, rules)` supporting FIXED and CATEGORY replacement
 > types, regex and literal terms. Dictionary matches are resolved to spans and
@@ -113,7 +126,7 @@ browser libraries. Not worth it.
 > through that ladder. Test that "Project Alpha" overrides auto-matching, and
 > that a dictionary term overlapping a regex hit wins the whole span.
 
-### [ ] P3 — Reversal engine
+### [x] P3 — Reversal engine
 
 > Implement `reverseText(aiResponse, mappings)`. Escape regex metacharacters,
 > replace *all* underscores with `[\s_]?`, sort by placeholder length descending.
