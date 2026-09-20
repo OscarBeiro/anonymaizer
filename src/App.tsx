@@ -183,7 +183,8 @@ function App() {
       <aside className="app-sidebar">
         <header className="app-header">
           <h1>
-            AnonymAIzer <span className="app-version">v{__APP_VERSION__}</span>
+            AnonymAIzer
+            <span className="app-version">v{__APP_VERSION__}</span>
           </h1>
           <p>Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
         </header>

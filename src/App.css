@@ -33,10 +33,10 @@
 }
 
 .app-version {
+  display: block;
   font-size: 0.9rem;
   font-weight: normal;
   color: var(--text-secondary, #888);
-  vertical-align: middle;
 }
 
 .app-header p {
