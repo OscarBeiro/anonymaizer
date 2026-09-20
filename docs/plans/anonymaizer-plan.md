@@ -231,7 +231,7 @@ before the NER worker** — the model then only has to solve what a regex can't.
 > `Laboral`, `Social`, `Titular`, `Superior`, …) is the mechanism that prevents
 > this, and it needs its own test.
 
-### [ ] P7b — Masked identifiers and label-anchored codes
+### [x] P7b — Masked identifiers and label-anchored codes
 
 > Fix R3 with two detectors. `MASKED_ID` at `RUNG.VALIDATED_REGEX`: an
 > alphanumeric run containing a mask run of ≥2 of `*`/`x`/`X`/`•`/`_` with ≥4

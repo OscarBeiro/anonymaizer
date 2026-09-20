@@ -4,17 +4,18 @@ import { runAllDetectors } from './detectors';
 import { runDetectionPipeline } from './pipeline';
 
 // Regression bench for the 12-item field report on a real structured
-// document. P7a fixes the deterministic half (R1/R2/R5 below); R3 (masked
-// IDs, label-anchored codes) and R4 (name clustering) are P7b/P7c.
-describe('field report regression — P7a', () => {
+// document. P7a fixes R1/R2/R5; P7b fixes R3 (masked IDs, label-anchored
+// codes) below. R4 (name clustering) is P7c.
+describe('field report regression — P7a + P7b', () => {
   const { mappings, anonymizedText } = runDetectionPipeline(
     CLINICAL_REPORT_FIXTURE,
     runAllDetectors(CLINICAL_REPORT_FIXTURE),
   );
 
-  it('does not let a NAME span start mid-token off the masked DNI (R1)', () => {
+  it('does not let a NAME span start mid-token off the masked DNI, and now redacts it too (R1 + R3)', () => {
     expect(anonymizedText).not.toMatch(/\*\*\*\*78Q\[NAME/);
-    expect(anonymizedText).toContain('45****78Q');
+    expect(anonymizedText).not.toContain('45****78Q');
+    expect(mappings.some((m) => m.category === 'MASKED_ID' && m.originalText === '45****78Q')).toBe(true);
   });
 
   it('does not tag legal citations as NAME (R2)', () => {
@@ -42,10 +43,10 @@ describe('field report regression — P7a', () => {
     expect(anonymizedText).toContain('2026.09.18 13:42:10');
   });
 
-  it('leaves the ID_CODE/MASKED_ID gaps for P7b — not asserted as fixed here', () => {
-    // Documented, not tested: "Colegiada T-09310" and "Expediente EV-014/2026"
-    // are still exposed until P7b ships the label-anchored detectors.
-    expect(anonymizedText).toContain('Colegiada T-09310');
-    expect(anonymizedText).toContain('Expediente EV-014/2026');
+  it('redacts the label-anchored codes but keeps their labels readable (R3)', () => {
+    expect(anonymizedText).toContain('Expediente [ID_CODE_1]');
+    expect(anonymizedText).toContain('Colegiada [ID_CODE_2]');
+    expect(anonymizedText).not.toContain('T-09310');
+    expect(anonymizedText).not.toContain('EV-014/2026');
   });
 });

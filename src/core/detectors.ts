@@ -167,12 +167,88 @@ export const detectCreditCards = (text: string): DetectedSpan[] =>
     };
   });
 
+// A run of digits/letters/mask glyphs containing a mask run of 2+ — the
+// checksum-validated detectors above (DNI, IBAN, credit card) can't fire on
+// a partially-redacted value like "76****12E", so without this the value
+// stays exposed and, worse, a lone trailing letter can look like a NAME
+// token to a detector that doesn't know it's attached to a masked ID.
+const MASK_GLYPHS = '*xX•_';
+const MASKED_ID_TOKEN_REGEX = new RegExp(
+  `(?<![0-9A-Za-z${MASK_GLYPHS}])[0-9A-Za-z${MASK_GLYPHS}]+(?![0-9A-Za-z${MASK_GLYPHS}])`,
+  'g',
+);
+const MASK_RUN_REGEX = new RegExp(`[${MASK_GLYPHS}]{2,}`);
+
+export const detectMaskedIds = (text: string): DetectedSpan[] =>
+  collect(new RegExp(MASKED_ID_TOKEN_REGEX), text, (m) => {
+    const token = m[0];
+    if (!MASK_RUN_REGEX.test(token)) return null;
+    const alnumCount = token.replace(new RegExp(`[${MASK_GLYPHS}]`, 'g'), '').length;
+    if (alnumCount < 4) return null;
+    return {
+      start: m.index,
+      end: m.index + token.length,
+      category: 'MASKED_ID',
+      text: token,
+      confidence: 1,
+      source: 'regex',
+      rung: RUNG.VALIDATED_REGEX,
+    };
+  });
+
+// Label-anchored codes with no universal shape of their own — a professional
+// membership number, a case/expediente reference. The label word is the only
+// thing that makes these recognizable as PII at all, so it is what anchors
+// the match; only the code itself becomes a span (and a placeholder) — the
+// label stays in the text so "Colegiada [ID_CODE_1]" still reads.
+// Longest/most specific first, same reasoning as COMPANY_SUFFIXES: "Nº
+// Colegiado" before the bare "Nº".
+const ID_CODE_TRIGGERS = [
+  'Nº${WS}+de${WS}+afiliación', 'Nº${WS}+Colegiado', 'Colegiada', 'Colegiado',
+  'Expediente', 'Referencia', 'Ref\\.', 'Matrícula', 'NUSS',
+  'Historia${WS}+clínica', 'Protocolo', 'Núm\\.', 'Nº',
+].map((t) => t.replace(/\$\{WS\}/g, WS));
+
+const ID_CODE_REGEX = new RegExp(
+  `\\b(?:${ID_CODE_TRIGGERS.join('|')})${WS}*[:\\-]?${WS}*([A-Z]{0,3}[-/]?\\d[\\dA-Z/-]*)`,
+  'giud',
+);
+
+export const detectIdCodes = (text: string): DetectedSpan[] => {
+  const spans: DetectedSpan[] = [];
+  const regex = new RegExp(ID_CODE_REGEX);
+  let match: RegExpExecArray | null;
+  while ((match = regex.exec(text)) !== null) {
+    // 'd' flag: match.indices gives each capture group's own [start, end],
+    // which is how the label stays out of the span while the trigger word
+    // still anchors the match.
+    const indices = (match as RegExpExecArray & { indices: Array<[number, number] | undefined> }).indices;
+    const group = indices?.[1];
+    if (group) {
+      const [start, end] = group;
+      spans.push({
+        start,
+        end,
+        category: 'ID_CODE',
+        text: text.slice(start, end),
+        confidence: 1,
+        source: 'regex',
+        rung: RUNG.ID_CODE,
+      });
+    }
+    if (match[0].length === 0) regex.lastIndex++;
+  }
+  return spans;
+};
+
 export const runDeterministicDetectors = (text: string): DetectedSpan[] => [
   ...detectEmails(text),
   ...detectIbans(text),
   ...detectCreditCards(text),
   ...detectDni(text),
   ...detectNie(text),
+  ...detectMaskedIds(text),
+  ...detectIdCodes(text),
   ...detectPhones(text),
   ...detectAddresses(text),
 ];

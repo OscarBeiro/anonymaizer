@@ -1,6 +1,7 @@
 export type KnownCategory =
   | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'COMPANY'
   | 'DNI' | 'NIE' | 'IBAN' | 'CREDIT_CARD'
+  | 'MASKED_ID' | 'ID_CODE'
   | 'CUSTOM' | 'REGEX';
 
 // CATEGORY dictionary rules mint their own (e.g. 'PROJECT_NAME'), so the type
