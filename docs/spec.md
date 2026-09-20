@@ -29,9 +29,9 @@ responses.
 1. **Ingest** — user pastes text (plain or rich HTML) or uploads documents
    (`.docx`, `.pdf`, `.eml`, `.pptx`, `.xlsx`, `.odt`, `.csv`, `.md`, `.txt`).
 2. **Anonymize** — sensitive entities (names, emails, addresses, custom terms)
-   are replaced with standardized placeholders (`[NAME_1]`, `[ADDRESS_1]`).
+   are replaced with standardized placeholders (`[[NAME_001]]`, `[[ADDRESS_001]]`).
 3. **Map** — a key mapping table is held in local browser memory
-   (`[NAME_1]` ↔ `Oscar Beiro`).
+   (`[[NAME_001]]` ↔ `Oscar Beiro`).
 4. **Process with AI** — user copies the sanitized text into any LLM chat.
 5. **Revert** — user pastes the AI response back; the tool restores the
    original terms using the mapping key.
@@ -63,7 +63,7 @@ export type Category = KnownCategory | (string & {});
 export interface MappingItem {
   id: string;
   originalText: string;
-  placeholder: string; // e.g., "[NAME_1]", "[ADDRESS_1]"
+  placeholder: string; // e.g., "[[NAME_001]]", "[[ADDRESS_001]]"
   category: Category;
   confidence: number;  // 1.0 dictionary/manual & checksum-validated regex;
                        // < 1.0 heuristic regex (NAME 0.6, ALL-CAPS COMPANY 0.4) and NER
@@ -86,7 +86,7 @@ export interface CustomDictionaryRule {
   id: string;
   termOrPattern: string;
   replacementType: 'FIXED' | 'CATEGORY';
-  targetCategory?: string; // e.g., "PROJECT_NAME" -> [PROJECT_NAME_1]
+  targetCategory?: string; // e.g., "PROJECT_NAME" -> [[PROJECT_NAME_001]]
   isRegex: boolean;
 }
 ```
@@ -110,20 +110,20 @@ Scope:
 - **Tier 1 (custom dictionary)** — user-defined match list for custom terms,
   project codes, niche words.
 - **Tier 2 (deterministic regex)**
-  - Emails: standard RFC 5322 pattern → `[EMAIL_1]`
-  - Phone numbers: international & national formats → `[PHONE_1]`
+  - Emails: standard RFC 5322 pattern → `[[EMAIL_001]]`
+  - Phone numbers: international & national formats → `[[PHONE_001]]`
   - Addresses: street keyword (`Rúa`, `Rua`, `Calle`, `C/`, `Avenida`, `Avda`,
     `Plaza`, `Praza`, `Camiño`, `Street`, `Avenue`, `Road`, `Rd`) + street name
     + house number, **optionally** followed by a postal code and/or a trailing
-    capitalized locality → `[ADDRESS_1]`. The postal code is *not* required —
+    capitalized locality → `[[ADDRESS_001]]`. The postal code is *not* required —
     the §6 bench case (`Rúa Fernando Olmedo 12, Pontevedra`) is the reference
     shape.
   - IDs / financial: Spanish DNI/NIE, IBAN, credit card. Each must be
     **validated, not merely shape-matched** — Luhn for cards, mod-97 for IBAN,
     the checksum letter for DNI/NIE. A match that fails its checksum is
     discarded outright, not downgraded in confidence. Without this an order
-    number becomes `[CREDIT_CARD_1]`.
-  - Company names → `[COMPANY_1]`, by three separate routes:
+    number becomes `[[CREDIT_CARD_001]]`.
+  - Company names → `[[COMPANY_001]]`, by three separate routes:
     - **Suffix form.** Capitalized word(s) + legal-form suffix, comma- or
       space-separated (`TICGAL, SL`, `TICGAL SLU`, `Acme Corp.`). Suffixes:
       `SL`, `SLU`, `SA`, `SAU`, `S.L.`, `S.A.`, `S.L.U.`, `S.A.U.`, `S.Coop.`,
@@ -151,7 +151,7 @@ Scope:
     `y`, `du`, `des`, `le`, `van`, `von`, `van der`, `von der`, `da`, `do`,
     `dos`, `das`), capped at ~6 tokens total, not at the start of a sentence,
     excluding a short stopword list (days, months, common sentence-starters)
-    → `[NAME_1]`, confidence `0.6`, source `'regex'`. Matches e.g. "Oscar
+    → `[[NAME_001]]`, confidence `0.6`, source `'regex'`. Matches e.g. "Oscar
     Beiro", "Miguel Ángel García de la Vega", "Laura Fernández-Smith",
     "François Müller", "Amélie de la Tour", "João da Silva", "Ana Söder" and
     "Ludwig von Trapp". A trailing particle can't end the match (the name
@@ -171,7 +171,7 @@ Scope:
   and the ability to highlight unflagged text.
 - **Reversal engine** — flexible regex matcher substituting original terms back
   into pasted AI responses despite minor LLM formatting changes (matching
-  `[NAME_1]`, `[NAME 1]` or `[Name_1]`).
+  `[[NAME_001]]`, `[NAME 1]` or `[Name_1]`).
 
 ### Milestone 2 — Contextual local NLP (NER)
 
@@ -276,7 +276,7 @@ export const reverseText = (aiResponse: string, mappings: MappingItem[]): string
 
   for (const item of activeMappings) {
     const tokenRaw = item.placeholder.replace(/[\[\]]/g, '');
-    // Matches variations: [NAME_1], [NAME 1], [Name_1], or NAME_1
+    // Matches variations: [[NAME_001]], [NAME 1], [Name_1], or NAME_1
     const flexibleRegex = new RegExp(`\\[?\\b${tokenRaw.replace('_', '[\\s_]?')}\\b\\]?`, 'gi');
 
     restored = restored.replace(flexibleRegex, item.originalText);
@@ -289,7 +289,7 @@ export const reverseText = (aiResponse: string, mappings: MappingItem[]): string
 > ⚠️ **Do not implement §5 verbatim.** `.replace('_', …)` only rewrites the
 > first underscore (breaking `PROJECT_NAME_1`), the token is not escaped for
 > regex metacharacters, and reversal must sort by **placeholder** length
-> descending (so `[NAME_1]` never eats `[NAME_11]`), not by `originalText`
+> descending (so `[[NAME_001]]` never eats `[[NAME_011]]`), not by `originalText`
 > length. See the plan's "Two spec bugs" section.
 
 ## 6. Test Bench Criteria (PoC success benchmark)
@@ -297,12 +297,12 @@ export const reverseText = (aiResponse: string, mappings: MappingItem[]): string
 **Spanish / European context test**
 
 - Input: `Hola, soy Oscar Beiro. Mi correo es oscar@example.com y vivo en Rúa Fernando Olmedo 12, Pontevedra.`
-- Expected: `Hola, soy [NAME_1]. Mi correo es [EMAIL_1] y vivo en [ADDRESS_1].`
+- Expected: `Hola, soy [[NAME_001]]. Mi correo es [[EMAIL_001]] y vivo en [[ADDRESS_001]].`
 
 **Custom dictionary rule**
 
 - The custom term `Project Alpha` overrides all auto-matching rules and
-  converts to `[CUSTOM_1]`.
+  converts to `[[CUSTOM_001]]`.
 
 **Round-trip restoration**
 
@@ -320,5 +320,5 @@ export const reverseText = (aiResponse: string, mappings: MappingItem[]): string
 **Span arbitration**
 
 - Input: `Banco Santander SA facturó a TICGAL, SL en Rúa Fernando Olmedo 12, Pontevedra.`
-- Expected: exactly three mappings — `[COMPANY_1]`, `[COMPANY_2]`,
-  `[ADDRESS_1]` — and **no** `NAME` mapping.
+- Expected: exactly three mappings — `[[COMPANY_001]]`, `[[COMPANY_002]]`,
+  `[[ADDRESS_001]]` — and **no** `NAME` mapping.
