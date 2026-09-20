@@ -75,3 +75,41 @@
   opacity: 0.5;
   font-style: italic;
 }
+
+.rule-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.rule-form input[type='text'] {
+  padding: 6px 8px;
+  font-size: 0.9rem;
+  flex: 1 1 200px;
+}
+
+.rule-form select,
+.rule-form button {
+  padding: 6px 10px;
+  font-size: 0.85rem;
+}
+
+.form-error {
+  color: #b3261e;
+  font-size: 0.8rem;
+  margin: 0 0 8px;
+}
+
+.rule-import-export {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.rule-import-export button {
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  cursor: pointer;
+}

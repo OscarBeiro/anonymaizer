@@ -3,6 +3,7 @@ import './App.css';
 import { MappingTable } from './components/MappingTable';
 import { PastePanel } from './components/PastePanel';
 import { ReversalPanel } from './components/ReversalPanel';
+import { RulesEditor } from './components/RulesEditor';
 import { anonymize } from './core/anonymize';
 import { applyEnabledMappings } from './core/apply';
 import type { CustomDictionaryRule, MappingItem, MappingSession } from './core/types';
@@ -50,15 +51,18 @@ function App() {
     });
   };
 
+  const updateRules = (rules: CustomDictionaryRule[]) => {
+    setDictionaryRules(rules);
+    runAnonymize(session.rawMarkdown, rules);
+  };
+
   const handleCreateRule = (selectedText: string) => {
     const trimmed = selectedText.trim();
     if (!trimmed) return;
-    const rules: CustomDictionaryRule[] = [
+    updateRules([
       ...dictionaryRules,
       { id: `rule_${Date.now()}`, termOrPattern: trimmed, replacementType: 'FIXED', isRegex: false },
-    ];
-    setDictionaryRules(rules);
-    runAnonymize(session.rawMarkdown, rules);
+    ]);
   };
 
   return (
@@ -81,6 +85,8 @@ function App() {
         />
         <ReversalPanel mappings={session.mappings} />
       </main>
+
+      <RulesEditor rules={dictionaryRules} onChange={updateRules} />
     </div>
   );
 }

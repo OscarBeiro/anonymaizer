@@ -170,7 +170,7 @@ browser libraries. Not worth it.
 > from applied ones. State in React only, session persisted to localStorage.
 > Keep it one screen, no router.
 
-### [ ] P5 — Custom dictionary management
+### [x] P5 — Custom dictionary management
 
 > Add a rules editor: create/edit/delete `CustomDictionaryRule`, regex toggle with
 > live validation, persisted to localStorage, importable/exportable as JSON.
