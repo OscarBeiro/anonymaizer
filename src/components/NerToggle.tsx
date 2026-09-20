@@ -10,7 +10,7 @@ interface NerToggleProps {
 const statusText = (status: NerStatus): string | null => {
   switch (status.state) {
     case 'loading':
-      // Deliberately not "Downloading…": @xenova/transformers fires this
+      // Deliberately not "Downloading…": transformers.js fires this
       // same progress event whether the model comes from the network or
       // from our IndexedDB cache — it gives no cache-hit signal — so a
       // returning user who already has it cached sees this too, briefly.

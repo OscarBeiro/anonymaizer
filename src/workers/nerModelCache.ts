@@ -1,4 +1,4 @@
-// @xenova/transformers' default caching backend is the browser Cache
+// transformers.js' default caching backend is the browser Cache
 // Storage API (`env.useBrowserCache`), which most browsers refuse to expose
 // on a `file://` origin — exactly how this app's single-file build is meant
 // to be opened (see vite.config.ts). With no cache available, the ~104MB

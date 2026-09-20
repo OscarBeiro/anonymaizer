@@ -2,7 +2,7 @@ import { RUNG, type DetectedSpan } from './types';
 
 // One token-classification result from the worker's pipeline() call, using
 // transformers.js' aggregation_strategy: 'simple' shape. Kept minimal and
-// framework-free so this file never imports @xenova/transformers — the
+// framework-free so this file never imports transformers.js — the
 // model only ever runs in src/workers/ner.worker.ts.
 export interface NerEntity {
   entityGroup: string; // 'PER' | 'ORG' | 'LOC' | 'MISC' | ...

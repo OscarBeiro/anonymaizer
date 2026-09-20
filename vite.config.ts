@@ -11,6 +11,15 @@ export default defineConfig({
   // stay as separate static files (see public/) for PWA install/offline when
   // served over http; that's orthogonal to bundle inlining.
   plugins: [react(), viteSingleFile()],
+  resolve: {
+    // onnxruntime-web 1.31's default browser entry embeds its ~54MB of
+    // .wasm runtimes via `new URL(...)`, which viteSingleFile happily
+    // base64-inlines — that turned the NER worker into a 72MB file. This
+    // export condition selects ort's external-wasm build instead, so the
+    // runtime is fetched at NER opt-in time like it was under
+    // @xenova/transformers v2. See wasmPaths in src/workers/ner.worker.ts.
+    conditions: ['onnxruntime-web-use-extern-wasm', 'module', 'browser', 'import', 'default'],
+  },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
   },

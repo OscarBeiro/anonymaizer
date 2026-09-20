@@ -8,7 +8,7 @@
 // merge logic that decides what a NER hit means for the §4a ladder lives in
 // src/core/ner.ts and is unit-tested there without ever touching this file
 // or the model.
-import { env, pipeline, type TokenClassificationPipeline } from '@xenova/transformers';
+import { env, pipeline, type TokenClassificationPipeline } from '@huggingface/transformers';
 import { aggregateBioTokens, type NerEntity, type RawNerToken } from '../core/ner';
 import { createIndexedDbModelCache } from './nerModelCache';
 
@@ -36,7 +36,10 @@ let extractorPromise: Promise<TokenClassificationPipeline> | null = null;
 
 const getExtractor = (): Promise<TokenClassificationPipeline> => {
   extractorPromise ??= pipeline('token-classification', 'Xenova/bert-base-NER', {
-    quantized: true,
+    // v2's `quantized: true` became `dtype` in transformers.js v3; 'q8' is
+    // the same int8-quantized ONNX weights that v2's flag selected, so the
+    // cached ~104MB file and its cache keys are unchanged.
+    dtype: 'q8',
     progress_callback: (progress: { status: string; progress?: number }) => {
       const message: NerWorkerResponse = {
         type: 'progress',
@@ -53,10 +56,10 @@ self.onmessage = async (event: MessageEvent<NerWorkerRequest>) => {
   if (event.data.type !== 'run') return;
   try {
     const extractor = await getExtractor();
-    // This installed version of @xenova/transformers has no
-    // aggregation_strategy option — it returns one BIO-tagged prediction
-    // per token, so aggregateBioTokens (src/core/ner.ts, pure and
-    // unit-tested) does the B-/I- merging into whole entities ourselves.
+    // The pipeline returns one BIO-tagged prediction per token, so
+    // aggregateBioTokens (src/core/ner.ts, pure and unit-tested) does the
+    // B-/I- merging into whole entities ourselves rather than relying on
+    // the library — that keeps the merge rules testable without a model.
     const raw = (await extractor(event.data.text)) as unknown as RawNerToken[];
     const entities: NerEntity[] = aggregateBioTokens(raw, event.data.text);
 
