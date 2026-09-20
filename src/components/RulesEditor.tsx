@@ -137,6 +137,7 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
       {!regexInvalid && error && form.termOrPattern && <p className="form-error">{error}</p>}
 
       {rules.length > 0 && (
+        <div className="mapping-table-wrapper">
         <table className="mapping-table">
           <thead>
             <tr>
@@ -166,6 +167,7 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
             ))}
           </tbody>
         </table>
+        </div>
       )}
 
       <div className="rule-import-export">

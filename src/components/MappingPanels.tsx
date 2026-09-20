@@ -1,5 +1,18 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { MappingItem } from '../core/types';
+
+const PLACEHOLDER_PATTERN = /(\[\[[A-Z][A-Z0-9_]*\]\])/g;
+
+const renderHighlighted = (text: string): ReactNode[] =>
+  text.split(PLACEHOLDER_PATTERN).map((segment, i) =>
+    i % 2 === 1 ? (
+      <mark className="sanitized-placeholder" key={i}>
+        {segment}
+      </mark>
+    ) : (
+      segment
+    ),
+  );
 
 interface SanitizedTextPanelProps {
   anonymizedText: string;
@@ -8,7 +21,7 @@ interface SanitizedTextPanelProps {
 export const SanitizedTextPanel = ({ anonymizedText }: SanitizedTextPanelProps) => (
   <section className="panel">
     <h2>Sanitized text</h2>
-    <textarea className="panel-textarea" readOnly value={anonymizedText} />
+    <div className="panel-textarea sanitized-highlight">{renderHighlighted(anonymizedText)}</div>
     <button
       type="button"
       className="copy-button"
@@ -59,6 +72,7 @@ export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingLis
           <button type="button" className="merge-button" disabled={!canMerge} onClick={handleMerge}>
             Merge selected ({selected.size})
           </button>
+          <div className="mapping-table-wrapper">
           <table className="mapping-table">
             <thead>
               <tr>
@@ -112,6 +126,7 @@ export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingLis
               ))}
             </tbody>
           </table>
+          </div>
         </>
       )}
     </section>

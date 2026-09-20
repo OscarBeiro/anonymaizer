@@ -180,51 +180,55 @@ function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <h1>
-          AnonymAIzer <span className="app-version">v{__APP_VERSION__}</span>
-        </h1>
-        <p>Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
-      </header>
+      <aside className="app-sidebar">
+        <header className="app-header">
+          <h1>
+            AnonymAIzer <span className="app-version">v{__APP_VERSION__}</span>
+          </h1>
+          <p>Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
+        </header>
 
-      <StepNav
-        step={step}
-        canReview={session.rawMarkdown.length > 0}
-        canRestore={session.mappings.length > 0}
-        onSelect={setStep}
-      />
-
-      {step === 'ingest' && (
-        <IngestStep
-          rawMarkdown={session.rawMarkdown}
-          onChange={handlePasteChange}
-          onCreateRule={handleCreateRule}
-          onFileImport={handleFileImport}
+        <StepNav
+          step={step}
+          canReview={session.rawMarkdown.length > 0}
+          canRestore={session.mappings.length > 0}
+          onSelect={setStep}
         />
-      )}
+      </aside>
 
-      {step === 'review' && (
-        <>
-          <NerToggle
-            enabled={nerEnabled}
-            status={nerStatus}
-            canRescan={nerStatus.state === 'ready' && session.rawMarkdown.length > 0}
-            onToggle={handleNerToggle}
-            onRescan={handleNerRescan}
+      <main className="app-main">
+        {step === 'ingest' && (
+          <IngestStep
+            rawMarkdown={session.rawMarkdown}
+            onChange={handlePasteChange}
+            onCreateRule={handleCreateRule}
+            onFileImport={handleFileImport}
           />
-          <ReviewStep
-            anonymizedText={session.anonymizedMarkdown}
-            mappings={session.mappings}
-            dictionaryRules={dictionaryRules}
-            onToggle={handleToggle}
-            onSplit={handleSplit}
-            onMerge={handleMerge}
-            onRulesChange={updateRules}
-          />
-        </>
-      )}
+        )}
 
-      {step === 'restore' && <ReversalPanel mappings={session.mappings} />}
+        {step === 'review' && (
+          <>
+            <NerToggle
+              enabled={nerEnabled}
+              status={nerStatus}
+              canRescan={nerStatus.state === 'ready' && session.rawMarkdown.length > 0}
+              onToggle={handleNerToggle}
+              onRescan={handleNerRescan}
+            />
+            <ReviewStep
+              anonymizedText={session.anonymizedMarkdown}
+              mappings={session.mappings}
+              dictionaryRules={dictionaryRules}
+              onToggle={handleToggle}
+              onSplit={handleSplit}
+              onMerge={handleMerge}
+              onRulesChange={updateRules}
+            />
+          </>
+        )}
+
+        {step === 'restore' && <ReversalPanel mappings={session.mappings} />}
+      </main>
     </div>
   );
 }
