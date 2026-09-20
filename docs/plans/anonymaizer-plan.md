@@ -454,3 +454,31 @@ Then repeat verbatim, swapping library and format:
 - [ ] `.pptx` — jszip + native DOMParser XML processing
 - [ ] `.xlsx` / `.csv` — xlsx (SheetJS)
 - [ ] `.odt` — jszip + native DOMParser XML processing
+
+---
+
+# Milestone 4 — Export
+
+**User request, recorded for scoping, not started.** Beyond copy-to-clipboard
+(already shipped for Sanitized text and Restored text), let the user save
+either panel's text to a file:
+
+- **Easy tier, do first:** `.txt` (raw), `.html` (wrap in a minimal styled
+  shell — reuse the highlighting markup from `renderHighlighted` for the
+  sanitized-text export specifically), `.md` (the underlying data is already
+  Markdown from the turndown ingest path, so this is close to a no-op —
+  `anonymizedMarkdown`/restored text saved as-is). All three are pure
+  client-side `Blob` + `URL.createObjectURL` + a synthetic `<a download>`
+  click, same pattern `RulesEditor.tsx#exportRules` already uses for JSON —
+  no new dependency needed.
+- **Later tier, only if easy:** `.docx` and `.odt` *export* (not to be
+  confused with the M3 *import* parsers for the same extensions above —
+  export is Markdown → document, the opposite direction, and likely a
+  different library even if the extension matches). `docx` (the npm
+  package, not mammoth.js which is import-only) is the natural candidate for
+  `.docx`; `.odt` export has no equally simple client-side library today —
+  worth a quick feasibility check before committing to it, and dropping it
+  from scope entirely is an acceptable outcome if there isn't one.
+- Where in the UI: a small format-picker + "Save as…" button, one per
+  relevant sub-step (2.3 Sanitized text, 3.2 Restored text) — not a new
+  wizard step of its own.
