@@ -139,7 +139,10 @@ interface StatisticsPanelProps {
 }
 
 export const StatisticsPanel = ({ mappings }: StatisticsPanelProps) => {
-  const counts = countByCategory(mappings);
+  // Only enabled mappings actually end up anonymized in the sanitized text —
+  // a toggled-off false positive isn't a real anonymization and shouldn't
+  // inflate the count.
+  const counts = countByCategory(mappings.filter((m) => m.enabled));
 
   return (
     <section className="panel">
