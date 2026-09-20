@@ -1,0 +1,16 @@
+{
+  "name": "AnonymAIzer",
+  "short_name": "AnonymAIzer",
+  "description": "Client-side text anonymization & reversal tool. Zero backend, zero egress.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#aa3bff",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

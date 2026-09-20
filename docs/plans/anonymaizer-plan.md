@@ -175,7 +175,7 @@ browser libraries. Not worth it.
 > Add a rules editor: create/edit/delete `CustomDictionaryRule`, regex toggle with
 > live validation, persisted to localStorage, importable/exportable as JSON.
 
-### [ ] P6 — Ship M1
+### [x] P6 — Ship M1
 
 > Add `vite-plugin-singlefile` and a PWA manifest + service worker so the build
 > produces an offline single-file HTML. Verify with devtools that a full session
