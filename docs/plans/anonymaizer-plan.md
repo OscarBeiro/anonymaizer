@@ -5,6 +5,8 @@ Client-side text anonymization & reversal tool. Zero backend, zero egress.
 **How to use this file:** each `P` block below is one prompt to paste into Claude Code,
 one per session, in order. Tick the box when the session is done and tests pass.
 `P8` is repeated once per file format — never batch them.
+`P1` is split into `P1a` and `P1b`: the name/company heuristics get their own
+session, because that is where the iteration happens.
 
 **The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
 "the §6 Spanish test bench case", read that section from `docs/spec.md`.
@@ -15,16 +17,26 @@ Next.js assumes a server; plain esbuild means wiring everything yourself.
 
 ---
 
-## Two spec bugs — fix in the prompts, not later
+## Three spec traps
+
+The first two are still live in `docs/spec.md` §5 — fix them in the prompts, not
+later. The third has already been corrected in the spec (§4a); it is recorded
+here because §5's wording still reads as though it applied to anonymization.
 
 1. **Reversal regex underscore bug.** The spec's
    `tokenRaw.replace('_', '[\\s_]?')` replaces only the *first* underscore, so
    `PROJECT_NAME_1` breaks. Needs `replaceAll` plus escaping of regex-special
    characters in the token.
 
-2. **Sort key on reversal.** Length-descending by `originalText` is correct for
-   *anonymization* (stops "Ana" matching inside "Análisis"). Reversal must sort by
-   **placeholder** length descending, so `[NAME_1]` never eats `[NAME_11]`.
+2. **Sort key on reversal.** Reversal must sort by **placeholder** length
+   descending, so `[NAME_1]` never eats `[NAME_11]`.
+
+3. **Length-descending sort is the wrong mechanism for anonymization.**
+   *(Resolved in spec §4a.)* With the
+   M1 detection range, `NAME` fires inside `ADDRESS` and inside `COMPANY`, and no
+   sort order resolves that — one detector must lose the span outright.
+   Anonymization is span-based and offset-driven; see §4a of the spec. Sorting by
+   `originalText.length` survives only in the reversal path (§5 / P3).
 
 ---
 
@@ -56,22 +68,50 @@ browser libraries. Not worth it.
 > client-side; `src/core/` is pure TypeScript with no React or DOM imports; every
 > core module ships with tests; no dependency may make a network request.
 
-### [ ] P1 — Types + Tier 2 regex engine
+### [ ] P1a — Types + deterministic detectors + span arbitration
 
 > In `src/core/`, implement the `MappingItem`, `MappingSession` and
-> `CustomDictionaryRule` types [paste §3 of the spec]. Then build
-> `detectRegex(text)` returning `MappingItem[]` for EMAIL, PHONE (ES +
-> international), ADDRESS (Rúa/Calle/Avenida/Street/Avenue/Rd + number + postal
-> code), Spanish DNI/NIE, IBAN, credit card. Counters per category start at 1.
-> Write tests first, including the §6 Spanish test bench case.
+> `CustomDictionaryRule` types [paste §3 of the spec], including the open
+> `Category` type. Then implement the detection pipeline of §4a: an internal
+> span type, the priority ladder, whole-candidate drop on overlap, dedup by
+> `originalText`, and right-to-left offset substitution — P1b and P2 both build
+> on these. Then the deterministic detectors returning spans: EMAIL, PHONE (ES +
+> international), ADDRESS (street keyword + name + number, postal code and
+> trailing locality both optional), Spanish DNI/NIE, IBAN and credit card — each
+> of the last four validated by checksum (Luhn, mod-97, DNI/NIE letter), with a
+> failed checksum discarding the match. Counters per category start at 1.
+> Write tests first: the §6 Spanish bench case minus the name (that is P1b's),
+> one valid and one invalid-checksum case per validated detector, and a dedup
+> case where the same email occurs three times and yields one `[EMAIL_1]`.
+
+### [ ] P1b — COMPANY + NAME heuristics
+
+> Add the two heuristic detectors from §4 of the spec to the P1a ladder.
+> COMPANY by three routes: the widened legal-form suffix list, the prefix forms
+> (`Grupo`/`Banco`/`Fundación`/`Universidade`/…), and the ALL-CAPS acronym
+> heuristic at confidence `0.4` with `enabled: false` and the fiscal-acronym
+> exclusion list. NAME as specified — 2+ tokens, Unicode-letter class for
+> "capitalized" (not a hardcoded accent list), hyphenated compounds, ES/FR/DE/PT
+> nobiliary particles, capped at ~6 tokens, must end on a capitalized or
+> hyphenated-compound token, precision-first (sentence-initial and stopword-led
+> sequences rejected), confidence `0.6`, source `'regex'`.
+> Write tests first: `TICGAL, SL` / `TICGAL SLU` / `Acme Corp.` / `Müller GmbH`
+> / `Grupo Inditex` → `[COMPANY_n]`; `Oscar Beiro` → `[NAME_n]` at confidence
+> 0.6; `Miguel Ángel García de la Vega`, `Laura Fernández-Smith`,
+> `François Müller`, `Amélie de la Tour`, `João da Silva`, `Ana Söder`,
+> `Ludwig von Trapp` → each a single `[NAME_n]` covering the whole compound
+> name; a lone sentence-initial capitalized word must NOT false-positive;
+> the §6 negative corpus yields zero detections; and the §6 arbitration case
+> yields exactly `[COMPANY_1]`, `[COMPANY_2]`, `[ADDRESS_1]` and no `NAME`.
 
 ### [ ] P2 — Tier 1 dictionary + anonymizer
 
 > Add `applyDictionary(text, rules)` supporting FIXED and CATEGORY replacement
-> types, regex and literal terms. Then `anonymize(text, rules)` orchestrating
-> dictionary → regex, dictionary always winning on overlap. Sort by
-> `originalText.length` descending before substituting. Test that "Project Alpha"
-> overrides auto-matching.
+> types, regex and literal terms. Dictionary matches are resolved to spans and
+> fed into the §4a ladder at top priority — not string-replaced ahead of
+> detection. Then `anonymize(text, rules)` orchestrating dictionary → regex
+> through that ladder. Test that "Project Alpha" overrides auto-matching, and
+> that a dictionary term overlapping a regex hit wins the whole span.
 
 ### [ ] P3 — Reversal engine
 
@@ -85,8 +125,13 @@ browser libraries. Not worth it.
 
 > Build the three panels: smart paste (clipboard `text/html` → Markdown via
 > turndown, plain text passthrough), interactive mapping table with per-row enable
-> toggles and a copy-sanitized-text button, and a reversal panel. State in React
-> only, session persisted to localStorage. Keep it one screen, no router.
+> toggles and a copy-sanitized-text button, and a reversal panel. Add a
+> **select text → create dictionary rule** affordance: bare brand names
+> (`TICGAL` with no legal-form suffix) are unreachable by regex by design, so
+> this is how they get anonymized. Rows with `enabled: false` — ALL-CAPS company
+> guesses now, sub-0.8 NER hits from P7 later — must render visibly distinct
+> from applied ones. State in React only, session persisted to localStorage.
+> Keep it one screen, no router.
 
 ### [ ] P5 — Custom dictionary management
 
@@ -108,7 +153,10 @@ browser libraries. Not worth it.
 > Add `src/workers/ner.worker.ts` using @xenova/transformers with a quantized
 > bert-base-NER ONNX model. Worker-only, lazy-loaded on user opt-in. Merge results
 > into mappings with `source: 'ner'` and real confidence scores; flag anything
-> under 0.8 in the table.
+> under 0.8 in the table. On overlapping spans, `source: 'ner'` supersedes both
+> M1 heuristics from P1b — the NAME regex and the ALL-CAPS COMPANY guess — by
+> entering the §4a ladder above them. Both heuristics stay as the fallback for
+> users who don't opt into the model.
 
 **Decide before starting P7:** the model is tens of MB and can't live inside a
 single-file HTML bundle. Either the PWA caches it on first opt-in, or M2 ships as
