@@ -10,13 +10,21 @@ export type Category = KnownCategory | (string & {});
 
 export interface MappingItem {
   id: string;
-  originalText: string;
+  originalText: string; // the canonical variant — variants[0]
   placeholder: string; // e.g., "[NAME_1]", "[ADDRESS_1]"
   category: Category;
   confidence: number; // 1.0 dictionary/manual & checksum-validated regex;
                        // < 1.0 heuristic regex (NAME 0.6, ALL-CAPS COMPANY 0.4) and NER
   source: 'dictionary' | 'regex' | 'ner' | 'manual';
   enabled: boolean;
+  // Every original-text spelling this one placeholder stands for. Single-
+  // element for every category except NAME, where entity clustering (P7c,
+  // src/core/entities.ts) can group several spellings of one person
+  // ("Ester Cuni" / "Ester Cuni Peirote" / "CUNI PEIROTE ESTER") behind one
+  // placeholder. originalText is always variants[0] (canonical: longest,
+  // then first-occurring). Reversal restores the canonical form for every
+  // variant — that's the accepted cost of one-person-one-placeholder.
+  variants: string[];
 }
 
 export interface MappingSession {

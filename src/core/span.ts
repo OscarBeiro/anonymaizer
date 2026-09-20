@@ -1,3 +1,4 @@
+import { clusterNames } from './entities';
 import type { Category, DetectedSpan, MappingItem } from './types';
 
 const overlaps = (a: DetectedSpan, b: DetectedSpan): boolean =>
@@ -26,18 +27,41 @@ export const arbitrateSpans = (candidates: DetectedSpan[]): DetectedSpan[] => {
 };
 
 /**
- * §4a step 4: dedup accepted spans by exact originalText, minting one
- * MappingItem + placeholder per distinct text, counters starting at 1 in
- * order of first occurrence.
+ * §4a step 4: dedup accepted spans by originalText, minting one MappingItem +
+ * placeholder per distinct text, counters starting at 1 in order of first
+ * occurrence.
+ *
+ * NAME is the one category where "distinct text" isn't exact-string: P7c
+ * clusters spellings of the same person ("Ester Cuni" / "Ester Cuni
+ * Peirote" / "CUNI PEIROTE ESTER") behind a shared canonical text before the
+ * usual dedup runs, so they mint one placeholder, not three. Every other
+ * category is unaffected — its dedup key is still the literal span text.
  */
 export const buildMappings = (spans: DetectedSpan[]): MappingItem[] => {
   const byOffset = [...spans].sort((a, b) => a.start - b.start);
+
+  const nameTexts: string[] = [];
+  for (const span of byOffset) {
+    if (span.category === 'NAME' && !nameTexts.includes(span.text)) nameTexts.push(span.text);
+  }
+  const canonicalOf = new Map<string, string>();
+  const variantsOf = new Map<string, string[]>();
+  for (const cluster of clusterNames(nameTexts)) {
+    const [canonical] = cluster;
+    variantsOf.set(canonical, cluster);
+    for (const variant of cluster) canonicalOf.set(variant, canonical);
+  }
+
+  const dedupKeyFor = (span: DetectedSpan): string =>
+    span.category === 'NAME' ? canonicalOf.get(span.text)! : span.text;
+
   const counters = new Map<Category, number>();
-  const byText = new Map<string, MappingItem>();
+  const byKey = new Map<string, MappingItem>();
   const order: MappingItem[] = [];
 
   for (const span of byOffset) {
-    const existing = byText.get(span.text);
+    const key = dedupKeyFor(span);
+    const existing = byKey.get(key);
     if (existing) continue;
 
     const count = (counters.get(span.category) ?? 0) + 1;
@@ -45,14 +69,15 @@ export const buildMappings = (spans: DetectedSpan[]): MappingItem[] => {
 
     const item: MappingItem = {
       id: `${span.category}_${count}`,
-      originalText: span.text,
+      originalText: key,
       placeholder: `[${span.category}_${count}]`,
       category: span.category,
       confidence: span.confidence,
       source: span.source,
       enabled: span.enabled ?? true,
+      variants: variantsOf.get(key) ?? [span.text],
     };
-    byText.set(span.text, item);
+    byKey.set(key, item);
     order.push(item);
   }
 

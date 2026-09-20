@@ -6,7 +6,16 @@ const RULES_KEY = 'anonymaizer.dictionaryRules';
 export const loadSession = (): MappingSession | null => {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    return raw ? (JSON.parse(raw) as MappingSession) : null;
+    if (!raw) return null;
+    const session = JSON.parse(raw) as MappingSession;
+    // A session saved before P7c's entity clustering has no `variants` on
+    // its mappings — backfill it so applyEnabledMappings' flatMap doesn't
+    // crash on an old localStorage session.
+    session.mappings = session.mappings.map((m) => ({
+      ...m,
+      variants: m.variants?.length ? m.variants : [m.originalText],
+    }));
+    return session;
   } catch {
     return null;
   }

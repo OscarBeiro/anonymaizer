@@ -83,6 +83,19 @@
   font-style: italic;
 }
 
+.mapping-variants {
+  font-size: 0.8em;
+  color: var(--text-secondary, #888);
+}
+
+.merge-button,
+.split-button {
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
 .rule-form {
   display: flex;
   flex-wrap: wrap;

@@ -248,7 +248,7 @@ before the NER worker** — the model then only has to solve what a regex can't.
 > with no NAME overlap; and the negative — a bare `2000/78` with no trigger
 > word is not detected.
 
-### [ ] P7c — Entity clustering: one person, one placeholder
+### [x] P7c — Entity clustering: one person, one placeholder
 
 > Fix R4. New `src/core/entities.ts`: canonicalize a NAME (NFD-normalize and
 > strip combining marks, lowercase, drop honorifics `D.`/`Dª`/`Sr.`/`Sra.`/

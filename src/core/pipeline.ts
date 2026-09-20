@@ -18,10 +18,13 @@ export const runDetectionPipeline = (text: string, candidates: DetectedSpan[]): 
   const accepted = arbitrateSpans(candidates).filter((span) => !span.shield);
   const mappings = buildMappings(accepted);
 
-  const enabledTexts = new Set(mappings.filter((m) => m.enabled).map((m) => m.originalText));
+  // Keyed by every variant, not just the canonical originalText — a
+  // clustered NAME mapping (P7c) must still match the span for each of its
+  // surface spellings.
+  const enabledTexts = new Set(mappings.filter((m) => m.enabled).flatMap((m) => m.variants));
   const spansToApply = accepted.filter((span) => enabledTexts.has(span.text));
 
-  const placeholderByText = new Map(mappings.map((m) => [m.originalText, m.placeholder]));
+  const placeholderByText = new Map(mappings.flatMap((m) => m.variants.map((v) => [v, m.placeholder] as const)));
   const anonymizedText = applySpans(text, spansToApply, (span) => placeholderByText.get(span.text)!);
 
   return { mappings, anonymizedText };

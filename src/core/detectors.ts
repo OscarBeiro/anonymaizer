@@ -317,7 +317,9 @@ export const detectCompanyAcronyms = (text: string): DetectedSpan[] =>
 
 // ES/FR/DE/PT nobiliary/name particles, longest first so "de la"/"von der"/
 // "van der" aren't cut short by their single-word forms.
-const NAME_PARTICLES = [
+// Exported for entities.ts (P7c): canonicalizing a name for clustering drops
+// the same particles that NAME already treats as connective, not name-bearing.
+export const NAME_PARTICLES = [
   'de la', 'von der', 'van der',
   'del', 'de', 'y', 'du', 'des', 'le', 'van', 'von', 'da', 'do', 'dos', 'das',
 ];

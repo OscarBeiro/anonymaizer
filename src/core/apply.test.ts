@@ -8,6 +8,7 @@ const mapping = (partial: Partial<MappingItem> & Pick<MappingItem, 'placeholder'
   confidence: 1,
   source: 'regex',
   enabled: true,
+  variants: [partial.originalText],
   ...partial,
 });
 

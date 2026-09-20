@@ -4,9 +4,9 @@ import { runAllDetectors } from './detectors';
 import { runDetectionPipeline } from './pipeline';
 
 // Regression bench for the 12-item field report on a real structured
-// document. P7a fixes R1/R2/R5; P7b fixes R3 (masked IDs, label-anchored
-// codes) below. R4 (name clustering) is P7c.
-describe('field report regression — P7a + P7b', () => {
+// document. P7a fixes R1/R2/R5, P7b fixes R3 (masked IDs, label-anchored
+// codes), P7c fixes R4 (name clustering) below.
+describe('field report regression — P7a + P7b + P7c', () => {
   const { mappings, anonymizedText } = runDetectionPipeline(
     CLINICAL_REPORT_FIXTURE,
     runAllDetectors(CLINICAL_REPORT_FIXTURE),
@@ -34,8 +34,14 @@ describe('field report regression — P7a + P7b', () => {
     expect(anonymizedText).toContain('Psicóloga General Sanitaria');
   });
 
-  it('still anonymizes the psychologist\'s bare-form name mention', () => {
-    expect(mappings.some((m) => m.category === 'NAME' && m.originalText === 'Laura Ferreiro')).toBe(true);
+  it('clusters the psychologist\'s three name spellings behind one placeholder (R4)', () => {
+    const nameMappings = mappings.filter((m) => m.category === 'NAME');
+    expect(nameMappings).toHaveLength(1);
+    expect(nameMappings[0].variants).toEqual(
+      expect.arrayContaining(['Laura Ferreiro', 'FERREIRO IGLESIAS LAURA', 'Laura Ferreiro Iglesias']),
+    );
+    // One placeholder covers every mention.
+    expect(anonymizedText.match(/\[NAME_1\]/g)).toHaveLength(3);
   });
 
   it('does not misread the signature timestamp as a phone number (R5)', () => {
