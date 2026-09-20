@@ -110,7 +110,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  align-items: start;
   flex: 1;
   min-height: 0;
   overflow: hidden;
