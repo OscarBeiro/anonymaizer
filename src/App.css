@@ -76,7 +76,8 @@
 }
 
 .ingest-step,
-.review-step {
+.review-step,
+.restore-step {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -190,6 +191,23 @@
   font-size: 0.85rem;
   padding: 6px 10px;
   cursor: pointer;
+}
+
+.restore-next-button {
+  align-self: flex-start;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 8px 16px;
+  cursor: pointer;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  border-radius: 6px;
+  background: var(--accent-bg);
+}
+
+.restore-next-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
 }
 
 .mapping-table-wrapper {
