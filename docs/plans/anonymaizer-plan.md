@@ -52,6 +52,20 @@ Not in scope for M1. Recorded here so they aren't lost.
   written without accents still catches accented occurrences and vice versa.
   Needs a decision on Unicode normalization (NFD strip-combining-marks vs. a
   manual map) before implementation.
+- **Per-language/country NAME_STOPWORDS packs, with a language setup step.**
+  The stopword list (greetings, sign-offs, days/months) currently hardcodes
+  ES + EN ad hoc, growing one word at a time as bugs surface (e.g. "Dear"
+  had to be added after it swallowed a name into a bogus match). That
+  doesn't scale — Portuguese alone needs separate PT-PT and PT-BR lists
+  (different greeting conventions), and every added language is more surface
+  for the same class of false positive/negative. Proposed shape: split
+  `NAME_STOPWORDS` into per-language modules, let the user pick which
+  language packs are active (a setup/settings step, not autodetection), and
+  keep the list open to community contribution (a lang pack is just a data
+  file, not a code change). Needs a decision on how language selection
+  interacts with detection (one active pack vs. several simultaneously) and
+  where the data lives (bundled vs. user-editable/importable, similar to
+  custom dictionary rules).
 
 ## Mobile
 
