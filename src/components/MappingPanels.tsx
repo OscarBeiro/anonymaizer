@@ -1,4 +1,5 @@
 import { type ReactNode, useState } from 'react';
+import { countByCategory } from '../core/stats';
 import type { MappingItem } from '../core/types';
 
 const PLACEHOLDER_PATTERN = /(\[\[[A-Z][A-Z0-9_]*\]\])/g;
@@ -128,6 +129,32 @@ export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingLis
           </table>
           </div>
         </>
+      )}
+    </section>
+  );
+};
+
+interface StatisticsPanelProps {
+  mappings: MappingItem[];
+}
+
+export const StatisticsPanel = ({ mappings }: StatisticsPanelProps) => {
+  const counts = countByCategory(mappings);
+
+  return (
+    <section className="panel">
+      <h2>Statistics</h2>
+      {counts.length === 0 ? (
+        <p className="empty-hint">Nothing detected yet.</p>
+      ) : (
+        <div className="stats-grid">
+          {counts.map(({ category, count }) => (
+            <div className="stat-card" key={category}>
+              <span className="stat-count">{count}</span>
+              <span className="stat-category">{category}</span>
+            </div>
+          ))}
+        </div>
       )}
     </section>
   );

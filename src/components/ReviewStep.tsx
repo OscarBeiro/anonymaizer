@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { CustomDictionaryRule, MappingItem } from '../core/types';
-import { MappingList, SanitizedTextPanel } from './MappingPanels';
+import { MappingList, SanitizedTextPanel, StatisticsPanel } from './MappingPanels';
 import { RulesEditor } from './RulesEditor';
 
 interface ReviewStepProps {
@@ -13,12 +13,13 @@ interface ReviewStepProps {
   onRulesChange: (rules: CustomDictionaryRule[]) => void;
 }
 
-type ReviewSubStep = 'rules' | 'placeholders' | 'sanitized';
+type ReviewSubStep = 'rules' | 'placeholders' | 'sanitized' | 'statistics';
 
 const SUB_STEPS: { id: ReviewSubStep; label: string }[] = [
   { id: 'rules', label: '2.1 Rules' },
   { id: 'placeholders', label: '2.2 Placeholders' },
   { id: 'sanitized', label: '2.3 Sanitized text' },
+  { id: 'statistics', label: '2.4 Statistics' },
 ];
 
 export const ReviewStep = ({
@@ -54,6 +55,8 @@ export const ReviewStep = ({
       )}
 
       {subStep === 'sanitized' && <SanitizedTextPanel anonymizedText={anonymizedText} />}
+
+      {subStep === 'statistics' && <StatisticsPanel mappings={mappings} />}
     </div>
   );
 };
