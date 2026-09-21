@@ -17,7 +17,15 @@ session, because that is where the iteration happens.
 | M1 — "Paste & Revert" PoC | [`m1-poc.md`](m1-poc.md) | done |
 | M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](m2-detection-ner.md) | done |
 | M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
-| M4 — Export & localization | [`m4-export-i18n.md`](m4-export-i18n.md) | scoped, not started |
+| M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | planned, not started |
+| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | planned, not started |
+
+M4 is split in two: **M4a** is dependency-free user-visible output and control
+(export, category toggles); **M4b** is the one-way realistic-output mode and the
+i18n/Localazy work, which comes last on purpose so the string extraction happens
+once, after everything that adds strings. The `P` numbering runs `P9`–`P11` in
+M4a and `P12`–`P15` in M4b; the earlier single-file draft numbered i18n `P9`/`P10`
+and that numbering is superseded.
 
 One-off task docs that are not milestones keep their own numbered files:
 [`01-wizard-layout-fixes.md`](01-wizard-layout-fixes.md),
