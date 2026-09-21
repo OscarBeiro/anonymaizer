@@ -126,29 +126,14 @@ don't dodge Markdown's own `[[wiki-link]]` syntax so gain nothing, and
 zero-padding fixes nothing the length-sort doesn't already fix. No action
 needed on those three; only the case-collision item above is real.
 
-**Backlog item — NAME detection misses any name at the start of a line
-(found 2026-09-21 during P8c, high priority).** `detectNames` requires a
-preceding token on the same line, so a name that opens a line or paragraph is
-never detected. Characterised:
-
-| Input | NAME detected |
-| --- | --- |
-| `informe de Mario Prieto Casal.` | yes |
-| `Firma: Mario Prieto Casal` | yes |
-| `El paciente Mario Prieto Casal, con DNI …` | yes |
-| `Mario Prieto Casal fue evaluado.` | **no** |
-| `Hola. Mario Prieto Casal fue evaluado.` | **no** |
-| `Mario Prieto Casal` (a bare signature line) | **no** |
-
-Note the third-from-last case: it is specifically *line* start, not sentence
-start. This is a real leak, and M3 sharpens it: documents are full of short
-lines that begin with a name — letter salutations, `To:`/`De:` blocks,
-signature blocks, table cells, slide titles. The guard presumably exists to
-stop a capitalised sentence-initial word being read as a name, so the fix needs
-a replacement signal (two or more capitalised tokens, a known given name, a
-following comma-plus-title) rather than simply dropping it. M2-shaped work, not
-parser work — but it should be scheduled before M3 ships, because every parser
-added makes it more likely to bite.
+**~~Backlog item — NAME detection misses any name at the start of a line.~~**
+Found 2026-09-21 during P8c and **fixed the same day** rather than deferred —
+see [`02-name-line-start.md`](02-name-line-start.md). Names opening a line
+(salutations, `De:`/`To:` blocks, signature blocks, table cells, slide titles)
+were never detected, which every M3 parser made more likely to bite. The
+project's own `CLINICAL_REPORT_FIXTURE` had been leaking `D. Mario Prieto
+Casal` in plain sight. Left a follow-on item there: a shield lexicon for
+public institutions, now the main false-positive class.
 
 **Backlog item — tag DNI/NIE with a wrong check letter too.**
 `validators.ts` (`DNI_LETTERS[digits % 23] === letter`) currently only

@@ -55,9 +55,57 @@ describe('detectNames', () => {
     expect(spans).toHaveLength(0);
   });
 
-  it('rejects a sentence-initial name candidate', () => {
+  // Reversed deliberately (2026-09-21, during M3). This detector used to
+  // reject every sentence-initial candidate, which meant a name opening a line
+  // was never masked — and documents are full of those: salutations, From:/To:
+  // blocks, signature lines, slide titles, table cells. A leak is worse than
+  // an over-mask the user can untick in step 2.
+  it('matches a sentence-initial name candidate', () => {
     const spans = detectNames('Oscar Beiro llamó ayer.');
-    expect(spans.some((s) => s.text === 'Oscar Beiro')).toBe(false);
+    expect(spans.some((s) => s.text === 'Oscar Beiro')).toBe(true);
+  });
+
+  it('matches a name on a bare line of its own, as in a signature block', () => {
+    const spans = detectNames('Mario Prieto Casal');
+    expect(spans.map((s) => s.text)).toEqual(['Mario Prieto Casal']);
+  });
+
+  it('matches a name opening a sentence mid-paragraph', () => {
+    const spans = detectNames('Hola. Mario Prieto Casal fue evaluado.');
+    expect(spans.some((s) => s.text === 'Mario Prieto Casal')).toBe(true);
+  });
+
+  it('still rejects a sentence-initial pair containing a stopword', () => {
+    expect(detectNames('Muchas Gracias por todo.')).toHaveLength(0);
+    expect(detectNames('Buenas Tardes, ya lo tengo.')).toHaveLength(0);
+  });
+
+  it('strips a document-structure head instead of reading it as a given name', () => {
+    expect(detectNames('Expediente EV-014/2026.')).toHaveLength(0);
+    expect(detectNames('Informe Final')).toHaveLength(0);
+    expect(detectNames('Asunto: Revisión')).toHaveLength(0);
+  });
+
+  it('strips a structure head but keeps the name that follows it', () => {
+    const spans = detectNames('Paciente Mario Prieto Casal');
+    expect(spans.map((s) => s.text)).toEqual(['Mario Prieto Casal']);
+  });
+
+  it('does not mint a role title under a signature as a person', () => {
+    expect(detectNames('Atentamente,\nLaura Ferreiro\nDirectora General').map((s) => s.text)).toEqual([
+      'Laura Ferreiro',
+    ]);
+  });
+
+  it('strips a chain of leading labels down to the name, including a particle', () => {
+    // "Informe" (structure head) then "de" (particle) then "Evaluación"
+    // (structure head) leaves one token, so the heading is not a person.
+    expect(detectNames('Informe de Evaluación Anual')).toHaveLength(0);
+  });
+
+  it('matches an ALL-CAPS name on a line of its own', () => {
+    const spans = detectNames('FERREIRO IGLESIAS LAURA');
+    expect(spans.map((s) => s.text)).toEqual(['FERREIRO IGLESIAS LAURA']);
   });
 
   it('rejects a stopword-led sequence like a greeting', () => {

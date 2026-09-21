@@ -350,6 +350,13 @@ const TITLE_LEXEMES = [
   'Ingeniero', 'Ingeniera', 'Graduado', 'Graduada', 'Licenciado', 'Licenciada',
   'Trabajador Social', 'Trabajadora Social', 'Técnico', 'Técnica', 'Perito',
   'Colegiado', 'Colegiada',
+  // Role titles, added 2026-09-21 alongside the sentence-initial relaxation:
+  // they sit on a line of their own under a signature, which is exactly the
+  // position that relaxation started accepting, so "Directora General" was
+  // being minted as a person.
+  'Director', 'Directora', 'Gerente', 'Presidente', 'Presidenta',
+  'Secretario', 'Secretaria', 'Responsable', 'Coordinador', 'Coordinadora',
+  'Administrador', 'Administradora', 'Apoderado', 'Apoderada',
 ];
 
 // At least two letters per token, with one explicit exception for a real
@@ -364,6 +371,35 @@ const NAME_REGEX = new RegExp(
   `${NAME_TOKEN}(?:${WS}+(?:(?:${NAME_PARTICLES.join('|')})${WS}+)?${NAME_TOKEN}){0,${NAME_MAX_TOKENS - 1}}`,
   'gu',
 );
+
+// Words that legitimately open a line and are followed by a capitalized value,
+// so the value must not be read as a *given name*: "Expediente EV-014",
+// "Informe Final", "Paciente Mario Prieto Casal". They are peeled off the
+// front like a stopword or a title (see stripLeadingLabels), which is why
+// "Paciente Mario Prieto Casal" still yields the name — rejecting the whole
+// match instead would turn the most name-dense lines in a document into a
+// blind spot.
+//
+// Matched case-insensitively, because headings are as often "INFORME" as
+// "Informe".
+const STRUCTURE_HEADS = [
+  // ES — document structure and form labels
+  'Informe', 'Expediente', 'Evaluación', 'Evaluacion', 'Anexo', 'Apartado',
+  'Página', 'Pagina', 'Asunto', 'Fecha', 'Referencia', 'Documento', 'Capítulo',
+  'Capitulo', 'Sección', 'Seccion', 'Apellidos', 'Nombre', 'Teléfono',
+  'Telefono', 'Dirección', 'Direccion', 'Correo', 'Datos', 'Resumen',
+  'Conclusiones', 'Antecedentes', 'Observaciones', 'Motivo', 'Cliente',
+  'Paciente', 'Empresa', 'Proyecto', 'Factura', 'Contrato', 'Acta',
+  'Solicitud', 'Registro', 'Título', 'Titulo', 'Tabla', 'Figura', 'Firma',
+  // ES — adjectives that follow a structure head often enough to be worth
+  // peeling too ("Informe Psicológico Final")
+  'Psicológico', 'Psicologico', 'Psicológica', 'Psicologica', 'Clínico',
+  'Clinico', 'Clínica', 'Clinica', 'Final', 'Anual', 'Mensual', 'Previo',
+  // EN
+  'Subject', 'Date', 'From', 'Name', 'Phone', 'Address', 'Email', 'Invoice',
+  'Report', 'Page', 'Summary', 'Notes', 'Slide', 'Client', 'Patient',
+  'Company', 'Project', 'Contract', 'Reference', 'Title', 'Table', 'Figure',
+];
 
 const isSentenceInitial = (text: string, index: number): boolean => {
   let i = index - 1;
@@ -380,6 +416,27 @@ const tokenCount = (match: string): number =>
 const LEADING_LABELS = [...TITLE_LEXEMES, ...NAME_STOPWORDS].sort((a, b) => b.length - a.length);
 const LEADING_LABEL_RE = new RegExp(`^(?:${LEADING_LABELS.join('|')})\\b${WS}*`, 'u');
 
+// An honorific is part of the address, not of the name, and `\p{Lu}\.` makes
+// it a valid NAME_TOKEN — so "D. Mario Prieto Casal" would otherwise cluster
+// separately from "Mario Prieto Casal" and mint a second placeholder for the
+// same person. Peeled like any other leading label. The trailing period is
+// required, which is what keeps this from eating a real initial ("D Mario").
+const HONORIFICS = ['Dª', 'Da', 'Sra', 'Srta', 'Sr', 'Dra', 'Dr', 'Lic', 'Prof', 'Mrs', 'Mr', 'Ms', 'D'];
+const HONORIFIC_RE = new RegExp(`^(?:${HONORIFICS.join('|')})\\.${WS}*`, 'u');
+
+// A name never begins with a connective particle. Stripping it matters for
+// more than tidiness: "Informe de Evaluación Anual" loses "Informe" as a
+// structure head and would otherwise stand as the candidate
+// "de Evaluación Anual" — two non-particle tokens, so it clears the floor.
+// Peeling the particle lets the strip loop reach "Evaluación", another
+// structure head, and the heading collapses to one token and is rejected.
+const LEADING_PARTICLE_RE = new RegExp(`^(?:${NAME_PARTICLES.join('|')})\\b${WS}*`, 'u');
+
+const STRUCTURE_HEAD_RE = new RegExp(
+  `^(?:${[...STRUCTURE_HEADS].sort((a, b) => b.length - a.length).join('|')})\\b${WS}*`,
+  'iu',
+);
+
 /**
  * A leading stopword ("Dear", "Estimado") or bare professional title
  * ("Psicóloga") must not swallow a real name into one bogus match — "Dear
@@ -393,7 +450,11 @@ const stripLeadingLabels = (matchText: string, start: number): { text: string; s
   let text = matchText;
   let offset = start;
   for (;;) {
-    const leading = LEADING_LABEL_RE.exec(text);
+    const leading =
+      LEADING_LABEL_RE.exec(text) ??
+      HONORIFIC_RE.exec(text) ??
+      STRUCTURE_HEAD_RE.exec(text) ??
+      LEADING_PARTICLE_RE.exec(text);
     if (!leading) break;
     const consumed = leading[0].length;
     text = text.slice(consumed);
@@ -401,6 +462,20 @@ const stripLeadingLabels = (matchText: string, start: number): { text: string; s
   }
   return { text, start: offset };
 };
+
+const NAME_STOPWORDS_LOWER = new Set([...NAME_STOPWORDS].map((word) => word.toLowerCase()));
+
+/**
+ * A stopword anywhere in the candidate, not just at the front.
+ *
+ * Only consulted for a sentence-initial candidate, where there is no
+ * lowercase-context evidence at all and a capitalized pair is as likely to be
+ * ordinary prose ("Muchas Gracias", "Buenas Tardes") as a person. Mid-sentence
+ * the leading-strip is enough, and this would wrongly reject a real surname
+ * that happens to collide with the list.
+ */
+const containsStopword = (matchText: string): boolean =>
+  matchText.split(/\s+/).some((word) => NAME_STOPWORDS_LOWER.has(word.toLowerCase()));
 
 const isLabelColon = (text: string, endIndex: number): boolean => text[endIndex] === ':';
 
@@ -419,7 +494,15 @@ export const detectNames = (text: string): DetectedSpan[] =>
   collect(new RegExp(NAME_REGEX), text, (m) => {
     const { text: matchText, start } = stripLeadingLabels(m[0], m.index);
     if (tokenCount(matchText) < 2) return null;
-    if (isSentenceInitial(text, start)) return null;
+    // A sentence-initial candidate is accepted, but only on the strength of
+    // the candidate itself: no lowercase word precedes it, so the two-token
+    // floor plus the leading strip above (stopwords, titles, structure heads)
+    // is all the evidence there is. It used to be rejected outright, which
+    // made every line-initial name invisible — the exact blind spot M3's
+    // documents are full of. The residual cost is over-masking a title-case
+    // heading like "Evaluación Externa Anual"; that is reviewable in step 2,
+    // where an unmasked name is not.
+    if (isSentenceInitial(text, start) && containsStopword(matchText)) return null;
     if (isLabelColon(text, start + matchText.length)) return null;
     if (startsAttachedToPrevious(text, start)) return null;
     return {

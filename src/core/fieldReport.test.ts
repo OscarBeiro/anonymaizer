@@ -35,13 +35,25 @@ describe('field report regression — P7a + P7b + P7c', () => {
   });
 
   it('clusters the psychologist\'s three name spellings behind one placeholder (R4)', () => {
-    const nameMappings = mappings.filter((m) => m.category === 'NAME');
-    expect(nameMappings).toHaveLength(1);
-    expect(nameMappings[0].variants).toEqual(
+    const psychologist = mappings.find((m) => m.variants.includes('Laura Ferreiro'));
+    expect(psychologist?.category).toBe('NAME');
+    expect(psychologist?.variants).toEqual(
       expect.arrayContaining(['Laura Ferreiro', 'FERREIRO IGLESIAS LAURA', 'Laura Ferreiro Iglesias']),
     );
     // One placeholder covers every mention.
-    expect(anonymizedText.match(/\[\[NAME_001\]\]/g)).toHaveLength(3);
+    expect(anonymizedText.match(new RegExp(`\\[\\[${psychologist?.id.replace('_', '_00')}\\]\\]`, 'g'))).toHaveLength(3);
+  });
+
+  // Added 2026-09-21: the evaluated person opens his line ("D. Mario Prieto
+  // Casal, con DNI …"), and until the sentence-initial NAME guard was relaxed
+  // this report — the project's own field-report bench — left his name in
+  // plain text while masking everyone else's. The honorific is peeled off, so
+  // he clusters as one person rather than two.
+  it('redacts the evaluated person, whose name opens its line (R6)', () => {
+    const evaluated = mappings.find((m) => m.variants.includes('Mario Prieto Casal'));
+    expect(evaluated?.category).toBe('NAME');
+    expect(anonymizedText).not.toContain('Mario Prieto Casal');
+    expect(anonymizedText).toContain('D. [[NAME_001]]');
   });
 
   it('does not misread the signature timestamp as a phone number (R5)', () => {
