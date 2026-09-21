@@ -30,21 +30,43 @@ export const ibanCheck = (iban: string): boolean => {
 
 const DNI_LETTERS = 'TRWAGMYFPDXBNJZSQVHLCKE';
 
-export const dniNieCheck = (value: string): boolean => {
+export interface IdInspection {
+  kind: 'DNI' | 'NIE';
+  letter: string; // the check letter actually written
+  expectedLetter: string; // the one the digits imply
+  valid: boolean;
+}
+
+/**
+ * Shape + checksum in one answer (D1).
+ *
+ * `dniNieCheck` only ever said "yes, valid", which made an ID-shaped number
+ * with a wrong check letter — a typo, an OCR slip, a digit changed by hand to
+ * pseudonymise — indistinguishable from ordinary text, so it passed through
+ * the anonymizer in plain sight. Detectors need the third answer this returns:
+ * "ID-shaped, but the checksum disagrees".
+ *
+ * Returns null when the value is not ID-shaped at all.
+ */
+export const inspectDniNie = (value: string): IdInspection | null => {
   const normalized = value.replace(/[\s.-]/g, '').toUpperCase();
   const dniMatch = /^(\d{8})([A-Z])$/.exec(normalized);
   const nieMatch = /^([XYZ])(\d{7})([A-Z])$/.exec(normalized);
 
   if (dniMatch) {
     const [, digits, letter] = dniMatch;
-    return DNI_LETTERS[Number(digits) % 23] === letter;
+    const expectedLetter = DNI_LETTERS[Number(digits) % 23];
+    return { kind: 'DNI', letter, expectedLetter, valid: expectedLetter === letter };
   }
 
   if (nieMatch) {
     const [, prefix, digits, letter] = nieMatch;
     const prefixDigit = { X: '0', Y: '1', Z: '2' }[prefix];
-    return DNI_LETTERS[Number(prefixDigit + digits) % 23] === letter;
+    const expectedLetter = DNI_LETTERS[Number(prefixDigit + digits) % 23];
+    return { kind: 'NIE', letter, expectedLetter, valid: expectedLetter === letter };
   }
 
-  return false;
+  return null;
 };
+
+export const dniNieCheck = (value: string): boolean => inspectDniNie(value)?.valid ?? false;

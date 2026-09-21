@@ -56,6 +56,21 @@ describe('field report regression — P7a + P7b + P7c', () => {
     expect(anonymizedText).toContain('D. [[NAME_001]]');
   });
 
+  // D1: the signature block's own DNI has a wrong check letter (H, not F),
+  // so before D1 the checksum gate dropped it and this bench shipped an
+  // unmasked ID. Deliberately left invalid — see the fixture's comment.
+  it('redacts the signature block DNI even though its check letter is wrong (D1)', () => {
+    expect(anonymizedText).not.toContain('33112244F');
+    expect(mappings.some((m) => m.category === 'INVALID_ID' && m.originalText === '33112244F')).toBe(true);
+  });
+
+  it('still redacts a valid DNI as DNI, at full confidence (D1)', () => {
+    const valid = mappings.find((m) => m.originalText === '12345678Z');
+    expect(valid?.category).toBe('DNI');
+    expect(valid?.confidence).toBe(1);
+    expect(anonymizedText).not.toContain('12345678Z');
+  });
+
   it('does not misread the signature timestamp as a phone number (R5)', () => {
     expect(mappings.some((m) => m.category === 'PHONE')).toBe(false);
     expect(anonymizedText).toContain('2026.09.18 13:42:10');

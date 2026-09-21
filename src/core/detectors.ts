@@ -1,5 +1,5 @@
 import { RUNG, type DetectedSpan } from './types';
-import { dniNieCheck, ibanCheck, luhnCheck } from './validators';
+import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
 const collect = (
   regex: RegExp,
@@ -102,33 +102,78 @@ export const detectAddresses = (text: string): DetectedSpan[] => {
 const DNI_REGEX = /\b\d{2}\.?\d{3}\.?\d{3}-?[A-Za-z]\b/g;
 const NIE_REGEX = /\b[XYZxyz]\d{7}[A-Za-z]\b/g;
 
+// D1: a label right before the number ("DNI 45678912Q", "NIF: …",
+// "documento nº …"). Contextual evidence that the thing is an identity
+// document even when its check letter says otherwise — it raises the
+// confidence of an INVALID_ID, it is not a gate (see below).
+const ID_LABEL_BEFORE_RE = new RegExp(
+  `(?:D\\.?N\\.?I\\.?|N\\.?I\\.?E\\.?|N\\.?I\\.?F\\.?|documento|identidad)` +
+    // Filler between the label and the number: "DNI nº", "el DNI es".
+    `(?:${WS}+(?:es|son|num(?:\\.|ero)?|número))?${WS}*(?:n[ºo°]\\.?)?${WS}*[:\\-]?${WS}*$`,
+  'iu',
+);
+
+// D1: a number that is ID-shaped only because it sits inside a URL or a
+// query string is the one false positive worth excluding outright — there is
+// no plausible reading of `…/76543210X` as somebody's DNI, and URLs are
+// common enough in these documents to matter.
+const URLISH_BEFORE_RE = /[/=&?#]$/;
+
+/**
+ * DNI/NIE, valid or not (D1).
+ *
+ * The checksum used to be a gate: a number whose check letter did not match
+ * was not tagged as anything and went out in plain text. That fails open on
+ * exactly the documents most likely to be mangled (OCR, hand-editing), and it
+ * has bitten this repo twice — a fixture's `45678912Q` at P8b, and the
+ * clinical-report bench's own `33112244F`, which the suite had therefore
+ * never once seen redacted.
+ *
+ * So the checksum now only *classifies*: a valid number stays `DNI`/`NIE` at
+ * confidence 1 exactly as before, and an ID-shaped number with a bad check
+ * letter is tagged `INVALID_ID` — a distinct category, deliberately, because
+ * the user reviewing step 2 must be able to tell a verified ID from a guess,
+ * and confidence alone is not visible enough for that.
+ *
+ * On the false-positive surface: any 8-digit-plus-letter token is now a
+ * candidate (an invoice number, a product code). We take that over-mask
+ * knowingly — per the plan's settled trade-off, an over-mask is visible in
+ * step 2 and untickable, a missed ID is silent and already out the door — and
+ * the cost is measured in the tests (`detectors.test.ts`, "over-masks an
+ * invoice-style code"). A label anchor is *not* required, because the
+ * fixture that motivated this session (`… LAURA - 33112244F`, a signature
+ * block) has no label; it raises confidence from 0.5 to 0.9 instead.
+ */
+const buildIdSpan = (
+  text: string,
+  m: RegExpExecArray,
+  validCategory: 'DNI' | 'NIE',
+): DetectedSpan | null => {
+  const inspection = inspectDniNie(m[0]);
+  if (!inspection) return null;
+
+  const base = { start: m.index, end: m.index + m[0].length, text: m[0], source: 'regex' as const };
+
+  if (inspection.valid) {
+    return { ...base, category: validCategory, confidence: 1, rung: RUNG.VALIDATED_REGEX };
+  }
+
+  const before = text.slice(0, m.index);
+  if (URLISH_BEFORE_RE.test(before)) return null;
+
+  return {
+    ...base,
+    category: 'INVALID_ID',
+    confidence: ID_LABEL_BEFORE_RE.test(before) ? 0.9 : 0.5,
+    rung: RUNG.INVALID_ID,
+  };
+};
+
 export const detectDni = (text: string): DetectedSpan[] =>
-  collect(new RegExp(DNI_REGEX), text, (m) => {
-    if (!dniNieCheck(m[0])) return null;
-    return {
-      start: m.index,
-      end: m.index + m[0].length,
-      category: 'DNI',
-      text: m[0],
-      confidence: 1,
-      source: 'regex',
-      rung: RUNG.VALIDATED_REGEX,
-    };
-  });
+  collect(new RegExp(DNI_REGEX), text, (m) => buildIdSpan(text, m, 'DNI'));
 
 export const detectNie = (text: string): DetectedSpan[] =>
-  collect(new RegExp(NIE_REGEX), text, (m) => {
-    if (!dniNieCheck(m[0])) return null;
-    return {
-      start: m.index,
-      end: m.index + m[0].length,
-      category: 'NIE',
-      text: m[0],
-      confidence: 1,
-      source: 'regex',
-      rung: RUNG.VALIDATED_REGEX,
-    };
-  });
+  collect(new RegExp(NIE_REGEX), text, (m) => buildIdSpan(text, m, 'NIE'));
 
 // Group width is 1-4, not a fixed 4: several countries' conventional
 // display grouping ends in a short trailing group (German IBANs, e.g.

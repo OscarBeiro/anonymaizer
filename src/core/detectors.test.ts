@@ -72,11 +72,6 @@ describe('detectDni', () => {
     expect(spans[0].category).toBe('DNI');
   });
 
-  it('discards an invalid checksum outright', () => {
-    const spans = detectDni('mi dni es 12345678A gracias');
-    expect(spans).toHaveLength(0);
-  });
-
   it('accepts a dotted-and-dashed DNI', () => {
     const spans = detectDni('mi dni es 76.123.312-M gracias');
     expect(spans).toHaveLength(1);
@@ -89,16 +84,67 @@ describe('detectDni', () => {
     expect(spans[0].category).toBe('DNI');
   });
 
-  it('discards a dotted DNI with an invalid checksum', () => {
-    // 76.123.312-E is checksum-invalid (76123312 % 23 -> 'M', not 'E') —
-    // intentionally rejected even though the regex now matches its shape.
-    const spans = detectDni('mi dni es 76.123.312-E gracias');
-    expect(spans).toHaveLength(0);
-  });
-
   it('still accepts the plain ungrouped form', () => {
     const spans = detectDni('mi dni es 12345678Z gracias');
     expect(spans).toHaveLength(1);
+  });
+});
+
+// D1. A bad check letter used to mean "not tagged at all", which let a
+// mangled ID through in plain text. It is now tagged INVALID_ID; a valid one
+// is untouched, at today's category and confidence.
+describe('detectDni — ID-shaped numbers with a wrong check letter (D1)', () => {
+  it('tags the P8b number the old gate dropped', () => {
+    // 45678912 % 23 -> 'S', so the 'Q' is wrong.
+    const spans = detectDni('mi dni es 45678912Q gracias');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].category).toBe('INVALID_ID');
+    expect(spans[0].text).toBe('45678912Q');
+  });
+
+  it('tags the clinical-report bench number the suite never saw redacted', () => {
+    const spans = detectDni('Firmado por FERREIRO IGLESIAS LAURA - 33112244F Fecha:');
+    expect(spans.map((s) => [s.category, s.text])).toEqual([['INVALID_ID', '33112244F']]);
+  });
+
+  it('tags the dotted form too', () => {
+    // 76.123.312-E: 76123312 % 23 -> 'M', not 'E'.
+    const spans = detectDni('mi dni es 76.123.312-E gracias');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].category).toBe('INVALID_ID');
+  });
+
+  it('is more confident when a label anchors it', () => {
+    const [anchored] = detectDni('DNI: 45678912Q');
+    const [bare] = detectDni('ref 45678912Q');
+    expect(anchored.confidence).toBe(0.9);
+    expect(bare.confidence).toBe(0.5);
+  });
+
+  it('leaves a valid DNI exactly as it was — category and confidence', () => {
+    const [span] = detectDni('mi dni es 12345678Z gracias');
+    expect(span.category).toBe('DNI');
+    expect(span.confidence).toBe(1);
+  });
+
+  it('does not fire on something merely digit-shaped', () => {
+    for (const text of ['12345678', 'teléfono 986 123 456', 'factura 2026/0012', 'CP 15702']) {
+      expect(detectDni(text)).toHaveLength(0);
+    }
+  });
+
+  it('does not fire on an ID-shaped number inside a URL', () => {
+    expect(detectDni('https://ejemplo.gal/expedientes/76543210X')).toHaveLength(0);
+  });
+
+  // The measured cost of dropping the checksum gate, per the plan's settled
+  // trade-off: an 8-digit-plus-letter invoice or product code now over-masks.
+  // Visible in step 2 and untickable there; a missed ID would be silent.
+  it('over-masks an invoice-style code, knowingly', () => {
+    const spans = detectDni('Factura 20260012B pendiente');
+    expect(spans).toHaveLength(1);
+    expect(spans[0].category).toBe('INVALID_ID');
+    expect(spans[0].confidence).toBe(0.5);
   });
 });
 
@@ -109,9 +155,12 @@ describe('detectNie', () => {
     expect(spans[0].category).toBe('NIE');
   });
 
-  it('discards an invalid checksum outright', () => {
+  // D1: same treatment as DNI — a wrong check letter is tagged, not dropped.
+  it('tags a NIE with a bad check letter as INVALID_ID', () => {
     const spans = detectNie('mi nie es X1234567A gracias');
-    expect(spans).toHaveLength(0);
+    expect(spans).toHaveLength(1);
+    expect(spans[0].category).toBe('INVALID_ID');
+    expect(spans[0].confidence).toBe(0.9);
   });
 });
 

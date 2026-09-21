@@ -1,6 +1,6 @@
 export type KnownCategory =
   | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'COMPANY'
-  | 'DNI' | 'NIE' | 'IBAN' | 'CREDIT_CARD'
+  | 'DNI' | 'NIE' | 'INVALID_ID' | 'IBAN' | 'CREDIT_CARD'
   | 'MASKED_ID' | 'ID_CODE'
   | 'CUSTOM' | 'REGEX';
 
@@ -14,7 +14,8 @@ export interface MappingItem {
   placeholder: string; // e.g., "[[NAME_001]]", "[[ADDRESS_001]]"
   category: Category;
   confidence: number; // 1.0 dictionary/manual & checksum-validated regex;
-                       // < 1.0 heuristic regex (NAME 0.6, ALL-CAPS COMPANY 0.4) and NER
+                       // < 1.0 heuristic regex (NAME 0.6, ALL-CAPS COMPANY 0.4,
+                       // INVALID_ID 0.9 label-anchored / 0.5 bare) and NER
   source: 'dictionary' | 'regex' | 'ner' | 'manual';
   enabled: boolean;
   // Every original-text spelling this one placeholder stands for. Single-
@@ -83,6 +84,11 @@ export const RUNG = {
   SHIELD: 1, // legal citations / professional titles / date-time — never minted
   VALIDATED_REGEX: 2, // EMAIL / IBAN / CREDIT_CARD / DNI / NIE / PHONE / MASKED_ID
   ID_CODE: 3, // label-anchored codes (P7b), e.g. "Colegiada T-04250"
+  INVALID_ID: 3.5, // D1: DNI/NIE shape whose check letter disagrees. Below
+                   // ID_CODE on purpose — an explicit label ("Expediente
+                   // 45678912Q") is better evidence of what the number is
+                   // than its failed checksum, and both end up masked either
+                   // way. Above ADDRESS, which it can never overlap anyway.
   ADDRESS: 4,
   COMPANY: 5, // suffix and prefix forms
   NER: 5.5, // opt-in model (P7d) — outranks NAME and the ALL-CAPS COMPANY

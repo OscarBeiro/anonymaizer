@@ -22,7 +22,28 @@ in the restore path that only user-defined rules can trigger.
 
 ---
 
-### [ ] D1 — Tag ID-shaped numbers whose check letter is wrong
+### [x] D1 — Tag ID-shaped numbers whose check letter is wrong
+
+> **Done 2026-09-21 (v0.3.1).** `inspectDniNie` in `validators.ts` replaces the
+> boolean gate with shape + checksum + expected letter; `dniNieCheck` stays as a
+> wrapper. A valid number is still `DNI`/`NIE` at confidence 1 on
+> `RUNG.VALIDATED_REGEX`; an ID-shaped one with a wrong check letter is tagged
+> **`INVALID_ID`** — a separate category, not a lower-confidence `DNI`, because
+> the step-2 reviewer must be able to tell a verified ID from a guess and the
+> confidence column alone is not visible enough. New `RUNG.INVALID_ID = 3.5`,
+> below `ID_CODE`: an explicit label (`Expediente 45678912Q`) is better evidence
+> of what a number is than its failed checksum, and both end up masked anyway.
+>
+> A label anchor is **not** required — the fixture that motivated the session
+> (`… LAURA - 33112244F`, a signature block) has none, so requiring one would
+> have left the bench case unfixed. It raises confidence instead: 0.9 anchored
+> (`DNI`/`NIE`/`NIF`/`documento`/`identidad`, with `nº`/`es` filler), 0.5 bare.
+> The one hard exclusion is a URL/query context (`…/76543210X`). The accepted
+> over-mask (an 8-digit-plus-letter invoice code) is asserted in
+> `detectors.test.ts` so the cost is measured, per the standing trade-off.
+> `CLINICAL_REPORT_FIXTURE` keeps its invalid `33112244F` as a regression
+> witness, with a comment saying so, and gains a valid `12345678Z` on a new
+> last line for the valid-case assertion.
 
 > **The leak.** `validators.ts` (`dniNieCheck`) only *confirms* a candidate:
 > `DNI_LETTERS[digits % 23] === letter`. A number that is plainly a DNI/NIE but
@@ -194,5 +215,5 @@ drop a document that exercises the case, and look at step 2. For D1 and D2 in
 particular, use a `.csv` and a `.docx`, since that is where they were found.
 
 Re-check the entry chunk size (`npm run build`, `dist/assets/index-*.js`,
-**483.28 kB** as of the end of M3) if a session touches anything outside
+**483.66 kB** as of D1; **483.28 kB** at the end of M3) if a session touches anything outside
 `src/core/` — these are all detection changes, so it should not move.
