@@ -1,7 +1,7 @@
 {
   "name": "anonymaizer",
   "private": true,
-  "version": "0.2.0-beta.8",
+  "version": "0.2.0-beta.9",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +17,7 @@
     "jszip": "^3.10.2",
     "mammoth": "^1.12.3",
     "pdfjs-dist": "^6.3.289",
+    "postal-mime": "^3.0.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "turndown": "^7.2.4"
@@ -27,7 +28,7 @@
     "@types/react-dom": "^19.2.7",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.1.1",
-    "happy-dom": "^20.14.5",
+    "jsdom": "^30.1.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

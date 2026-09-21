@@ -699,7 +699,7 @@ Verified live from `file://` on a two-sheet workbook: **1 request total**, ISO
 dates instead of serial numbers, and `NAME`, `DNI`, `EMAIL` and `PHONE` all
 detected across both sheets.
 
-### [ ] P8g — `.eml` (letterparser / eml-parse-js)
+### [x] P8g — `.eml` (postal-mime — *neither* library the prompt named)
 
 > Add `src/lib/parsers/eml.ts`. Parse MIME, prefer the `text/plain` part; when
 > only `text/html` exists, convert it with the shared `src/lib/htmlToMarkdown.ts`
@@ -711,6 +711,53 @@ detected across both sheets.
 > correctly; a multipart/alternative message prefers the plain part; headers
 > appear in the output so `EMAIL`/`NAME` detection reaches them; a latin-1
 > message does not produce mojibake.
+
+**Outcome — done 2026-09-21.** `src/lib/parsers/eml.ts` with **postal-mime
+3.0.0**. 280 tests (from 267).
+
+- **Neither named library was the right one.** `letterparser` was last
+  published in 2024, `eml-parse-js` is on a beta. postal-mime is current
+  (2026-08), has **zero dependencies**, audits clean, ships types, is written
+  for the browser, and its tree contains no `fetch`/`XMLHttpRequest`/`Worker`
+  — checked, because hard rule 3 is about the dependency, not just our code.
+  Unlike `.xlsx` at P8f there was no case for hand-rolling: MIME is genuinely
+  nasty (nested multiparts, RFC 2047 encoded-words, the charset zoo, base64
+  split across line breaks) and here a maintained zero-dependency library
+  exists. The rule that decided both sessions is the same one — take the
+  dependency when it is healthy, write the code when it is not.
+- Headers are rendered into the Markdown, not dropped: From/To/Cc/Subject/Date
+  are the densest PII in an email — every one is a name or an address — so
+  they go where the detectors can see them.
+- text/plain is preferred over text/html when both exist; HTML-only messages go
+  through the shared `htmlToMarkdown.ts`. Attachments are dropped and warned
+  about **by name**, with the point spelled out that a filename is itself often
+  revealing.
+
+**The bug of the session, found only because the run was live.** The header
+block was first written as `**From:** …`. `*` and `_` are in `MASK_GLYPHS`
+(`src/core/detectors.ts`), so `**From:**` is a two-character mask run followed
+by four alphanumerics — a textbook `MASKED_ID`. In the browser every header
+label came back as `[[MASKED_ID_001]]:**`. The headers are now plain
+`Label: value` lines, and there is a test asserting the output contains no `**`
+at all. **This generalises to every parser that generates Markdown: no emphasis
+characters, ever.** It is the same hazard P7f documented for the HTML path,
+arriving from the opposite direction — there the markers came in from the
+document, here we were adding them ourselves.
+
+**A second environment divergence, and the test environment lost.** turndown
+returns an **empty string** under happy-dom for a full `<html>…</html>`
+document — which is exactly the shape an email's HTML part has — while a real
+browser and jsdom both convert it correctly. It failed *silently*, so the `.eml`
+parser looked broken when it was not. The `parsers-dom` project now runs on
+**jsdom**; happy-dom is removed. Third time this milestone that the test
+environment differed from the browser (mammoth's entry, pdfjs's build, now
+this): when they disagree, fix the environment, never the shipped code.
+
+**Size check:** entry chunk 483.11 kB (from 482.98 at P8f — holding).
+
+Verified live from `file://` on a quoted-printable Spanish message:
+**1 request total**, accents intact, and `NAME`, `EMAIL`, `DNI`, `PHONE` and
+`ID_CODE` detected across both the header block and the body.
 
 ### [ ] P8h — `.pptx` (jszip + DOMParser)
 

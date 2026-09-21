@@ -8,8 +8,14 @@ import { defineConfig } from 'vitest/config'
 // enforcement, not convenience (M3/P8a): src/core/ is pure TypeScript with
 // no DOM (CLAUDE.md rule 4), so it runs on `node` and a stray `document`
 // keeps failing there. The concrete parsers in src/lib/parsers/ use
-// DOMParser by design (.odt/.pptx/.eml), so only they get happy-dom.
+// DOMParser by design (.odt/.pptx), so only they get a DOM.
 // Widening core to a DOM environment would silently retire rule 4 — don't.
+//
+// jsdom rather than happy-dom (changed at P8g): happy-dom returned an **empty
+// string** from turndown for a full `<html>…</html>` document — the shape a
+// real email's HTML part has — where a browser and jsdom both convert it
+// correctly. It failed silently, which is the worst way for a test
+// environment to be wrong: the .eml parser looked broken when it was not.
 export default defineConfig({
   test: {
     projects: [
@@ -24,7 +30,7 @@ export default defineConfig({
       {
         test: {
           name: 'parsers-dom',
-          environment: 'happy-dom',
+          environment: 'jsdom',
           include: ['src/lib/parsers/**/*.test.ts'],
           exclude: ['**/node_modules/**'],
         },
