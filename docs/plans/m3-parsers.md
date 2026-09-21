@@ -41,21 +41,61 @@ vulnerable range.
 
 **What is left — start here tomorrow:**
 
-1. **Pin `wasmPaths`.** With the extern-wasm build, ort fetches its runtime
-   at NER opt-in time (this is what v2 did too, so it is not a new network
-   call — but it is now unpinned). The installed version is
-   `1.31.0-dev.20260914-8d85527a0`; confirm ort's default CDN URL actually
-   resolves for a `-dev` version, and if not set
-   `env.backends.onnx.wasm.wasmPaths` explicitly. A wrong URL fails *only*
-   when a user enables NER, which no test covers.
-2. **Verify NER in a real browser** — `npm run dev`, enable the toggle,
-   confirm: the model downloads, entities come back, the IndexedDB cache
-   reports a hit on reload, and "Delete model" still works. None of the 176
-   tests touch the worker; the whole migration is unverified at runtime.
-3. **Re-check the `file://` single-file path**, since the wasm fetch and the
-   cache both behave differently there — that is why `nerModelCache.ts`
-   exists at all.
-4. Then commit, push, and confirm Dependabot goes quiet on `main`.
+1. ~~**Pin `wasmPaths`.**~~ **Done 2026-09-21.** Confirmed by hand
+   (`curl -I`) that the default jsdelivr CDN URL resolves for the installed
+   `-dev` version (both `ort-wasm-simd-threaded.asyncify.{wasm,mjs}` return
+   200), so left unpinned; recorded the verification as a comment in
+   `ner.worker.ts`.
+2. ~~**Verify NER in a real browser.**~~ **Done 2026-09-21 — found and
+   fixed a real regression, not just a runtime check.** Driven via a
+   throwaway Playwright script (`npx playwright` + cached Chromium, no
+   project dependency added) against `npm run dev`: the model downloads,
+   caches correctly in IndexedDB (109MB ONNX + 27MB wasm, confirmed
+   `[NER cache] stored`/`hit` log lines), and reaches `status: 'ready'`.
+   First pass found **zero NER entities ever reached the anonymizer** —
+   `[[COMPANY_001]]`/`[[EMAIL_001]]` (regex/dictionary detectors) tagged
+   correctly, `John Smith`/`Maria Garcia` were left in plaintext.
+   **Root cause:** `@huggingface/transformers` v4's
+   `TokenClassificationPipeline._call` never sets `start`/`end` character
+   offsets at all (`// TODO: Add support for start and end` in
+   `node_modules/@huggingface/transformers/dist/transformers.js`); v2
+   computed these. `aggregateBioTokens` correctly drops every token with
+   no offset — the bug was upstream, not in our merge logic.
+   **Fix:** added `computeTokenOffsets` (`src/core/ner.ts`), a pure
+   function that reconstructs `start`/`end` by walking the token list in
+   order and matching each decoded `word` against `text` (exact-case
+   first, falling back to case-insensitive), treating a `##`-prefixed
+   WordPiece continuation as always sitting immediately after the
+   previous token regardless of its own B-/I- tag. That last part matters:
+   bert-base-NER under v4 was observed re-tagging a continuation subword
+   as a fresh `B-` instead of `I-` (e.g. "Acme" → `B-ORG "A"`, `B-ORG
+   "##c"`, `I-ORG "##me"`), which `aggregateBioTokens` had to be taught to
+   still merge (a `##` token can never start a new word). Also had to fix
+   a real offset-collision bug along the way: the pipeline's default
+   `ignore_labels: ['O']` drops every non-entity token, so there is no
+   "works"/"at" token to advance the cursor between "Smith" and "Acme" —
+   a case-insensitive search for "A" was matching the lowercase "a" inside
+   the skipped word "at" before reaching the real, capitalized "Acme".
+   Fixed by trying exact case first.
+   Added 8 new unit tests to `src/core/ner.test.ts` covering all of the
+   above (176 → 184 tests). Re-verified live in the browser after the
+   fix: `John Smith` → `[[NAME_001]]`, `Maria Garcia` → `[[NAME_002]]`,
+   `Acme Corp` → `[[COMPANY_002]]` (no more spurious extra entities),
+   confidence 1.0 on all. Also verified: reload → re-enabling NER made
+   **zero** new `model_quantized.onnx` requests (real IndexedDB cache
+   hit) and re-tagged names correctly; **Delete model** cleared the cache
+   and a subsequent re-enable did a full re-download, confirming the two
+   actions stay properly distinct.
+3. ~~**Re-check the `file://` single-file path.**~~ **Done 2026-09-21.**
+   Opened `dist/index.html` via `file://` in headless Chromium: exactly
+   one request total (the page itself) through a full paste → sanitize →
+   restore round trip — zero network calls, placeholders rendered
+   correctly. (NER itself not re-tested from `file://` — the ~104MB
+   download there is unchanged from the working `npm run dev` path and
+   P7d already covers the `file://`-specific IndexedDB-vs-CacheStorage
+   concern; nothing about the offset fix is `file://`-sensitive.)
+4. **Next: commit, push, and confirm Dependabot goes quiet on `main`.**
+   Not yet done — do this next.
 
 **Note:** `npm install` also warns `EBADENGINE` on Node 20.20.2 — something
 in the tree wants newer. Unrelated to the advisories; worth a look separately.
@@ -83,6 +123,17 @@ placeholder sort already prevents `[NAME_1]`/`[NAME_11]` prefix-eating
 don't dodge Markdown's own `[[wiki-link]]` syntax so gain nothing, and
 zero-padding fixes nothing the length-sort doesn't already fix. No action
 needed on those three; only the case-collision item above is real.
+
+**Backlog item — tag DNI/NIE with a wrong check letter too.**
+`validators.ts` (`DNI_LETTERS[digits % 23] === letter`) currently only
+confirms a candidate; a document number that *looks* like a DNI/NIE but has
+the wrong check letter (typo, OCR error, deliberately obscured) is not
+flagged as an ID at all today and leaks through unmasked. Suggested by the
+user 2026-09-21, e.g. `76.123.312-E` — worth computing the expected letter
+and tagging the number regardless, distinguishing "valid ID" from "ID-shaped
+number with a bad check letter" (perhaps a distinct category or a warning)
+rather than silently passing invalid ones through. Not yet scoped to a
+session — revisit when picking the next M3/backlog item.
 
 One prompt per format, one session each — plus a prep session first, because
 four decisions have to be made once rather than rediscovered (and answered
