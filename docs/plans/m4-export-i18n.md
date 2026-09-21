@@ -41,6 +41,55 @@ either panel's text to a file:
   relevant sub-step (2.3 Sanitized text, 3.2 Restored text) — not a new
   wizard step of its own.
 
+## Category toggles before detection runs
+
+**User request, recorded for scoping, not started (2026-09-21).** Right now
+every category is detected and shown in step 2.2's review table, and the only
+per-item control is the `enabled` checkbox on each already-minted
+`MappingItem` (`MappingPanels.tsx`) — a post-hoc opt-out, one row at a time.
+The ask is a pre-detection, per-*category* switch: decide before step 2.2
+whether NAME, ID_CODE/DNI/NIE, the D3 institution shield, etc. get anonymized
+at all, with sensible defaults and the user's own choice **persisted**, not
+re-picked every session.
+
+Scoping notes:
+
+- **Where in the wizard.** Likely a new sub-step ahead of 2.2 (a "2.1
+  Categories" screen) or a collapsible panel at the top of 2.2 itself —
+  needs a decision, but it must land *before* `runDetectionPipeline` executes
+  against the document, not just filter its output, since the point is to
+  skip detection work and noise the user doesn't want to review at all
+  (compare: today's `enabled` toggle still shows a disabled row in the
+  table — this is a coarser, earlier gate, not a replacement for it).
+- **Config shape.** A map of category → on/off (`Record<Category, boolean>`
+  or similar), defaulting all-on except whatever's already `enabled: false`
+  by default today (the ALL-CAPS `COMPANY_ACRONYM` heuristic, per
+  `RUNG.COMPANY_ACRONYM` in `types.ts`). `INVALID_ID` (D1) and any D3 shield
+  categories need their own defaults decided when this is built, not
+  inherited silently.
+- **Where the switch is read.** `runAllDetectors`/`runDeterministicDetectors`
+  /`runHeuristicDetectors` (`detectors.ts`) already compose per-category
+  detector functions — the natural seam is to pass the enabled-category set
+  into (or filter the output of) that composition, in `src/core/`, keeping
+  the rule that detection logic itself stays pure and framework-free.
+- **Persistence.** `src/lib/session.ts` already has the pattern to copy:
+  `loadRules`/`saveRules` round-trip `CustomDictionaryRule[]` through its own
+  `localStorage` key, separate from the per-document `MappingSession`. A
+  fourth key (`CATEGORY_SETTINGS_KEY` or similar) for "which categories does
+  this user generally want" fits the same shape — global defaults the user
+  can override and have remembered across documents, same spirit as the
+  existing rules editor.
+- **Interaction with custom dictionary rules.** `CustomDictionaryRule` mints
+  its own open-ended categories (`CATEGORY`-type rules, e.g.
+  `PROJECT_NAME`) — the toggle UI needs to grow to accommodate categories
+  that don't exist until a rule is saved, not just the fixed `KnownCategory`
+  list.
+
+No `P` block yet — needs a decision on the wizard placement (new sub-step vs.
+panel) before scoping the UI work, and should probably land after the D3/D4
+backlog and the MONEY detector above exist, since it needs a stable category
+list to build the toggle list from.
+
 ## Pseudonymization — plausible fake data instead of placeholders
 
 **User request, recorded for scoping, not started (2026-09-21).** Today every
