@@ -15,3 +15,4 @@ registerLazyParser(['docx'], async () => (await import('./docx')).parse);
 registerLazyParser(['pdf'], async () => (await import('./pdf')).parse);
 registerLazyParser(['odt'], async () => (await import('./odt')).parse);
 registerLazyParser(['csv'], async () => (await import('./csv')).parse);
+registerLazyParser(['xlsx'], async () => (await import('./xlsx')).parse);

@@ -629,7 +629,7 @@ unmasked because its check letter is wrong. That second one is
 `CLINICAL_REPORT_FIXTURE`'s own DNI, so the project's reference fixture has been
 carrying an undetectable ID all along.
 
-### [ ] P8f — `.xlsx` (SheetJS)
+### [x] P8f — `.xlsx` (hand-rolled on jszip — *not* SheetJS)
 
 > Add `src/lib/parsers/xlsx.ts` using SheetJS, one Markdown table per sheet with
 > the sheet name as a heading. Return `format: 'xlsx'`. Warn when formulas are
@@ -645,6 +645,59 @@ carrying an undetectable ID all along.
 > runtime network call, but it still needs a conscious choice: pin the npm
 > version and accept it, or vendor the CDN build. Decide before installing and
 > record which, the way P7d recorded the protobufjs advisory.
+>
+> **Decided: none of the above — no spreadsheet library at all.** See the
+> outcome below.
+
+**Outcome — done 2026-09-21.** `src/lib/parsers/xlsx.ts`, **no new
+dependency**. 267 tests (from 255).
+
+**The SheetJS decision, measured rather than assumed.** All three options in
+the trap above were priced in the container first:
+
+| Option | Result |
+| --- | --- |
+| `npm i xlsx` | still 0.18.5 (2022). `npm audit`: **1 high, "No fix available"** — prototype pollution + ReDoS, fixed only in the 0.19.3+/0.20.x CDN builds |
+| `npm i exceljs` | 2 moderate (via `uuid`), **22 MB** installed |
+| CDN tarball | current and patched, but puts a non-registry host in the lockfile, where Dependabot cannot see it and `npm ci` depends on it staying up |
+| vendoring the CDN build | ~900 kB blob in the repo that no reviewer will read and no tool will ever call stale |
+
+Taking the npm package would have reintroduced precisely the class of alert
+P8sec spent a whole session clearing. So: an .xlsx is a zip of XML and jszip is
+already in the tree for `.odt` — the reader is ~120 lines that can actually be
+audited, with zero advisories and nothing that could phone home. The user chose
+this option explicitly when the four were put side by side.
+
+What the reader does, and the three things that would have been wrong by
+default:
+
+- **Cells are placed by their `r` reference, not by sibling position.** A real
+  producer omits untouched cells entirely, so "the third `<c>`" is not "column
+  C" — assuming otherwise silently shifts every value after a gap into the
+  wrong column.
+- **Dates.** A date cell is a plain number; only its style says otherwise. The
+  reader resolves `cellXfs` positionally, treats the built-in date format ids
+  (14–22, 45–47) plus any custom `numFmt` whose format code contains a date
+  token as dates, and converts the serial — **including Excel's 1900 leap-year
+  bug**, which is why the offset changes at serial 60 rather than being a
+  constant. Quoted literals and `[…]` sections are stripped from a format code
+  first, so a currency format like `[$-409]#,##0.00` is not read as a date.
+  Tested at the 59/61 boundary.
+- **Shared strings.** Most text cells hold an index into `xl/sharedStrings.xml`
+  rather than text; an `si` may hold several `t` runs when the text was
+  formatted piecemeal, so its `textContent` is the string.
+
+Formulas use their cached value and warn that a stale save would show a stale
+number. Empty sheets are skipped, named in a warning. Sheets over 5000 rows
+warn, same threshold and reasoning as `.csv`. Deliberately not handled: merged
+cells, charts, pivot tables, defined names — none carries text a detector needs
+that the cells do not already have.
+
+**Size check:** entry chunk 482.98 kB (from 482.80 at P8e — holding).
+
+Verified live from `file://` on a two-sheet workbook: **1 request total**, ISO
+dates instead of serial numbers, and `NAME`, `DNI`, `EMAIL` and `PHONE` all
+detected across both sheets.
 
 ### [ ] P8g — `.eml` (letterparser / eml-parse-js)
 
