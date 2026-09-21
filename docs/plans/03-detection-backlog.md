@@ -165,7 +165,33 @@ in the restore path that only user-defined rules can trigger.
 
 ---
 
-### [ ] D3 — Shield lexicon for public institutions
+### [x] D3 — Shield lexicon for public institutions
+
+> **Done 2026-09-21 (v0.3.3).** `detectPublicInstitutions` in `detectors.ts`
+> follows the existing shield shape exactly: a small `INSTITUTION_HEADS`
+> array (`Seguridad Social`, `Tesorería General`, `Agencia Tributaria`,
+> `Hacienda`, `INSS`, `SEPE`, `INEM`, `Ministerio`, `Consellería`,
+> `Consejería`, `Ayuntamiento`, `Diputación`, `Junta`, `Xunta`) reuses the
+> same `LEGAL_CONTINUATION` connector pattern `detectLegalCitations` already
+> has, so `Ministerio de Trabajo` and `Xunta de Galicia` extend correctly and
+> stop at the first lowercase, non-connector word. Wired into
+> `runShieldDetectors` alongside the other two shields, so it wins §4a
+> arbitration the same way and is dropped before minting.
+>
+> This is explicitly *not* the session that introduces a shared lexicon-pack
+> shape for `NAME_STOPWORDS`/`COMPANY_SUFFIXES`/this list — said so in a
+> comment above `INSTITUTION_HEADS`, kept small and obviously Spain-only, so
+> that migration stays mechanical whenever it happens.
+>
+> Tests (`shields.test.ts`): each institution above shields on its own; a
+> person named in the same sentence as an institution is still a NAME
+> (`detectNames` is unaffected by the shield in isolation); a title/shield
+> does not swallow a name that follows it; and — the actual bug — running
+> `Seguridad Social y Agencia Tributaria remitieron el requerimiento.`
+> through the real arbitration pipeline (`runAllDetectors` +
+> `runDetectionPipeline`, not `detectNames` alone) now leaves the text
+> untouched, where before this session it minted a false NAME spanning both
+> institutions.
 
 > **The noise this time, not a leak.** Relaxing the sentence-initial NAME guard
 > (see [`02-name-line-start.md`](02-name-line-start.md)) closed a real leak and
@@ -200,7 +226,37 @@ in the restore path that only user-defined rules can trigger.
 
 ---
 
-### [ ] D4 — Canonicalize custom category casing so restore cannot collide
+### [x] D4 — Canonicalize custom category casing so restore cannot collide
+
+> **Done 2026-09-21 (v0.3.4).** Picked the second candidate fix: reject a
+> case-only `targetCategory` collision at rule-creation time in
+> `ruleValidation.ts`, not silent canonicalization. `validateRuleInput` grows
+> two optional parameters — `existingRules` and `excludeRuleId` (so editing a
+> rule doesn't collide with itself) — and returns an error naming both
+> categories when a new/edited CATEGORY rule's `targetCategory` differs only
+> in case from one already in the session. `RulesEditor.tsx` passes `rules`
+> and the in-progress `editingId` through. `parseImportedRules` gained the
+> same check across the whole imported batch plus whatever's already in the
+> session, so an import can't reintroduce the collision the form itself
+> refuses to create — `RulesEditor`'s `importRules` now passes the current
+> `rules` in.
+>
+> A pre-existing session that already has such a pair (created before this
+> fix, or hand-edited JSON) is left alone: `reverseText` itself is unchanged.
+> It was already deterministic — mappings are processed in array order, so
+> the first one wins consistently — just not obviously *correct*, and fixing
+> that would mean picking a winner among two categories the user chose on
+> purpose, which isn't this session's call to make. Asserted in
+> `reverse.test.ts` rather than "fixed": same input, same output, twice.
+>
+> Tests: `ruleValidation.test.ts` covers the rejection (message names both
+> categories), acceptance of an exact-case match and of a genuinely distinct
+> category, the `excludeRuleId` self-exclusion, FIXED rules being ignored,
+> and both import-time cases (collides with itself, collides with the
+> session). `reverse.test.ts` adds the two behavioural guarantees asked for:
+> a single custom category still restores case-insensitively (unchanged,
+> deliberate), and a legacy colliding pair restores the same way on repeated
+> calls.
 
 > `reverseText`'s restore regex runs case-insensitive (the `i` flag) on purpose,
 > so an LLM that echoes `[name_1]` in lowercase still restores. The cost is that
@@ -246,5 +302,6 @@ drop a document that exercises the case, and look at step 2. For D1 and D2 in
 particular, use a `.csv` and a `.docx`, since that is where they were found.
 
 Re-check the entry chunk size (`npm run build`, `dist/assets/index-*.js`,
-**484.14 kB** as of D2; 483.66 kB after D1; **483.28 kB** at the end of M3) if a session touches anything outside
-`src/core/` — these are all detection changes, so it should not move.
+**485.33 kB** as of D4 (D4 touches `RulesEditor.tsx`, outside `src/core/`);
+484.14 kB after D2 and D3 (D3 stayed inside `src/core/`, so unchanged from
+D2); 483.66 kB after D1; **483.28 kB** at the end of M3.

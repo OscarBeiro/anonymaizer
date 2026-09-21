@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { detectDateTimes, detectLegalCitations, detectNames, detectProfessionalTitles } from './detectors';
+import {
+  detectDateTimes,
+  detectLegalCitations,
+  detectNames,
+  detectProfessionalTitles,
+  detectPublicInstitutions,
+  runAllDetectors,
+} from './detectors';
+import { runDetectionPipeline } from './pipeline';
 
 describe('detectLegalCitations', () => {
   it.each([
@@ -31,6 +39,47 @@ describe('detectProfessionalTitles', () => {
 
     const names = detectNames('La Psicóloga Ester Cuni firmó el informe.');
     expect(names.some((s) => s.text === 'Ester Cuni')).toBe(true);
+  });
+});
+
+describe('detectPublicInstitutions', () => {
+  it.each([
+    'Seguridad Social',
+    'Tesorería General de la Seguridad Social',
+    'Agencia Tributaria',
+    'Hacienda',
+    'INSS',
+    'SEPE',
+    'INEM',
+    'Ministerio de Trabajo',
+    'Consellería de Sanidade',
+    'Consejería de Educación',
+    'Ayuntamiento de Vigo',
+    'Diputación de Pontevedra',
+    'Junta de Andalucía',
+    'Xunta de Galicia',
+  ])('shields %s', (institution) => {
+    const spans = detectPublicInstitutions(`Se presentó ante la ${institution} el lunes.`);
+    expect(spans.some((s) => s.text === institution && s.shield)).toBe(true);
+  });
+
+  it('does not let two institutions joined by "y" survive arbitration as a NAME', () => {
+    const text = 'Seguridad Social y Agencia Tributaria remitieron el requerimiento.';
+    const { anonymizedText } = runDetectionPipeline(text, runAllDetectors(text));
+    expect(anonymizedText).toBe(text);
+  });
+
+  it('still detects a person named in the same sentence as an institution', () => {
+    const names = detectNames('Mario Prieto Casal presentó el escrito ante la Agencia Tributaria.');
+    expect(names.some((s) => s.text === 'Mario Prieto Casal')).toBe(true);
+  });
+
+  it('does not let the shield swallow a name that follows it', () => {
+    const shields = detectPublicInstitutions('El Ministerio de Trabajo convocó a Laura Ferreiro.');
+    expect(shields.map((s) => s.text)).toEqual(['Ministerio de Trabajo']);
+
+    const names = detectNames('El Ministerio de Trabajo convocó a Laura Ferreiro.');
+    expect(names.some((s) => s.text === 'Laura Ferreiro')).toBe(true);
   });
 });
 

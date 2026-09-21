@@ -62,6 +62,29 @@ describe('reverseText', () => {
     expect(reverseText('Hola [[NAME_001]].', mappings)).toBe('Hola [[NAME_001]].');
   });
 
+  it('D4: restores a placeholder that echoes the wrong case for a single custom category', () => {
+    const mappings = [mapping({ placeholder: '[[CUSTOM_001]]', originalText: 'Acme Corp', category: 'CUSTOM' })];
+    expect(reverseText('Client is [[custom_001]] per the contract.', mappings)).toBe(
+      'Client is Acme Corp per the contract.',
+    );
+  });
+
+  it('D4: a legacy session with a case-only category collision still restores deterministically', () => {
+    // ruleValidation now rejects new rules like this, but a session created
+    // before that fix could already contain the pair. reverseText itself is
+    // unchanged: it processes mappings in array order, so the first match
+    // wins consistently across runs rather than varying at random.
+    const mappings = [
+      mapping({ placeholder: '[[Custom_001]]', originalText: 'first', category: 'Custom' }),
+      mapping({ placeholder: '[[CUSTOM_001]]', originalText: 'second', category: 'CUSTOM' }),
+    ];
+    const aiResponse = 'One: [[Custom_001]]. Two: [[CUSTOM_001]].';
+    const first = reverseText(aiResponse, mappings);
+    const second = reverseText(aiResponse, mappings);
+    expect(first).toBe(second);
+    expect(first).toBe('One: first. Two: first.');
+  });
+
   it('escapes regex metacharacters in the category name', () => {
     const mappings = [mapping({ placeholder: '[[A.B_001]]', originalText: 'secret', category: 'A.B' })];
     // A literal "." must not act as a wildcard: "AXB_001" must not match.

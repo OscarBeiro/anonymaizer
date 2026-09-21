@@ -29,7 +29,7 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
   const [importError, setImportError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const error = validateRuleInput(form);
+  const error = validateRuleInput(form, rules, editingId ?? undefined);
   const regexInvalid = form.isRegex && !isValidRegexPattern(form.termOrPattern) && form.termOrPattern.length > 0;
 
   const startEdit = (rule: CustomDictionaryRule) => {
@@ -83,7 +83,7 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
     setImportError(null);
     try {
       const text = await file.text();
-      const imported = parseImportedRules(text).map((r) => ({ ...r, id: newRuleId() }));
+      const imported = parseImportedRules(text, rules).map((r) => ({ ...r, id: newRuleId() }));
       onChange([...rules, ...imported]);
     } catch (e) {
       setImportError(e instanceof Error ? e.message : 'Import failed.');

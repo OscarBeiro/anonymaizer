@@ -700,6 +700,37 @@ export const detectProfessionalTitles = (text: string): DetectedSpan[] =>
     shield: true,
   }));
 
+// D3: relaxing detectNames' sentence-initial guard (02-name-line-start.md)
+// closed a leak but opened one false positive — two capitalized public-body
+// names joined by "y" (`Seguridad Social y Agencia Tributaria`) have exactly
+// NAME's shape. Not a lexicon meant to grow the way NAME_STOPWORDS or
+// COMPANY_SUFFIXES might: this stays a small, obviously Spain-only array: if
+// this becomes the session that introduces a shared lexicon-pack shape (see
+// the M1 backlog), that decision happens there, not by quietly growing this
+// list.
+const INSTITUTION_HEADS = [
+  'Tesorería General', 'Seguridad Social', 'Agencia Tributaria', 'Hacienda',
+  'INSS', 'SEPE', 'INEM', 'Ministerio', 'Consellería', 'Consejería',
+  'Ayuntamiento', 'Diputación', 'Junta', 'Xunta',
+];
+
+const INSTITUTION_REGEX = new RegExp(
+  `\\b(?:${INSTITUTION_HEADS.join('|')})(?:${WS}+${LEGAL_CONTINUATION})*`,
+  'gu',
+);
+
+export const detectPublicInstitutions = (text: string): DetectedSpan[] =>
+  collect(new RegExp(INSTITUTION_REGEX), text, (m) => ({
+    start: m.index,
+    end: m.index + m[0].length,
+    category: 'SHIELD',
+    text: m[0],
+    confidence: 1,
+    source: 'regex',
+    rung: RUNG.SHIELD,
+    shield: true,
+  }));
+
 // Dates and timestamps that would otherwise pass PHONE's digit-count check
 // (e.g. a signature block's "2026.09.18 13:42:10"). Shielding the whole
 // date/time run is cheaper and more robust than teaching PHONE to recognize
@@ -730,6 +761,7 @@ export const detectDateTimes = (text: string): DetectedSpan[] =>
 export const runShieldDetectors = (text: string): DetectedSpan[] => [
   ...detectLegalCitations(text),
   ...detectProfessionalTitles(text),
+  ...detectPublicInstitutions(text),
   ...detectDateTimes(text),
 ];
 

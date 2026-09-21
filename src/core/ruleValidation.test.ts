@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isValidRegexPattern, parseImportedRules, validateRuleInput } from './ruleValidation';
+import type { CustomDictionaryRule } from './types';
 
 describe('isValidRegexPattern', () => {
   it('accepts a valid pattern', () => {
@@ -37,6 +38,58 @@ describe('validateRuleInput', () => {
   it('rejects an unknown replacement type', () => {
     expect(validateRuleInput({ ...base, replacementType: 'BOGUS' })).toMatch(/FIXED or CATEGORY/);
   });
+
+  describe('D4 — case-only category collisions', () => {
+    const existing: CustomDictionaryRule[] = [
+      { id: 'r1', termOrPattern: 'Acme', replacementType: 'CATEGORY', targetCategory: 'Custom', isRegex: false },
+    ];
+
+    it('rejects a new rule whose category differs only in case from an existing one', () => {
+      const result = validateRuleInput(
+        { ...base, replacementType: 'CATEGORY', targetCategory: 'CUSTOM' },
+        existing,
+      );
+      expect(result).toMatch(/differs only in case/i);
+      expect(result).toContain('CUSTOM');
+      expect(result).toContain('Custom');
+    });
+
+    it('accepts a new rule whose category matches an existing one exactly', () => {
+      const result = validateRuleInput(
+        { ...base, replacementType: 'CATEGORY', targetCategory: 'Custom' },
+        existing,
+      );
+      expect(result).toBeNull();
+    });
+
+    it('accepts a distinct category with no collision', () => {
+      const result = validateRuleInput(
+        { ...base, replacementType: 'CATEGORY', targetCategory: 'PROJECT_NAME' },
+        existing,
+      );
+      expect(result).toBeNull();
+    });
+
+    it('does not flag a rule against itself when editing (excludeRuleId)', () => {
+      const result = validateRuleInput(
+        { ...base, replacementType: 'CATEGORY', targetCategory: 'Custom' },
+        existing,
+        'r1',
+      );
+      expect(result).toBeNull();
+    });
+
+    it('ignores FIXED rules when checking for category collisions', () => {
+      const fixedOnly: CustomDictionaryRule[] = [
+        { id: 'r2', termOrPattern: 'Beta', replacementType: 'FIXED', isRegex: false },
+      ];
+      const result = validateRuleInput(
+        { ...base, replacementType: 'CATEGORY', targetCategory: 'CUSTOM' },
+        fixedOnly,
+      );
+      expect(result).toBeNull();
+    });
+  });
 });
 
 describe('parseImportedRules', () => {
@@ -61,5 +114,33 @@ describe('parseImportedRules', () => {
       { id: '2', termOrPattern: '', replacementType: 'FIXED', isRegex: false },
     ]);
     expect(() => parseImportedRules(json)).toThrow(/invalid shape/i);
+  });
+
+  describe('D4 — case-only category collisions', () => {
+    it('rejects an import where two of its own rules collide only in case', () => {
+      const json = JSON.stringify([
+        { id: '1', termOrPattern: 'Alpha', replacementType: 'CATEGORY', targetCategory: 'Custom', isRegex: false },
+        { id: '2', termOrPattern: 'Beta', replacementType: 'CATEGORY', targetCategory: 'CUSTOM', isRegex: false },
+      ]);
+      expect(() => parseImportedRules(json)).toThrow(/differs only in case/i);
+    });
+
+    it('rejects an import that collides with a rule already in the session', () => {
+      const existing: CustomDictionaryRule[] = [
+        { id: 'r1', termOrPattern: 'Acme', replacementType: 'CATEGORY', targetCategory: 'Custom', isRegex: false },
+      ];
+      const json = JSON.stringify([
+        { id: '1', termOrPattern: 'Alpha', replacementType: 'CATEGORY', targetCategory: 'CUSTOM', isRegex: false },
+      ]);
+      expect(() => parseImportedRules(json, existing)).toThrow(/differs only in case/i);
+    });
+
+    it('accepts an import with distinct categories', () => {
+      const json = JSON.stringify([
+        { id: '1', termOrPattern: 'Alpha', replacementType: 'CATEGORY', targetCategory: 'Custom', isRegex: false },
+        { id: '2', termOrPattern: 'Beta', replacementType: 'CATEGORY', targetCategory: 'PROJECT_NAME', isRegex: false },
+      ]);
+      expect(parseImportedRules(json)).toHaveLength(2);
+    });
   });
 });
