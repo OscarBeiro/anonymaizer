@@ -146,4 +146,64 @@ describe('detectNames', () => {
     const spans = detectNames('Contactado por J. Smith ayer.');
     expect(spans.some((s) => s.text === 'J. Smith')).toBe(true);
   });
+
+  // D2: "Surname Surname, Given" is one person. The base regex above never
+  // crosses a comma, so without this the comma ends the candidate and the
+  // given name is left in plain text — worse than an ordinary miss, since
+  // the mapping doesn't record them as one person either.
+  describe('comma form (D2)', () => {
+    it('reads "Surname Surname, Given" as one NAME span covering the whole string', () => {
+      const spans = detectNames('Ferreiro Iglesias, Laura firmó el acta.');
+      expect(spans).toHaveLength(1);
+      expect(spans[0].category).toBe('NAME');
+      // The document range covers the literal comma-bearing text — only the
+      // recorded span.text is reordered (see the "given-name-first" test).
+      expect(spans[0].start).toBe(0);
+      expect(spans[0].end).toBe('Ferreiro Iglesias, Laura'.length);
+    });
+
+    it('canonicalizes the recorded text given-name-first, comma dropped', () => {
+      const [span] = detectNames('Ferreiro Iglesias, Laura firmó el acta.');
+      expect(span.text).toBe('Laura Ferreiro Iglesias');
+    });
+
+    it('does not require the comma form — a plain given-first name is untouched', () => {
+      const spans = detectNames('Laura Ferreiro firmó el acta.');
+      expect(spans.map((s) => s.text)).toEqual(['Laura Ferreiro']);
+    });
+
+    it('does not widen across the comma when only one token precedes it', () => {
+      // The trap from the plan: "Mario, Laura y Ana" is a list, not a
+      // two-part name — "Mario" alone never clears the 2-token floor that
+      // gates the comma extension in the first place.
+      const spans = detectNames('Mario, Laura y Ana asistieron.');
+      expect(spans.some((s) => s.text.startsWith('Mario'))).toBe(false);
+    });
+
+    it('does not swallow a locality pair', () => {
+      expect(detectNames('Vive en Madrid, Spain desde hace años.')).toHaveLength(0);
+    });
+
+    it('does not swallow a company suffix across the comma', () => {
+      const spans = detectNames('Contrató a Acme Consulting, S.L. para el proyecto.');
+      // "Acme Consulting" still matches as NAME on its own (arbitration in
+      // the full pipeline is what lets COMPANY win it — see pipeline.test.ts
+      // / detectors' §4a ordering), but the span must stop before the comma.
+      expect(spans.map((s) => s.text)).toEqual(['Acme Consulting']);
+    });
+
+    it('does not swallow an ID that happens to follow the comma', () => {
+      expect(detectNames('Firmante: Prieto, 45678912S')).toHaveLength(0);
+    });
+
+    it('does not swallow a non-name sentence fragment after the comma', () => {
+      const spans = detectNames('Ferreiro Iglesias, responsable del proyecto y firmante del acta.');
+      expect(spans.map((s) => s.text)).toEqual(['Ferreiro Iglesias']);
+    });
+
+    it('stops at a table cell boundary instead of reaching into the next cell', () => {
+      const spans = detectNames('| Prieto Casal, Mario | 45678912S |');
+      expect(spans.map((s) => s.text)).toEqual(['Mario Prieto Casal']);
+    });
+  });
 });

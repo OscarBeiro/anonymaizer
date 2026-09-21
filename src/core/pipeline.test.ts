@@ -76,4 +76,24 @@ describe('runDetectionPipeline', () => {
 
     expect(mappings.map((m) => m.category)).toEqual(['DNI']);
   });
+
+  // D2: "Ferreiro Iglesias, Laura" and "Laura Ferreiro" name the same
+  // person. Before D2 the comma ended the NAME candidate, so the mapping saw
+  // two entities and only half-masked the comma form — the given name stayed
+  // in plain text as a bare "Laura".
+  it('clusters the surname-first comma form with a plain given-first mention into one placeholder', () => {
+    const text = 'Ferreiro Iglesias, Laura firmó el acta. Más tarde, Laura Ferreiro lo confirmó.';
+    const candidates = runAllDetectors(text);
+    const { mappings, anonymizedText } = runDetectionPipeline(text, candidates);
+
+    const nameMappings = mappings.filter((m) => m.category === 'NAME');
+    expect(nameMappings).toHaveLength(1);
+    expect(nameMappings[0].originalText).toBe('Laura Ferreiro Iglesias'); // given-name-first
+    expect(nameMappings[0].variants).toEqual(
+      expect.arrayContaining(['Laura Ferreiro Iglesias', 'Laura Ferreiro']),
+    );
+    expect(anonymizedText).toBe(
+      '[[NAME_001]] firmó el acta. Más tarde, [[NAME_001]] lo confirmó.',
+    );
+  });
 });

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { runAllDetectors } from '../../core/detectors';
+import { runDetectionPipeline } from '../../core/pipeline';
 import { parse } from './csv';
 
 const toBytes = (text: string): ArrayBuffer => new TextEncoder().encode(text).buffer;
@@ -88,5 +90,26 @@ describe('.csv parser', () => {
   it('strips a UTF-8 BOM so the first header is not corrupted', async () => {
     const { markdown } = await parse(toBytes('﻿Nombre,DNI\nMario,45678912S'));
     expect(markdown.startsWith('| Nombre |')).toBe(true);
+  });
+
+  // D2, end to end: found at P8e in exactly this shape — a contact-list
+  // export with "Apellidos, Nombre" columns quoted together (see "keeps a
+  // delimiter that sits inside a quoted field" above), read alongside a
+  // second row naming the same person given-first. Round-tripped through the
+  // real .csv parser rather than a hand-built string, so the parser's own
+  // Markdown-table escaping is exercised too, not just detectNames in
+  // isolation.
+  it('carries the "Apellidos, Nombre" case through parsing to one clustered NAME (D2)', async () => {
+    const { markdown } = await parse(
+      toBytes('Nombre,Cargo\n"Ferreiro Iglesias, Laura",Psicóloga\n"Laura Ferreiro",Testigo'),
+    );
+    const { mappings, anonymizedText } = runDetectionPipeline(markdown, runAllDetectors(markdown));
+
+    const nameMappings = mappings.filter((m) => m.category === 'NAME');
+    expect(nameMappings).toHaveLength(1);
+    expect(nameMappings[0].originalText).toBe('Laura Ferreiro Iglesias');
+    expect(anonymizedText).not.toContain('Laura');
+    expect(anonymizedText).toContain('| [[NAME_001]] | Psicóloga |');
+    expect(anonymizedText).toContain('| [[NAME_001]] | Testigo |');
   });
 });

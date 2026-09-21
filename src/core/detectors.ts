@@ -299,7 +299,9 @@ export const runDeterministicDetectors = (text: string): DetectedSpan[] => [
 ];
 
 // Legal-form suffixes, longest/most-specific first so alternation doesn't
-// stop at a shorter overlapping prefix (e.g. "SLU" before "SL").
+// stop at a shorter overlapping prefix (e.g. "SLU" before "SL"). Hoisted
+// above the NAME section (D2) because detectNames' comma-continuation guard
+// needs it too, to keep "Acme Consulting, S.L." from being read as a person.
 const COMPANY_SUFFIXES = [
   'S\\.L\\.U\\.', 'S\\.A\\.U\\.', 'S\\.Coop\\.', 'S\\.L\\.', 'S\\.A\\.',
   'SLU', 'SAU', 'SCP', 'SL', 'SA',
@@ -535,6 +537,61 @@ const PRECEDING_ATTACHED_RE = /[\p{L}\p{N}*·•_]$/u;
 const startsAttachedToPrevious = (text: string, index: number): boolean =>
   index > 0 && PRECEDING_ATTACHED_RE.test(text[index - 1]);
 
+// D2: "Ferreiro Iglesias, Laura" is one person, not a truncated surname plus
+// a stray given name left in plain text. The base NAME_REGEX above never
+// crosses a comma (deliberately — WS only, no comma in the separator), so a
+// candidate ending right at one is exactly the "Surname Surname," half that
+// this exists to complete.
+//
+// Capped at 1-2 trailing tokens ("require the trailing part to be short") so
+// a citation or a sentence fragment after the comma can't be mistaken for a
+// name continuation, and the trailing capture itself is excluded when its
+// first token is a company suffix, a stopword/title (peeled the same way a
+// leading label is) or a structure head — that's what keeps "Acme
+// Consulting, S.L." and "Ferreiro Iglesias, responsable del proyecto…" from
+// being swallowed. A table cell boundary ("Prieto Casal, Mario | 45678912S")
+// needs no special case: "|" and a digit-shaped token are not NAME_TOKEN
+// shaped, so the trailing capture simply stops at "Mario" on its own.
+// Tested against the raw text right after "," + whitespace — not against
+// what COMMA_CONTINUATION_RE captures, because a suffix like "S.L." is two
+// NAME_TOKENs' worth of characters ("S." then "L.") while the continuation
+// only ever captures one NAME_TOKEN before deciding whether to keep going;
+// checking the untruncated tail catches the suffix regardless of where the
+// token boundary falls.
+// \b, not a lookahead, would fail here exactly like it would in
+// COMPANY_SUFFIX_REGEX: a dotted suffix ends in ".", a non-word char, so
+// "L." followed by a space has no word/non-word transition for \b to catch.
+const COMMA_TRAILING_EXCLUSION_RE = new RegExp(
+  `^(?:${COMPANY_SUFFIXES.join('|')}|${LEADING_LABELS.join('|')}|${[...STRUCTURE_HEADS].join('|')})` +
+    '(?=[\\s.,;:!?)]|$)',
+  'iu',
+);
+const COMMA_CONTINUATION_RE = new RegExp(`^,${WS}*(${NAME_TOKEN}(?:${WS}+${NAME_TOKEN})?)`, 'u');
+const COMMA_WS_RE = new RegExp(`^,${WS}*`, 'u');
+
+/**
+ * Reorders the comma form to given-name-first for clustering. `entities.ts`
+ * clusters by token set, order-independent, so this is purely about what the
+ * cluster's *canonical* spelling ends up being (`buildMappings` picks the
+ * longest variant as canonical) — a reordered "Laura Ferreiro Iglesias" is
+ * itself a normal given-first name and wins that comparison cleanly, whereas
+ * the literal, comma-bearing surname-first text would be an odd thing to
+ * show the user as the canonical spelling of a person.
+ */
+const tryExtendCommaForm = (
+  text: string,
+  matchText: string,
+  start: number,
+): { text: string; end: number } | null => {
+  const tail = text.slice(start + matchText.length);
+  const afterComma = COMMA_WS_RE.exec(tail);
+  if (!afterComma || COMMA_TRAILING_EXCLUSION_RE.test(tail.slice(afterComma[0].length))) return null;
+  const continuation = COMMA_CONTINUATION_RE.exec(tail);
+  if (!continuation) return null;
+  const given = continuation[1];
+  return { text: `${given} ${matchText}`, end: start + matchText.length + continuation[0].length };
+};
+
 export const detectNames = (text: string): DetectedSpan[] =>
   collect(new RegExp(NAME_REGEX), text, (m) => {
     const { text: matchText, start } = stripLeadingLabels(m[0], m.index);
@@ -548,8 +605,24 @@ export const detectNames = (text: string): DetectedSpan[] =>
     // heading like "Evaluación Externa Anual"; that is reviewable in step 2,
     // where an unmasked name is not.
     if (isSentenceInitial(text, start) && containsStopword(matchText)) return null;
-    if (isLabelColon(text, start + matchText.length)) return null;
     if (startsAttachedToPrevious(text, start)) return null;
+
+    const extended = tryExtendCommaForm(text, matchText, start);
+    if (extended) {
+      // The label-colon guard below only applies to the un-extended form: a
+      // comma-form match, by construction, never ends right before a colon.
+      return {
+        start,
+        end: extended.end,
+        category: 'NAME',
+        text: extended.text,
+        confidence: 0.6,
+        source: 'regex',
+        rung: RUNG.NAME,
+      };
+    }
+
+    if (isLabelColon(text, start + matchText.length)) return null;
     return {
       start,
       end: start + matchText.length,

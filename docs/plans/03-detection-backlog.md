@@ -92,7 +92,38 @@ in the restore path that only user-defined rules can trigger.
 
 ---
 
-### [ ] D2 — Read `Surname Surname, Given` as one person
+### [x] D2 — Read `Surname Surname, Given` as one person
+
+> **Done 2026-09-21 (v0.3.2).** `detectNames` (`detectors.ts`) gets a
+> comma-continuation step, tried only after the base match clears the
+> existing 2-token floor: if `,${WS}*` is immediately followed by 1-2 more
+> `NAME_TOKEN`s, the span widens to cover the whole `Surname Surname, Given`
+> range, and `span.text` is *reordered* to given-name-first with the comma
+> dropped (`"Laura Ferreiro Iglesias"`) rather than kept as the literal
+> comma-bearing substring. `entities.ts` clusters by token set already
+> (order-independent), so that reordered text just is the record D2 asked
+> for; no change needed there. `buildMappings` then picks it as canonical on
+> length as usual, which for a reordered three-token form beats a shorter
+> `"Laura Ferreiro"` mention elsewhere — given-name-first, as required,
+> without inventing a second canonicalization rule.
+>
+> The trailing capture is rejected — falling back to the un-extended, comma-
+> less match — when the text right after the comma (checked on the raw
+> tail, not the truncated capture group, so a dotted suffix like `S.L.` is
+> caught regardless of where `NAME_TOKEN` would have stopped) starts with a
+> company suffix, a stopword/title, or a structure head. The "list of
+> people" trap (`Mario, Laura y Ana`) needs no separate exclusion: `Mario`
+> alone never clears the pre-comma 2-token floor, so extension is never
+> attempted. The table-row trap needs none either: `|` and a digit-shaped
+> cell are not `NAME_TOKEN`-shaped, so the capture stops at the given name on
+> its own.
+>
+> Tests: `company-name.test.ts` (`detectNames` in isolation — the comma
+> form, the given-name-first text, and every trap from the plan: locality
+> pair, company suffix, ID after the comma, sentence fragment, table cell),
+> `pipeline.test.ts` (the comma form clustering with a plain mention into one
+> placeholder end to end) and `csv.test.ts` (the P8e case round-tripped
+> through the real `.csv` parser, not a hand-built string).
 
 > **The leak, and it is the nastier kind.** A contact list holding
 > `Ferreiro Iglesias, Laura` masks as `[[NAME_002]], Laura`. The comma ends the
@@ -215,5 +246,5 @@ drop a document that exercises the case, and look at step 2. For D1 and D2 in
 particular, use a `.csv` and a `.docx`, since that is where they were found.
 
 Re-check the entry chunk size (`npm run build`, `dist/assets/index-*.js`,
-**483.66 kB** as of D1; **483.28 kB** at the end of M3) if a session touches anything outside
+**484.14 kB** as of D2; 483.66 kB after D1; **483.28 kB** at the end of M3) if a session touches anything outside
 `src/core/` — these are all detection changes, so it should not move.
