@@ -40,7 +40,18 @@ export default defineConfig({
           // correctly typed. Vitest resolves the Node entry instead, and the
           // parser then throws on every document, so the alias belongs here —
           // in the test config only, never leaking into what ships.
-          alias: { mammoth: 'mammoth/mammoth.browser.js' },
+          alias: {
+            mammoth: 'mammoth/mammoth.browser.js',
+            // Same trap, P8c's instance of it. pdfjs's default entry refuses
+            // to run outside a browser ("Please use the `legacy` build in
+            // Node.js environments") and its worker cannot be loaded from the
+            // http:// module URL Vitest serves, so tests get the legacy build
+            // plus a workerSrc stub that leaves pdfjs on the main thread. The
+            // parser keeps importing plain 'pdfjs-dist' with a bundled worker,
+            // which is what belongs in a browser.
+            'pdfjs-dist': 'pdfjs-dist/legacy/build/pdf.mjs',
+            './pdfWorkerSrc': './__fixtures__/pdfWorkerSrc.node.ts',
+          },
         },
       },
     ],

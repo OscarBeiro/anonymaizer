@@ -126,6 +126,30 @@ don't dodge Markdown's own `[[wiki-link]]` syntax so gain nothing, and
 zero-padding fixes nothing the length-sort doesn't already fix. No action
 needed on those three; only the case-collision item above is real.
 
+**Backlog item — NAME detection misses any name at the start of a line
+(found 2026-09-21 during P8c, high priority).** `detectNames` requires a
+preceding token on the same line, so a name that opens a line or paragraph is
+never detected. Characterised:
+
+| Input | NAME detected |
+| --- | --- |
+| `informe de Mario Prieto Casal.` | yes |
+| `Firma: Mario Prieto Casal` | yes |
+| `El paciente Mario Prieto Casal, con DNI …` | yes |
+| `Mario Prieto Casal fue evaluado.` | **no** |
+| `Hola. Mario Prieto Casal fue evaluado.` | **no** |
+| `Mario Prieto Casal` (a bare signature line) | **no** |
+
+Note the third-from-last case: it is specifically *line* start, not sentence
+start. This is a real leak, and M3 sharpens it: documents are full of short
+lines that begin with a name — letter salutations, `To:`/`De:` blocks,
+signature blocks, table cells, slide titles. The guard presumably exists to
+stop a capitalised sentence-initial word being read as a name, so the fix needs
+a replacement signal (two or more capitalised tokens, a known given name, a
+following comma-plus-title) rather than simply dropping it. M2-shaped work, not
+parser work — but it should be scheduled before M3 ships, because every parser
+added makes it more likely to bite.
+
 **Backlog item — tag DNI/NIE with a wrong check letter too.**
 `validators.ts` (`DNI_LETTERS[digits % 23] === letter`) currently only
 confirms a candidate; a document number that *looks* like a DNI/NIE but has
@@ -135,7 +159,10 @@ user 2026-09-21, e.g. `76.123.312-E` — worth computing the expected letter
 and tagging the number regardless, distinguishing "valid ID" from "ID-shaped
 number with a bad check letter" (perhaps a distinct category or a warning)
 rather than silently passing invalid ones through. Not yet scoped to a
-session — revisit when picking the next M3/backlog item.
+session — revisit when picking the next M3/backlog item. **Demonstrated during
+P8b:** a hand-written `45678912Q` in a fixture passed straight through
+unmasked, and it took a detour to realise the parser was fine and the check
+letter was simply wrong (`S`).
 
 One prompt per format, one session each — plus a prep session first, because
 four decisions have to be made once rather than rediscovered (and answered
@@ -398,7 +425,7 @@ letter is `S`), which is exactly the backlog item above about ID-shaped numbers
 with a bad check letter passing through unmasked. Detection through table cells
 is fine; that backlog item is now a *demonstrated* leak, not a hypothetical one.
 
-### [ ] P8c — `.pdf` (pdfjs-dist)
+### [x] P8c — `.pdf` (pdfjs-dist)
 
 > Add `src/lib/parsers/pdf.ts`. Use `pdfjs-dist`'s `getDocument`, walk pages,
 > and reflow `getTextContent()` items into Markdown using their transform —
@@ -430,6 +457,60 @@ is fine; that backlog item is now a *demonstrated* leak, not a hypothetical one.
 > DOM environment. Confirm which entry `getTextContent()` actually needs on each
 > side before settling on an import path, and do not let the test environment's
 > requirement leak into what ships to the browser.
+
+**Outcome — done 2026-09-21.** `src/lib/parsers/pdf.ts` with pdfjs-dist 6.3.289
+(`npm audit`: 0 vulnerabilities), registered lazily. 218 tests (from 216).
+
+- **Reflow.** Runs → lines (same baseline within half a font size, joined with a
+  space only where there is a real horizontal gap, since pdfjs splits a visually
+  continuous line wherever the producer did) → paragraphs (a vertical gap over
+  1.6 line-heights starts a new one) → pages, in order. Two-column pages are
+  handled by `findColumnGutter`: content-stream order is not reading order, so
+  sorting a two-column page by y interleaves the columns into nonsense. It looks
+  for a vertical gutter no run crosses, with text on both sides that coexists
+  vertically (two stacked blocks are not two columns), and emits left then
+  right. One split only — arbitrary column counts would be speculation.
+- **Both traps from the prompt were real.**
+  - *Entry point.* pdfjs's default entry refuses to run outside a browser
+    ("Please use the `legacy` build in Node.js environments") and its worker
+    cannot be loaded from the `http://` module URL Vitest serves — it fails
+    hard with "Setting up fake worker failed". The parser keeps the browser
+    entry and a bundled worker; `vitest.config.ts` aliases `pdfjs-dist` to the
+    legacy build for tests only.
+  - *Worker source.* `GlobalWorkerOptions.workerSrc` lives in its own tiny
+    module, `pdfWorkerSrc.ts`, precisely so the test config can substitute
+    `__fixtures__/pdfWorkerSrc.node.ts` (which exports `undefined`, leaving
+    pdfjs on the main thread) without the parser knowing anything about tests.
+- **Zero network, verified in a real browser on both builds.** pdfjs resolves
+  *five* kinds of asset by URL, not the three the prompt listed: the worker,
+  cMaps, standard font data, `wasmUrl` (image codecs) and `iccUrl` (colour
+  profiles). None is provided; the worker is bundled. Measured with the network
+  log open, on a plain PDF **and** on a `/UniGB-UCS2-H` CJK PDF: on
+  `dist-portable/` from `file://`, the page plus one `blob:` URL (the inlined
+  worker) and **nothing else**; on `dist/` over `http://`, only same-origin
+  `/assets/` files. No CDN request in any run. `isEvalSupported` is gone in
+  pdfjs 6 — it dropped eval — so only `useWorkerFetch: false` remains.
+- **The cMap failure mode is worse than "degraded glyph mapping", and this is
+  the finding of the session.** With no `cMapUrl`, pdfjs does not produce U+FFFD
+  for text in a predefined CMap — it **drops that text entirely and silently**.
+  Measured: a PDF with a Latin line and a CJK line extracted the Latin line,
+  and the CJK line simply was not there, with nothing in the API to say so. A
+  user would see a clean-looking import of a document half of whose content
+  never reached the detectors. Since pdfjs offers no signal, `usesPredefinedCMap`
+  reads the raw bytes for an `/Encoding` name that is not Identity or one of the
+  simple built-ins, and warns explicitly that the text is missing and therefore
+  unmasked. **The scan must run before `getDocument`** — pdfjs transfers the
+  buffer to its worker, which detaches it, and the scan then reads zero bytes.
+  (This one cost a debugging cycle.)
+- Scanned/image-only PDFs warn and return empty markdown, no OCR, as scoped.
+  Over 100 pages adds a slowness warning. Non-PDF bytes throw an error naming
+  the file.
+
+**Size check:** entry chunk 481.10 kB (from 480.96 at P8b — the lazy split
+holds), `assets/pdf-*.js` 432.51 kB, `assets/pdf.worker.min-*.mjs` 1,265.41 kB
+emitted beside it (bundled, not a CDN). `dist-portable/index.html` is now
+3,000.58 kB — the portable build carries mammoth, pdfjs and the pdf worker
+inline, which is the cost of `file://` working at all.
 
 ### [ ] P8d — `.odt` (jszip + DOMParser)
 
