@@ -759,7 +759,7 @@ Verified live from `file://` on a quoted-printable Spanish message:
 **1 request total**, accents intact, and `NAME`, `EMAIL`, `DNI`, `PHONE` and
 `ID_CODE` detected across both the header block and the body.
 
-### [ ] P8h — `.pptx` (jszip + DOMParser)
+### [x] P8h — `.pptx` (jszip + DOMParser)
 
 > Add `src/lib/parsers/pptx.ts`. Unzip, iterate `ppt/slides/slideN.xml` in
 > **numeric** order (not lexicographic — `slide10` must not sort before
@@ -769,6 +769,84 @@ Verified live from `file://` on a quoted-printable Spanish message:
 > Write tests first: slide order is numeric; text inside a table shape is
 > extracted; speaker notes appear and are labelled; a deck with no notes parts
 > does not throw.
+
+**Outcome — done 2026-09-21.** `src/lib/parsers/pptx.ts`, same shape as
+`.odt`: jszip + DOMParser, main thread by necessity. 291 tests (from 280), all
+11 green on the first run — the conventions were settled by the six sessions
+before it, which is what the prep session was for.
+
+- **Slides are ordered numerically**, parsed out of the part name. Sorting the
+  paths as strings puts `slide10` immediately after `slide1`, silently
+  reordering any deck of ten slides or more.
+- **Speaker notes are found through the slide's own relationships**, never by
+  assuming `notesSlideN` belongs to `slideN`. A deck's part numbering drifts
+  away from its slide order as slides are added and deleted, and that is
+  exactly how notes get shown against the wrong slide. There is a test that
+  writes the notes in reverse order to prove the relationship is followed.
+- **Notes go into the Markdown, unlike .odt's metadata** — and the distinction
+  is the one P8d drew, not an inconsistency. Notes are visible content the
+  presenter reads off the screen, and they are as PII-dense as a slide (the
+  live run's notes held a name and a phone number); `meta.xml`/`core.xml`
+  authorship is metadata the user cannot see. Content is detected, metadata is
+  warned about.
+- **Text is grouped by shape.** A slide is a set of independent boxes, so
+  flattening the whole slide would run two of them together, inventing
+  sentences that were never adjacent and letting a detector produce candidates
+  spanning two unrelated pieces of text.
+- Tables inside a `graphicFrame` go through the shared `markdownTable.ts`.
+  Pictures and charts are counted and warned about. A slide with no text is
+  skipped, a deck with no text at all warns, and a non-deck zip throws an error
+  naming the file.
+
+Verified live from `file://` on a three-slide deck: **1 request total**, notes
+labelled under their slide, the table rendered, and `NAME`, `DNI`, `EMAIL`,
+`PHONE` and `ID_CODE` all detected — including inside the speaker notes.
+
+### M3 — closing summary (2026-09-21)
+
+All eight sessions done in one day, plus one out-of-band detection fix
+([`02-name-line-start.md`](02-name-line-start.md)). 291 tests, lint clean.
+
+Formats, and what each cost in the bundle a user actually downloads:
+
+| Format | Parser | Lazy chunk |
+| --- | --- | --- |
+| `.txt`/`.md` | eager, in the registry | — |
+| `.docx` | mammoth | 294.38 kB |
+| `.pdf` | pdfjs-dist | 432.51 kB + 1,265.41 kB worker |
+| `.odt` | jszip + DOMParser | 3.42 kB |
+| `.csv` | hand-rolled | 1.27 kB |
+| `.xlsx` | hand-rolled on jszip | 2.86 kB |
+| `.eml` | postal-mime | 67.18 kB |
+| `.pptx` | jszip + DOMParser | 2.13 kB |
+| | shared | jszip 95.95 kB |
+
+**Entry chunk: 483.28 kB**, against 480.96 kB when only `.docx` existed. Seven
+formats added 2.3 kB to what a paste-only user downloads — that is the lazy
+split doing its job, and it is the number to re-check whenever a parser
+changes. `dist-portable/index.html` is 3,079.92 kB, carrying everything inline
+because `file://` cannot fetch a chunk.
+
+Three lessons worth carrying into M4:
+
+1. **The test environment is not the browser, and when they disagree the
+   environment is wrong.** Three times: mammoth resolved its Node zip reader,
+   pdfjs refused to run outside a browser, and turndown returned an empty
+   string under happy-dom for a full `<html>` document. Only the last failed
+   silently, which made it the worst. Fixes belong in `vitest.config.ts`, never
+   in shipped code.
+2. **Verify in a real browser, every session.** The `.eml` header block
+   (`**From:**` → `[[MASKED_ID_001]]`), the NER offset regression back at
+   P8sec, and the P8a/P8b build shape were all found live and none of them by
+   the suite.
+3. **Dependencies are a decision each time, not a default.** `.eml` took a
+   library because a healthy one existed; `.xlsx` did not because every option
+   was unmaintained, vulnerable or unreviewable. Both decisions are recorded
+   with the numbers they were made on.
+
+Still open, all recorded in the backlog above: the DNI/NIE wrong-check-letter
+case (demonstrated twice this milestone, once in the project's own fixture),
+the `Surname, Given` comma form, and a shield lexicon for public institutions.
 
 ### M3 fixtures
 

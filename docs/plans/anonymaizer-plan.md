@@ -16,7 +16,7 @@ session, because that is where the iteration happens.
 | --- | --- | --- |
 | M1 — "Paste & Revert" PoC | [`m1-poc.md`](m1-poc.md) | done |
 | M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](m2-detection-ner.md) | done |
-| M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | in progress |
+| M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
 | M4 — Export & localization | [`m4-export-i18n.md`](m4-export-i18n.md) | scoped, not started |
 
 One-off task docs that are not milestones keep their own numbered files:

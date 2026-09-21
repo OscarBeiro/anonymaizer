@@ -17,3 +17,4 @@ registerLazyParser(['odt'], async () => (await import('./odt')).parse);
 registerLazyParser(['csv'], async () => (await import('./csv')).parse);
 registerLazyParser(['xlsx'], async () => (await import('./xlsx')).parse);
 registerLazyParser(['eml'], async () => (await import('./eml')).parse);
+registerLazyParser(['pptx'], async () => (await import('./pptx')).parse);
