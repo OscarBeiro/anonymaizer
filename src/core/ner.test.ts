@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateBioTokens, mapNerEntitiesToSpans, NER_CONFIDENCE_THRESHOLD, type NerEntity, type RawNerToken } from './ner';
+import { aggregateBioTokens, computeTokenOffsets, mapNerEntitiesToSpans, NER_CONFIDENCE_THRESHOLD, type NerEntity, type RawNerToken } from './ner';
 import { RUNG } from './types';
 
 describe('aggregateBioTokens', () => {
@@ -38,6 +38,22 @@ describe('aggregateBioTokens', () => {
   it('ignores O tokens entirely', () => {
     const tokens: RawNerToken[] = [{ word: 'the', score: 0.9, entity: 'O', index: 0, start: 0, end: 3 }];
     expect(aggregateBioTokens(tokens, 'the cat')).toHaveLength(0);
+  });
+
+  it('extends onto a "##" continuation even when the model re-tags it as a fresh B-', () => {
+    // Observed live against bert-base-NER under transformers.js v4: "Acme"
+    // came back as B-ORG "A", B-ORG "##c", I-ORG "##me" — a `##` token can
+    // never start a new word, so it must still merge.
+    const text = 'Acme Corp';
+    const tokens: RawNerToken[] = [
+      { word: 'A', score: 0.99, entity: 'B-ORG', index: 0, start: 0, end: 1 },
+      { word: '##c', score: 0.9, entity: 'B-ORG', index: 1, start: 1, end: 2 },
+      { word: '##me', score: 0.99, entity: 'I-ORG', index: 2, start: 2, end: 4 },
+      { word: 'Corp', score: 0.99, entity: 'I-ORG', index: 3, start: 5, end: 9 },
+    ];
+    const entities = aggregateBioTokens(tokens, text);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]).toMatchObject({ entityGroup: 'ORG', start: 0, end: 9, text: 'Acme Corp' });
   });
 });
 
@@ -82,5 +98,113 @@ describe('mapNerEntitiesToSpans', () => {
       { entityGroup: 'MISC', score: 0.99, start: 10, end: 15, text: 'Fiesta' },
     ];
     expect(mapNerEntitiesToSpans(entities)).toHaveLength(0);
+  });
+});
+
+describe('computeTokenOffsets', () => {
+  // transformers.js v4's TokenClassificationPipeline stopped returning
+  // start/end at all (upstream TODO) — this reconstructs them from `word`
+  // by walking the original text in order, so aggregateBioTokens keeps
+  // working unmodified against real model output.
+  it('assigns offsets to plain whole-word tokens in sequence', () => {
+    const text = 'John Smith works at Acme';
+    const tokens: RawNerToken[] = [
+      { word: 'John', score: 0.99, entity: 'B-PER', index: 0 },
+      { word: 'Smith', score: 0.99, entity: 'I-PER', index: 1 },
+      { word: 'works', score: 0.9, entity: 'O', index: 2 },
+    ];
+    const withOffsets = computeTokenOffsets(tokens, text);
+    expect(withOffsets[0]).toMatchObject({ start: 0, end: 4 });
+    expect(withOffsets[1]).toMatchObject({ start: 5, end: 10 });
+    expect(withOffsets[2]).toMatchObject({ start: 11, end: 16 });
+  });
+
+  it('merges a "##" wordpiece continuation onto the immediately preceding offset', () => {
+    const text = 'Acme Corp';
+    const tokens: RawNerToken[] = [
+      { word: 'A', score: 0.9, entity: 'B-ORG', index: 0 },
+      { word: '##c', score: 0.9, entity: 'B-ORG', index: 1 },
+      { word: '##me', score: 0.9, entity: 'I-ORG', index: 2 },
+      { word: 'Corp', score: 0.9, entity: 'I-ORG', index: 3 },
+    ];
+    const withOffsets = computeTokenOffsets(tokens, text);
+    expect(withOffsets).toMatchObject([
+      { start: 0, end: 1 },
+      { start: 1, end: 2 },
+      { start: 2, end: 4 },
+      { start: 5, end: 9 },
+    ]);
+  });
+
+  it('round-trips through aggregateBioTokens to produce a whole entity', () => {
+    const text = 'John Smith works at Acme Corp and his email is john.smith@example.com.';
+    const tokens: RawNerToken[] = [
+      { word: 'John', score: 0.999, entity: 'B-PER', index: 0 },
+      { word: 'Smith', score: 0.999, entity: 'I-PER', index: 1 },
+      { word: 'works', score: 0.99, entity: 'O', index: 2 },
+      { word: 'at', score: 0.99, entity: 'O', index: 3 },
+      { word: 'A', score: 0.999, entity: 'B-ORG', index: 4 },
+      { word: '##c', score: 0.9, entity: 'B-ORG', index: 5 },
+      { word: '##me', score: 0.999, entity: 'I-ORG', index: 6 },
+      { word: 'Corp', score: 0.999, entity: 'I-ORG', index: 7 },
+    ];
+    const entities = aggregateBioTokens(computeTokenOffsets(tokens, text), text);
+    expect(entities).toMatchObject([
+      { entityGroup: 'PER', text: 'John Smith' },
+      { entityGroup: 'ORG', text: 'Acme Corp' },
+    ]);
+  });
+
+  it('leaves a token unresolved (no start/end) when its word cannot be found from the cursor', () => {
+    const text = 'John Smith';
+    const tokens: RawNerToken[] = [
+      { word: 'John', score: 0.9, entity: 'B-PER', index: 0 },
+      { word: 'Xyz', score: 0.9, entity: 'I-PER', index: 1 },
+    ];
+    const withOffsets = computeTokenOffsets(tokens, text);
+    expect(withOffsets[0]).toMatchObject({ start: 0, end: 4 });
+    expect(withOffsets[1].start).toBeUndefined();
+    expect(withOffsets[1].end).toBeUndefined();
+  });
+
+  it('skips a same-letter, wrong-case match in an intervening dropped word (real model quirk)', () => {
+    // ignore_labels: ['O'] (the pipeline default) drops non-entity tokens
+    // entirely, so there is no token for "works"/"at" to advance the
+    // cursor past them — a naive case-insensitive search for "A" would
+    // otherwise match the "a" inside "at" before reaching "Acme".
+    const text = 'John Smith works at Acme Corp';
+    const tokens: RawNerToken[] = [
+      { word: 'John', score: 0.99, entity: 'B-PER', index: 0 },
+      { word: 'Smith', score: 0.99, entity: 'I-PER', index: 1 },
+      { word: 'A', score: 0.99, entity: 'B-ORG', index: 2 },
+      { word: '##c', score: 0.9, entity: 'B-ORG', index: 3 },
+      { word: '##me', score: 0.99, entity: 'I-ORG', index: 4 },
+      { word: 'Corp', score: 0.99, entity: 'I-ORG', index: 5 },
+    ];
+    const withOffsets = computeTokenOffsets(tokens, text);
+    expect(withOffsets[2]).toMatchObject({ start: 20, end: 21 });
+    const entities = aggregateBioTokens(withOffsets, text);
+    expect(entities).toMatchObject([
+      { entityGroup: 'PER', text: 'John Smith' },
+      { entityGroup: 'ORG', text: 'Acme Corp' },
+    ]);
+  });
+
+  it('matches case-insensitively, since decode() can differ in case from the source text', () => {
+    const text = 'MARIA GARCIA';
+    const tokens: RawNerToken[] = [{ word: 'Maria', score: 0.9, entity: 'B-PER', index: 0 }];
+    expect(computeTokenOffsets(tokens, text)[0]).toMatchObject({ start: 0, end: 5 });
+  });
+
+  it('does not regress the cursor when a token is skipped, so a later duplicate word still resolves', () => {
+    const text = 'Smith met Smith';
+    const tokens: RawNerToken[] = [
+      { word: 'Smith', score: 0.9, entity: 'B-PER', index: 0 },
+      { word: 'Nope', score: 0.9, entity: 'O', index: 1 },
+      { word: 'Smith', score: 0.9, entity: 'B-PER', index: 2 },
+    ];
+    const withOffsets = computeTokenOffsets(tokens, text);
+    expect(withOffsets[0]).toMatchObject({ start: 0, end: 5 });
+    expect(withOffsets[2]).toMatchObject({ start: 10, end: 15 });
   });
 });
