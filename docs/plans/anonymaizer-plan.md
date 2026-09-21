@@ -22,7 +22,10 @@ session, because that is where the iteration happens.
 One-off task docs that are not milestones keep their own numbered files:
 [`01-wizard-layout-fixes.md`](01-wizard-layout-fixes.md),
 [`02-name-line-start.md`](02-name-line-start.md) (a detection leak found during
-M3 and fixed out of band — names at the start of a line were never masked).
+M3 and fixed out of band — names at the start of a line were never masked) and
+**[`03-detection-backlog.md`](03-detection-backlog.md)** — four open detection
+bugs left after M3, `D1`–`D4`, one block per session like a milestone file.
+Three of the four were found by *using* the parsers, not by testing them.
 
 **The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
 "the §6 Spanish test bench case", read that section from `docs/spec.md`.

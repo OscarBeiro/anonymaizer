@@ -70,7 +70,9 @@ unmasked name is silent and already out the door. Verified on a realistic
 Spanish letter: the heading, `Asunto:`/`Fecha:` labels, `Muchas Gracias` and
 the role title are all left alone; both personal names are masked.
 
-**Follow-on backlog item:** a shield lexicon for public institutions
+**Follow-on backlog item** (now scheduled as `D3` in
+[`03-detection-backlog.md`](03-detection-backlog.md)): a shield lexicon for
+public institutions
 (Seguridad Social, Agencia Tributaria, Hacienda, INSS, SEPE, …), which would
 remove the main remaining false-positive class. Bounded, but its own task — and
 it interacts with the per-language stopword-pack item in the M1 backlog, which

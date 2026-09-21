@@ -107,7 +107,8 @@ it is committed):** evaluate an alternative in-browser ONNX runtime for the
 NER worker that avoids `onnxruntime-web`'s vulnerable `protobufjs`
 dependency.
 
-**Backlog item — placeholder tagging collision.** `reverseText`'s restore
+**Backlog item — placeholder tagging collision.** → **scheduled as `D4` in
+[`03-detection-backlog.md`](03-detection-backlog.md).** `reverseText`'s restore
 regex runs case-insensitive (`i` flag) so an LLM that lowercases
 `[name_1]` in its reply still restores — but that means two custom
 dictionary categories differing only by case (`Custom` vs `CUSTOM`,
@@ -136,7 +137,8 @@ Casal` in plain sight. Left a follow-on item there: a shield lexicon for
 public institutions, now the main false-positive class.
 
 **Backlog item — the "Surname Surname, Given" form is read as two entities
-(found 2026-09-21 during P8e).** A contact list holding
+(found 2026-09-21 during P8e).** → **scheduled as `D2` in
+[`03-detection-backlog.md`](03-detection-backlog.md).** A contact list holding
 `Ferreiro Iglesias, Laura` masks as `[[NAME_002]], Laura`: the comma ends the
 NAME candidate, so the given name is left in plain text *and* the person is
 half-masked, which is worse than either outcome alone — a reader can still
@@ -148,7 +150,8 @@ canonicalize it to given-name-first for clustering (`entities.ts` already owns
 canonicalization). Needs care: `"Madrid, Spain"` and `"Consulting, S.L."` must
 not merge.
 
-**Backlog item — tag DNI/NIE with a wrong check letter too.**
+**Backlog item — tag DNI/NIE with a wrong check letter too.** → **scheduled as
+`D1` in [`03-detection-backlog.md`](03-detection-backlog.md).**
 `validators.ts` (`DNI_LETTERS[digits % 23] === letter`) currently only
 confirms a candidate; a document number that *looks* like a DNI/NIE but has
 the wrong check letter (typo, OCR error, deliberately obscured) is not
@@ -844,9 +847,11 @@ Three lessons worth carrying into M4:
    was unmaintained, vulnerable or unreviewable. Both decisions are recorded
    with the numbers they were made on.
 
-Still open, all recorded in the backlog above: the DNI/NIE wrong-check-letter
-case (demonstrated twice this milestone, once in the project's own fixture),
-the `Surname, Given` comma form, and a shield lexicon for public institutions.
+Still open, and now scheduled as `D1`–`D4` in
+[`03-detection-backlog.md`](03-detection-backlog.md): the DNI/NIE
+wrong-check-letter case (demonstrated twice this milestone, once in the
+project's own fixture), the `Surname, Given` comma form, a shield lexicon for
+public institutions, and the custom-category case collision on restore.
 
 ### M3 fixtures
 
