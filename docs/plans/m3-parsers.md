@@ -497,7 +497,7 @@ emitted beside it (bundled, not a CDN). `dist-portable/index.html` is now
 3,000.58 kB — the portable build carries mammoth, pdfjs and the pdf worker
 inline, which is the cost of `file://` working at all.
 
-### [ ] P8d — `.odt` (jszip + DOMParser)
+### [x] P8d — `.odt` (jszip + DOMParser)
 
 > Add `src/lib/parsers/odt.ts`. Unzip with jszip, read `content.xml`, parse with
 > the native `DOMParser` (this is why the file lives in `src/lib/`), and walk
@@ -520,6 +520,52 @@ inline, which is the cost of `file://` working at all.
 > and `.eml` may. Install it once here and keep the call shape
 > (`JSZip.loadAsync(bytes)`) identical, so P8h can copy the pattern rather than
 > re-derive it.
+
+**Outcome — done 2026-09-21.** `src/lib/parsers/odt.ts`, jszip (already
+installed at P8b for the .docx fixture builder) + the native DOMParser.
+240 tests (from 227).
+
+- **Elements are matched on `localName`, never the qualified name.** An ODF
+  producer may bind the namespace URIs to any prefix it likes; `text:` is only
+  a convention. happy-dom's `DOMParser` handles namespaced XML and reports
+  `localName` correctly, verified before writing the parser.
+- **The ODF-metadata question, answered — extract, warn, and keep it out of the
+  Markdown.** Both obvious options are wrong. Putting `meta.xml`'s author names
+  into the Markdown would *add* PII to the text the user pastes elsewhere —
+  text that was never going to leave their machine — and if detection then
+  missed it, this tool would have created a leak it exists to prevent. Dropping
+  it silently is no better: the user never learns that the file they forward
+  carries those names. So it goes in `warnings`, values and all, which live in
+  the UI and never enter the Markdown. **This is the precedent for `.docx`
+  core.xml and `.pptx`.**
+- **Comments are content; their authors are metadata.** An annotation's text is
+  somebody's note *about the document* and can be as PII-dense as the body, so
+  it is appended under a `Comments:` block and goes through detection like any
+  other text. The `dc:creator` stays in the warning, by the rule above.
+- **Tracked changes are not reconstructed into the text** — the revision
+  machinery is not prose, and a deleted passage silently reappearing in the
+  output would be a nasty surprise. Their authors are named in a warning, since
+  that is the privacy-relevant part and the original file still carries them.
+- Dropped images and embedded objects are counted and warned about, with the
+  point spelled out: text inside an image cannot be read, so it cannot be
+  masked. An empty document warns like `.pdf`'s scanned case. A non-ODF zip, or
+  a zip with no `content.xml`, throws an error naming the file.
+- Tables reuse the same first-row-is-the-header convention as the shared HTML
+  converter, and escape pipes in cells. Nested lists indent by two spaces.
+  Text split across `text:span` elements is rejoined (`textContent`), which is
+  how real editors emit a paragraph someone edited mid-sentence.
+
+**Size check:** entry chunk 482.59 kB (from 481.10 at P8c — the lazy split
+holds). A nice side effect of a second jszip consumer: rollup hoisted it into
+its own shared chunk, `assets/jszip.min-*.js` at 95.95 kB, and `docx-*.js`
+dropped from 390.25 kB to 294.38 kB. `odt-*.js` is 3.58 kB — the parser is
+almost all logic, no library of its own.
+
+Verified live from `file://` on the portable build with a generated `.odt`
+carrying a heading tree, a list, a table, a comment, a tracked change, an image
+and author metadata: **1 request total**, all four warnings rendered, and
+detection through it yields `NAME`, `DNI`, `COMPANY`, `EMAIL`, `PHONE` and
+`ID_CODE`, including inside the table.
 
 ### [ ] P8e — `.csv` (no dependency)
 

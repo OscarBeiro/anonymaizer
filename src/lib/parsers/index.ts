@@ -13,3 +13,4 @@ import { registerLazyParser } from '../../core/parsers';
 
 registerLazyParser(['docx'], async () => (await import('./docx')).parse);
 registerLazyParser(['pdf'], async () => (await import('./pdf')).parse);
+registerLazyParser(['odt'], async () => (await import('./odt')).parse);
