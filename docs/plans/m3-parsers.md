@@ -135,6 +135,19 @@ project's own `CLINICAL_REPORT_FIXTURE` had been leaking `D. Mario Prieto
 Casal` in plain sight. Left a follow-on item there: a shield lexicon for
 public institutions, now the main false-positive class.
 
+**Backlog item — the "Surname Surname, Given" form is read as two entities
+(found 2026-09-21 during P8e).** A contact list holding
+`Ferreiro Iglesias, Laura` masks as `[[NAME_002]], Laura`: the comma ends the
+NAME candidate, so the given name is left in plain text *and* the person is
+half-masked, which is worse than either outcome alone — a reader can still
+often identify them, and the mapping does not record them as one person. The
+form is everywhere in exports, directories, citations and signature blocks.
+Fix is to let a NAME candidate continue across `,${WS}*` when what follows is
+one or two further name tokens and the whole thing sits on one line, then
+canonicalize it to given-name-first for clustering (`entities.ts` already owns
+canonicalization). Needs care: `"Madrid, Spain"` and `"Consulting, S.L."` must
+not merge.
+
 **Backlog item — tag DNI/NIE with a wrong check letter too.**
 `validators.ts` (`DNI_LETTERS[digits % 23] === letter`) currently only
 confirms a candidate; a document number that *looks* like a DNI/NIE but has
@@ -145,9 +158,13 @@ and tagging the number regardless, distinguishing "valid ID" from "ID-shaped
 number with a bad check letter" (perhaps a distinct category or a warning)
 rather than silently passing invalid ones through. Not yet scoped to a
 session — revisit when picking the next M3/backlog item. **Demonstrated during
-P8b:** a hand-written `45678912Q` in a fixture passed straight through
-unmasked, and it took a detour to realise the parser was fine and the check
-letter was simply wrong (`S`).
+P8b and again at P8e:** a hand-written `45678912Q` in a fixture passed straight
+through unmasked, and it took a detour to realise the parser was fine and the
+check letter was simply wrong (`S`). Then at P8e the same thing turned up in
+the project's *own* reference fixture — `CLINICAL_REPORT_FIXTURE`'s
+`33112244F` has an invalid check letter (`H` is correct), so that DNI has never
+been detectable. Two accidental demonstrations in one milestone is a strong
+argument for doing this one.
 
 One prompt per format, one session each — plus a prep session first, because
 four decisions have to be made once rather than rediscovered (and answered
@@ -567,7 +584,7 @@ and author metadata: **1 request total**, all four warnings rendered, and
 detection through it yields `NAME`, `DNI`, `COMPANY`, `EMAIL`, `PHONE` and
 `ID_CODE`, including inside the table.
 
-### [ ] P8e — `.csv` (no dependency)
+### [x] P8e — `.csv` (no dependency)
 
 > Add `src/lib/parsers/csv.ts` — a hand-rolled RFC 4180 reader (quoted fields,
 > escaped `""`, embedded newlines and commas, `\r\n`), with delimiter sniffing
@@ -580,6 +597,37 @@ detection through it yields `NAME`, `DNI`, `COMPANY`, `EMAIL`, `PHONE` and
 > Write tests first: a quoted field containing the delimiter; an embedded
 > newline inside quotes; the `""` escape; a semicolon-delimited European export;
 > a ragged row with fewer cells than the header.
+
+**Outcome — done 2026-09-21.** `src/lib/parsers/csv.ts`, no dependency, plus
+`src/lib/parsers/markdownTable.ts` — the shared emitter the prompt asked P8f to
+reuse, extracted now and `.odt` refactored onto it too, so one set of table
+conventions serves every row-shaped format. 255 tests (from 240).
+
+- **Delimiter sniffing counts only delimiters *outside* quotes.** Counting
+  naively picks `,` for a semicolon-delimited European export whose first row
+  contains `"uno,dos,tres"` — which is exactly the file this tool gets handed.
+- The reader is a character loop, not a line split: quoted fields carry the
+  delimiter, embedded newlines and the `""` escape, and `\r\n`/`\r`/`\n` all
+  end a row. A UTF-8 BOM is stripped, or it rides invisibly inside the first
+  header cell.
+- **A ragged row widens the table; it never loses a cell.** A dropped cell is
+  data that escapes detection, which matters more here than a tidy table. The
+  mismatch is warned about. Rows whose every cell is blank are dropped — they
+  hold nothing to detect — which is also what stops a trailing newline becoming
+  a phantom row.
+- Warns above 5000 rows, and returns empty markdown plus a warning for a file
+  with no rows at all.
+
+Verified live from `file://` on a semicolon-delimited contact list:
+**1 request total**, and `NAME`, `DNI`, `EMAIL` and `PHONE` all detected inside
+table cells.
+
+**Two detection gaps this exposed** (both pre-existing, both now in the backlog
+above): `"Ferreiro Iglesias, Laura"` masks as `[[NAME_002]], Laura` — the
+surname-first comma form is not recognised as one person — and `33112244F` went
+unmasked because its check letter is wrong. That second one is
+`CLINICAL_REPORT_FIXTURE`'s own DNI, so the project's reference fixture has been
+carrying an undetectable ID all along.
 
 ### [ ] P8f — `.xlsx` (SheetJS)
 

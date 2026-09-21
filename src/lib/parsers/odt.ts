@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 import type { ParsedDocument } from '../../core/parsers';
+import { toMarkdownTable } from './markdownTable';
 
 // .odt via jszip + the native DOMParser (M3/P8d). The DOMParser is why this
 // file lives in src/lib/ and not src/core/ — CLAUDE.md rule 4.
@@ -22,31 +23,21 @@ import type { ParsedDocument } from '../../core/parsers';
 // comments and tracked changes below, and sets the precedent for .docx's
 // core.xml and .pptx.
 
-const MARKDOWN_TABLE_DELIMITER = ' --- |';
-
 /** Depth-first text of an element, with span boundaries closed up. */
 const textOf = (element: Element): string => element.textContent?.replace(/\s+/g, ' ').trim() ?? '';
-
-const cellText = (element: Element): string => textOf(element).replace(/\|/g, '\\|');
 
 const childrenByLocalName = (parent: Element, ...names: string[]): Element[] =>
   [...parent.children].filter((child) => names.includes(child.localName));
 
+// Mapped to rows and handed to the shared emitter, so a table reads the same
+// whether it came from a .odt, a .csv or a spreadsheet.
 const tableToMarkdown = (tableElement: Element): string => {
-  const rows = tableElement.getElementsByTagName('*');
-  const rowElements = [...rows].filter((r) => r.localName === 'table-row');
-  const lines = rowElements.map(
-    (row) =>
-      `| ${[...row.children]
-        .filter((c) => c.localName === 'table-cell')
-        .map(cellText)
-        .join(' | ')} |`,
-  );
-  if (lines.length === 0) return '';
-  const columns = [...(rowElements[0]?.children ?? [])].filter((c) => c.localName === 'table-cell').length;
-  // Same choice as the shared HTML converter: the first row is the header,
-  // because GFM needs a delimiter row after row one either way.
-  return [lines[0], `|${MARKDOWN_TABLE_DELIMITER.repeat(columns)}`, ...lines.slice(1)].join('\n');
+  const rows = [...tableElement.getElementsByTagName('*')]
+    .filter((node) => node.localName === 'table-row')
+    .map((row) =>
+      [...row.children].filter((cell) => cell.localName === 'table-cell').map((cell) => textOf(cell)),
+    );
+  return toMarkdownTable(rows);
 };
 
 const listToMarkdown = (listElement: Element, depth = 0): string[] => {
