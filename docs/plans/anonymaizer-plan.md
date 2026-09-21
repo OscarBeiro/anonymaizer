@@ -19,13 +19,20 @@ session, because that is where the iteration happens.
 | M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
 | M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | planned, not started |
 | M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | planned, not started |
+| M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | planned, not started |
 
 M4 is split in two: **M4a** is dependency-free user-visible output and control
 (export, category toggles); **M4b** is the one-way realistic-output mode and the
 i18n/Localazy work, which comes last on purpose so the string extraction happens
 once, after everything that adds strings. The `P` numbering runs `P9`–`P11` in
 M4a and `P12`–`P15` in M4b; the earlier single-file draft numbered i18n `P9`/`P10`
-and that numbering is superseded.
+and that numbering is superseded. M5 continues at `P16`–`P22`.
+
+**M5 amends hard rule 2.** The milestone adds a public landing page and
+consent-gated analytics on the hosted deployment, so "no network calls at
+runtime" stops being absolute for the hosted build — and becomes *more*
+explicit for every local one. `P21` carries the exact replacement wording and
+changes `CLAUDE.md` itself; until it runs, hard rule 2 stands as written.
 
 One-off task docs that are not milestones keep their own numbered files:
 [`01-wizard-layout-fixes.md`](01-wizard-layout-fixes.md),
