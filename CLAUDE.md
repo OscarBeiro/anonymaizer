@@ -33,7 +33,8 @@ done and its tests pass.
 ```
 npm run dev      # dev server on :5173
 npm test         # vitest, single run
-npm run build    # tsc -b && vite build
+npm run build    # tsc -b && vite build -> dist/, code-split (http/PWA)
+npm run build:portable  # -> dist-portable/, one inlined index.html (file://)
 npm run lint     # oxlint
 ```
 

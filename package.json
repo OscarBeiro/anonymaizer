@@ -1,11 +1,12 @@
 {
   "name": "anonymaizer",
   "private": true,
-  "version": "0.2.0-beta.1",
+  "version": "0.2.0-beta.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:portable": "tsc -b && ANONYMAIZER_PORTABLE=1 vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
@@ -23,6 +24,7 @@
     "@types/react-dom": "^19.2.7",
     "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "^6.1.1",
+    "happy-dom": "^20.14.5",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.0",

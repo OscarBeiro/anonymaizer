@@ -1,15 +1,17 @@
 import { useRef, useState } from 'react';
 import { parseDocument, supportedExtensions } from '../core/parsers';
+import type { DocumentFormat } from '../core/types';
 import { PastePanel } from './PastePanel';
 
 interface IngestStepProps {
   rawMarkdown: string;
+  warnings: string[];
   onChange: (markdown: string) => void;
   onCreateRule: (selectedText: string) => void;
-  onFileImport: (markdown: string, format: string, fileName: string) => void;
+  onFileImport: (markdown: string, format: DocumentFormat, fileName: string, warnings: string[]) => void;
 }
 
-export const IngestStep = ({ rawMarkdown, onChange, onCreateRule, onFileImport }: IngestStepProps) => {
+export const IngestStep = ({ rawMarkdown, warnings, onChange, onCreateRule, onFileImport }: IngestStepProps) => {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -18,8 +20,8 @@ export const IngestStep = ({ rawMarkdown, onChange, onCreateRule, onFileImport }
     setError(null);
     try {
       const bytes = await file.arrayBuffer();
-      const { markdown, format } = await parseDocument(file.name, bytes);
-      onFileImport(markdown, format, file.name);
+      const parsed = await parseDocument(file.name, bytes);
+      onFileImport(parsed.markdown, parsed.format, file.name, parsed.warnings ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not read that file.');
     }
@@ -49,6 +51,16 @@ export const IngestStep = ({ rawMarkdown, onChange, onCreateRule, onFileImport }
         </button>
         <p className="drop-zone-hint">Supported: {supportedExtensions().join(', ')}</p>
         {error && <p className="form-error">{error}</p>}
+        {warnings.length > 0 && (
+          <div className="import-warnings" role="status">
+            <p className="import-warnings-title">Imported with warnings</p>
+            <ul>
+              {warnings.map((warning) => (
+                <li key={warning}>{warning}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         <input
           ref={fileInputRef}
           type="file"

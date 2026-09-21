@@ -27,12 +27,18 @@ export interface MappingItem {
   variants: string[];
 }
 
+// Closed union rather than a free string: `originalFormat` feeds export
+// naming and per-format behaviour in M4, and a typo there is silent. Lives
+// here, not in the parser registry, so MappingSession never has to reach
+// into the registry for the shape of one of its own fields.
+export type DocumentFormat = 'raw_text' | 'docx' | 'pdf' | 'odt' | 'csv' | 'xlsx' | 'eml' | 'pptx';
+
 export interface MappingSession {
   sessionId: string;
   createdAt: string;
   inputType: 'PASTE' | 'FILE';
   fileName?: string;
-  originalFormat: string; // e.g., 'raw_text', 'docx', 'pdf', 'eml'
+  originalFormat: DocumentFormat;
   mappings: MappingItem[];
   rawMarkdown: string;
   anonymizedMarkdown: string;

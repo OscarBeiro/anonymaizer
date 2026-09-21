@@ -1,6 +1,6 @@
 # Milestone 3 — Document parsers
 
-### [ ] P8sec — Dependency security: transformers.js v2 → v4 (**do this first**)
+### [x] P8sec — Dependency security: transformers.js v2 → v4 (**do this first**)
 
 This is really M2 work — it is the P7d backlog item below, promoted — but M2
 is not being reopened, so it runs first in M3, ahead of P8a.
@@ -94,8 +94,10 @@ vulnerable range.
    download there is unchanged from the working `npm run dev` path and
    P7d already covers the `file://`-specific IndexedDB-vs-CacheStorage
    concern; nothing about the offset fix is `file://`-sensitive.)
-4. **Next: commit, push, and confirm Dependabot goes quiet on `main`.**
-   Not yet done — do this next.
+4. ~~**Commit, push, and confirm Dependabot goes quiet on `main`.**~~
+   Committed and pushed (`main` level with `origin/main` as of the start of
+   P8a). Worth an eyeball on the GitHub security tab to confirm the 13
+   advisories have closed, but nothing is left to change in the tree.
 
 **Note:** `npm install` also warns `EBADENGINE` on Node 20.20.2 — something
 in the tree wants newer. Unrelated to the advisories; worth a look separately.
@@ -153,7 +155,10 @@ would have blown up mid-session:
 2. **Bundle weight vs. the P6 single-file promise.** Parsers register by import
    side effect, so a static import graph inlines mammoth + pdfjs + SheetJS +
    jszip into `index.html` for every user, including the ones who only paste
-   text. → **Lazy-loaded per format via dynamic `import()`.**
+   text. → **Lazy-loaded per format via dynamic `import()`.** (P8a found the
+   sting in the tail: a lazy chunk cannot be fetched from a `file://` page, so
+   this holds for the hosted build and the portable build inlines instead —
+   see P8a's outcome.)
 3. **Runtime network risk.** pdfjs-dist fetches cMaps and standard fonts from a
    CDN by default — a silent breach of hard rules 2 and 3, and only on
    documents with CJK or embedded fonts. → Handled explicitly in P8c.
@@ -175,7 +180,7 @@ needs no dependency at all), then `.eml` and `.pptx`.
 model and a second opt-in flow — that is M2-shaped work, not parser work. The
 `.pdf` parser detects "zero extractable text" and warns.
 
-### [ ] P8a — Parser infrastructure (prep session, no new format)
+### [x] P8a — Parser infrastructure (prep session, no new format)
 
 > Widen the parser seam before any real format lands.
 > In `src/core/parsers/index.ts`: add `format: DocumentFormat` (a closed union
@@ -230,6 +235,71 @@ model and a second opt-in flow — that is M2-shaped work, not parser work. The
 > `.odt`/`.pptx`/`.eml`; those parse on the main thread by necessity, and each
 > should carry a one-line comment saying so — "heavy parsing ⇒ worker" is the
 > obvious wrong inference from `ner.worker.ts`.
+
+**Outcome — done 2026-09-21.** Everything above landed as written, plus one
+decision the prompt could not pre-make.
+
+- **Registry.** `ParsedDocument` now carries `format: DocumentFormat` (closed
+  union in `src/core/types.ts`, also the type of
+  `MappingSession.originalFormat`) and `warnings?: string[]`. Two maps: a
+  `loaders` map that `supportedExtensions()` reads keys from without invoking
+  anything, and a `resolved` cache so a loader runs once. A rejected loader is
+  rewrapped as `Could not load the .<ext> parser.` with the original as
+  `cause`, and is **not** cached, so a transient failure can be retried by
+  re-dropping the file. 11 registry tests (190 total, from 184).
+- **Test-environment split.** `environmentMatchGlobs` is gone in Vitest 5, so
+  `vitest.config.ts` uses `test.projects`: a `core` project on `node`
+  (`src/**/*.test.ts`, excluding `src/lib/parsers/**`) and a `parsers-dom`
+  project on `happy-dom` (`src/lib/parsers/**/*.test.ts`). `happy-dom` added as
+  a devDependency; `npm audit` still clean.
+  `src/lib/parsers/domEnvironment.test.ts` asserts the DOM is actually there —
+  it guards the split itself, so if it is ever lost, P8d/P8h fail for the right
+  reason instead of looking like parser bugs.
+- **Warnings in the UI.** `onFileImport` gained a `warnings: string[]`
+  argument; `App` holds them in `importWarnings` state (cleared on any manual
+  edit, deliberately not persisted with the session) and passes them back down,
+  so `IngestStep` renders an amber, boxed, `role="status"` `.import-warnings`
+  notice, visually distinct from red `.form-error`.
+
+**Build-output caveat — two builds, not one.** Verified empirically with a
+throwaway `src/lib/parsers/__probe.ts` lazy parser (added, measured, removed)
+and headless Chromium via `npx playwright`, not assumed:
+
+1. With `viteSingleFile`'s default `useRecommendedBuildConfig`, the probe chunk
+   **was** inlined into `index.html` and no chunk file was emitted. On Vite 8
+   the plugin sets rolldown's `output.codeSplitting = false` (the Vite ≤7 path
+   sets `inlineDynamicImports`), which defeats lazy loading entirely.
+2. Opting out (`useRecommendedBuildConfig: false`, plus the plugin's other four
+   settings restated in `build`, plus `inlinePattern: ['*.js', '*.css']` — a
+   root-level `*` does not cross a `/`) emits
+   `dist/chunks/__probe-<hash>.js` beside `index.html` and leaves the marker
+   string out of `index.html`. Confirmed over `http://`: **2 requests total**,
+   the chunk fetched only on file import, never at page load.
+3. **But that chunk cannot load from `file://`.** Chromium refuses a dynamic
+   `import()` from a `file://` page — *"Access to script at 'file:///…' from
+   origin 'null' has been blocked by CORS policy"*. The plan's suggested
+   fallback (a second rollup entry per parser, the `ner.worker.js` shape) does
+   **not** help: the block is on module-script fetching from origin `null`, not
+   on code splitting, so any emitted `.js` sibling fails the same way.
+4. **Resolution: two production builds.** `npm run build` → `dist/`,
+   code-split and lazy, for http(s) and the PWA. `npm run build:portable` →
+   `dist-portable/`, everything inlined into one `index.html`, for the `file://`
+   story. `ANONYMAIZER_PORTABLE=1` switches `vite.config.ts` between them.
+   Anything else would have cost either the paste-only user a multi-megabyte
+   download of mammoth + pdfjs + SheetJS they never use, or the portable build
+   its ability to open a document at all.
+5. **`file://` round trip on `dist-portable/`: 1 request total** (the page),
+   zero console errors, through paste → `[[EMAIL_001]]`/`[[DNI_001]]` →
+   sanitized panel, then a `.probe` import (the inlined lazy path resolves) and
+   a `.txt` import. The P6 zero-network guarantee holds.
+
+**Size baseline — `dist/index.html` is 484.82 kB** (gzip 147.13 kB), byte-identical
+in both builds today because no format is registered yet; `ner.worker-*.js`
+is 492.28 kB. **Re-check this number in every later format session**: if
+`dist/index.html` grows by roughly a parser library's weight, the lazy split
+has silently regressed, and nothing else will tell you. The portable build's
+`index.html` is *expected* to grow with each format — that one only needs to
+stay under whatever a user will tolerate downloading once.
 
 ### [ ] P8b — `.docx` (mammoth.js)
 
@@ -389,7 +459,8 @@ At P8a, additionally — this gates the whole milestone:
    into `index.html`. The pass/fail signal is `dist/index.html`'s byte size
    before vs. after — record the baseline, and re-check it in every later format
    session, since a lazy split that silently regresses is invisible otherwise.
-2. Open `dist/index.html` from a `file://` URL, paste text, complete a full
+2. Open `dist-portable/index.html` (`npm run build:portable`) from a
+   `file://` URL, paste text, complete a full
    sanitize/restore round trip with the network tab open — **zero requests**.
    Then import a `.txt` file and confirm the lazy path still resolves from
    `file://`.

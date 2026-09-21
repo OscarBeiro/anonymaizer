@@ -180,6 +180,30 @@
   font-size: 0.8rem;
 }
 
+/* Non-blocking: the import succeeded, parts of it just did not survive.
+   Amber and boxed, so it never reads as the red .form-error. */
+.import-warnings {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-left: 3px solid #b8860b;
+  background: rgba(184, 134, 11, 0.08);
+  border-radius: 4px;
+  text-align: left;
+  font-size: 0.8rem;
+  color: var(--text-primary, #222);
+}
+
+.import-warnings-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: #8a6508;
+}
+
+.import-warnings ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
 .empty-hint {
   color: var(--text-secondary, #888);
   font-size: 0.85rem;

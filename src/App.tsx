@@ -7,7 +7,8 @@ import { ReviewStep } from './components/ReviewStep';
 import { StepNav } from './components/StepNav';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { applyEnabledMappings } from './core/apply';
-import type { CustomDictionaryRule, MappingItem, MappingSession } from './core/types';
+import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
+import './lib/parsers';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
 import {
@@ -35,6 +36,10 @@ function App() {
   const [session, setSession] = useState<MappingSession>(() => loadSession() ?? emptySession());
   const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
   const [step, setStep] = useState<WizardStep>(() => loadStep());
+  // Non-blocking parser warnings for the document currently imported
+  // (dropped images, an unreadable sheet). Deliberately not persisted with
+  // the session — they describe one import action, not the mapping.
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
   // P7d: opt-in only, never loaded or run automatically. A ref (not state)
   // for the client itself — it owns a real Worker, which must survive
@@ -53,7 +58,13 @@ function App() {
     setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
   };
 
-  const handleFileImport = (rawMarkdown: string, format: string, fileName: string) => {
+  const handleFileImport = (
+    rawMarkdown: string,
+    format: DocumentFormat,
+    fileName: string,
+    warnings: string[],
+  ) => {
+    setImportWarnings(warnings);
     const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules);
     setSession((prev) => ({
       ...prev,
@@ -79,6 +90,8 @@ function App() {
   };
 
   const handlePasteChange = (rawMarkdown: string) => {
+    // Editing the text by hand makes the imported document's warnings stale.
+    setImportWarnings([]);
     // Once the model is loaded and opted into, every edit re-scans with it
     // automatically — no separate "Re-scan" button to remember to press.
     // Before that (not enabled, or still downloading) this falls back to
@@ -226,6 +239,7 @@ function App() {
         {step === 'ingest' && (
           <IngestStep
             rawMarkdown={session.rawMarkdown}
+            warnings={importWarnings}
             onChange={handlePasteChange}
             onCreateRule={handleCreateRule}
             onFileImport={handleFileImport}
