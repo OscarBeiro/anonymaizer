@@ -28,6 +28,20 @@ export default defineConfig({
           include: ['src/lib/parsers/**/*.test.ts'],
           exclude: ['**/node_modules/**'],
         },
+        resolve: {
+          // The M3/P8b instance of the "the build that ships and the build
+          // that tests differ" trap. mammoth ships two zip readers and picks
+          // between them through package.json's `browser` field: the Node one
+          // takes `{path}`/`{buffer}`, the browser one takes `{arrayBuffer}` —
+          // the only shape the pure src/core/parsers seam can hand it.
+          // Confirmed by grepping the built chunk that `vite build` *does*
+          // apply that mapping, so the parser's plain
+          // `import mammoth from 'mammoth'` is right for the browser and
+          // correctly typed. Vitest resolves the Node entry instead, and the
+          // parser then throws on every document, so the alias belongs here —
+          // in the test config only, never leaking into what ships.
+          alias: { mammoth: 'mammoth/mammoth.browser.js' },
+        },
       },
     ],
   },

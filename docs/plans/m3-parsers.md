@@ -269,39 +269,65 @@ and headless Chromium via `npx playwright`, not assumed:
    **was** inlined into `index.html` and no chunk file was emitted. On Vite 8
    the plugin sets rolldown's `output.codeSplitting = false` (the Vite ≤7 path
    sets `inlineDynamicImports`), which defeats lazy loading entirely.
-2. Opting out (`useRecommendedBuildConfig: false`, plus the plugin's other four
-   settings restated in `build`, plus `inlinePattern: ['*.js', '*.css']` — a
-   root-level `*` does not cross a `/`) emits
-   `dist/chunks/__probe-<hash>.js` beside `index.html` and leaves the marker
-   string out of `index.html`. Confirmed over `http://`: **2 requests total**,
-   the chunk fetched only on file import, never at page load.
-3. **But that chunk cannot load from `file://`.** Chromium refuses a dynamic
-   `import()` from a `file://` page — *"Access to script at 'file:///…' from
-   origin 'null' has been blocked by CORS policy"*. The plan's suggested
-   fallback (a second rollup entry per parser, the `ner.worker.js` shape) does
-   **not** help: the block is on module-script fetching from origin `null`, not
-   on code splitting, so any emitted `.js` sibling fails the same way.
-4. **Resolution: two production builds.** `npm run build` → `dist/`,
-   code-split and lazy, for http(s) and the PWA. `npm run build:portable` →
-   `dist-portable/`, everything inlined into one `index.html`, for the `file://`
-   story. `ANONYMAIZER_PORTABLE=1` switches `vite.config.ts` between them.
-   Anything else would have cost either the paste-only user a multi-megabyte
-   download of mammoth + pdfjs + SheetJS they never use, or the portable build
-   its ability to open a document at all.
+2. Opting out (`useRecommendedBuildConfig: false`, plus `inlinePattern`
+   restricted to the root-level entry) did emit
+   `dist/chunks/__probe-<hash>.js` beside `index.html` with the marker string
+   out of `index.html`, and over `http://` it was fetched only on file import
+   — **but this half-and-half shape is broken, and P8b caught it** (see that
+   session's outcome). A lazily-imported chunk shares modules with the entry
+   chunk, which the plugin inlines *and then deletes*, so the chunk is left
+   importing a file that is not there: `GET /index-<hash>.js` → **404**.
+   Keeping the file (`deleteInlinedFiles: false`) is worse, not better: the
+   chunk would then load a second instance of the entry module graph,
+   mounting the app twice and giving the parser registry two disconnected
+   copies. **Single-file and code splitting cannot be combined at all.**
+3. **And a chunk cannot load from `file://` regardless.** Chromium refuses a
+   dynamic `import()` from a `file://` page — *"Access to script at
+   'file:///…' from origin 'null' has been blocked by CORS policy"*. The
+   plan's suggested fallback (a second rollup entry per parser, the
+   `ner.worker.js` shape) does **not** help: the block is on module-script
+   fetching from origin `null`, not on code splitting, so any emitted `.js`
+   sibling fails the same way.
+4. **Resolution: two production builds, and the hosted one drops the plugin
+   entirely.** `npm run build` → `dist/`, a plain code-split Vite build
+   (`index.html` + `assets/`), for http(s) and the PWA.
+   `npm run build:portable` → `dist-portable/`, `viteSingleFile` with
+   everything inlined, for the `file://` story. `ANONYMAIZER_PORTABLE=1`
+   switches `vite.config.ts` between them. Anything else would have cost
+   either the paste-only user a multi-megabyte download of mammoth + pdfjs +
+   SheetJS they never use, or the portable build its ability to open a
+   document at all.
 5. **`file://` round trip on `dist-portable/`: 1 request total** (the page),
    zero console errors, through paste → `[[EMAIL_001]]`/`[[DNI_001]]` →
    sanitized panel, then a `.probe` import (the inlined lazy path resolves) and
    a `.txt` import. The P6 zero-network guarantee holds.
+6. **`public/sw.js` had to follow.** It precached a fixed app-shell list on the
+   premise that all JS was inlined into `index.html`; with the hosted build
+   code-split, offline would have loaded the page and then failed to fetch
+   `/assets/*.js`. It now precaches only the shell and adds same-origin `GET`
+   responses to the cache as they are fetched, so a parser chunk is cached the
+   first time that format is imported and never before. Cache name bumped to
+   `anonymaizer-v2` so installed clients discard the stale shell.
 
-**Size baseline — `dist/index.html` is 484.82 kB** (gzip 147.13 kB), byte-identical
-in both builds today because no format is registered yet; `ner.worker-*.js`
-is 492.28 kB. **Re-check this number in every later format session**: if
-`dist/index.html` grows by roughly a parser library's weight, the lazy split
-has silently regressed, and nothing else will tell you. The portable build's
-`index.html` is *expected* to grow with each format — that one only needs to
-stay under whatever a user will tolerate downloading once.
+**Size baseline.** The signal changed with the build shape, so measure the
+**entry chunk**, not `index.html` (which is now a 0.57 kB stub in the hosted
+build). At the end of P8b, with `.docx` registered:
 
-### [ ] P8b — `.docx` (mammoth.js)
+| File | Size |
+| --- | --- |
+| `dist/index.html` | 0.57 kB |
+| `dist/assets/index-*.js` (entry) | 480.96 kB |
+| `dist/assets/docx-*.js` (lazy) | 390.24 kB |
+| `dist/assets/ner.worker-*.js` | 492.28 kB |
+| `dist-portable/index.html` (all inlined) | 879.25 kB |
+
+**Re-check the entry chunk in every later format session.** If it grows by
+roughly a parser library's weight, the lazy split has silently regressed and
+nothing else will tell you. The portable `index.html` is *expected* to grow
+with each format — that one only needs to stay under whatever a user will
+tolerate downloading once.
+
+### [x] P8b — `.docx` (mammoth.js)
 
 > Add `src/lib/parsers/docx.ts` exporting
 > `parse(bytes: ArrayBuffer, fileName: string): Promise<ParsedDocument>`, using
@@ -318,6 +344,59 @@ stay under whatever a user will tolerate downloading once.
 > headings and lists survive as Markdown; a table becomes a Markdown table;
 > mammoth warnings land in `warnings`; a corrupt/truncated zip throws rather
 > than silently yielding an empty document.
+
+**Outcome — done 2026-09-21.** `src/lib/parsers/docx.ts`, registered lazily,
+mammoth 1.12.3 + jszip 3.10.2 installed (`npm audit`: 0 vulnerabilities; both
+trees grepped clean of `fetch`/`XMLHttpRequest`, so hard rules 2 and 3 hold).
+207 tests (from 190). Five things worth carrying forward:
+
+- **The "build that ships vs. build that tests" trap is real, and it arrived at
+  P8b rather than P8c.** mammoth ships two zip readers and selects between them
+  through package.json's `browser` field: the Node one takes `{path}`/`{buffer}`,
+  the browser one takes `{arrayBuffer}` — the only shape the pure
+  `src/core/parsers` seam can hand it. `vite build` **does** apply that mapping
+  (verified by grepping the built chunk: it contains only the
+  `e.arrayBuffer ? …` branch and no `fs`), so the parser's plain
+  `import mammoth from 'mammoth'` is right for the browser and correctly typed.
+  **Vitest resolves the Node entry** and every document then throws. Fixed with
+  `resolve.alias: { mammoth: 'mammoth/mammoth.browser.js' }` scoped to the
+  `parsers-dom` project in `vitest.config.ts` — the test environment's
+  requirement stays out of what ships. Neither `resolve.conditions`/`mainFields`
+  nor `server.deps.inline` moved it; don't retry those.
+- **Turndown has no table rules**, so tables came through as one run-together
+  text blob — which is also a detection hazard, gluing unrelated cell values
+  into single candidates. Added table/tr/th/td/thead/tbody/tfoot rules to the
+  shared `src/lib/htmlToMarkdown.ts` (not to the parser): the first row is
+  always the header since GFM needs a delimiter row after row one regardless,
+  pipes inside cells are escaped, and multi-line cells flatten onto one row.
+  `.odt`, `.xlsx` and `.pptx` inherit this. Note `node.children` is not
+  iterable under turndown's Node fallback (domino) — use `childNodes`.
+- **`bulletListMarker: '-'`**, for the same reason P7f strips emphasis: turndown
+  defaults to `*`, which is in `MASK_GLYPHS`, so every bullet would have put an
+  asterisk immediately before its item's text.
+- **mammoth's `messages` land in `warnings` verbatim**, and `warnings` stays
+  `undefined` on a clean document. An empty conversion additionally warns that
+  the document had no extractable text (the same shape `.pdf` needs in P8c).
+  A truncated or non-OOXML zip throws an error naming the file rather than
+  yielding an empty document.
+- **Document metadata (core.xml: author, last-modified-by) is not extracted.**
+  mammoth does not expose it. The deliberate decision is deferred to P8d, whose
+  ODF-metadata trap answers it for all three OOXML/ODF formats.
+
+Verified live in headless Chromium against a generated `.docx` (headings, a
+bullet list, a table, an undefined paragraph style), on **both** builds: from
+`file://` on `dist-portable/` — **1 request total** — and over `http://` on
+`dist/`, where the 390 kB `docx` chunk is fetched only on import and never at
+page load. Markdown comes out with `#`/`##` headings, `-` bullets and a real
+Markdown table; detection through it yields `NAME`, `MASKED_ID`, `COMPANY`,
+`EMAIL`, `PHONE`, `ID_CODE` and — inside a table cell — `DNI`, and mammoth's
+warnings render in the amber notice.
+
+**False alarm worth recording:** a DNI in a table cell first appeared
+undetected. The number was simply invalid (`45678912Q` — the correct check
+letter is `S`), which is exactly the backlog item above about ID-shaped numbers
+with a bad check letter passing through unmasked. Detection through table cells
+is fine; that backlog item is now a *demonstrated* leak, not a hypothetical one.
 
 ### [ ] P8c — `.pdf` (pdfjs-dist)
 

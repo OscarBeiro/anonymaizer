@@ -108,3 +108,58 @@ describe('field report regression, through the real HTML ingest path (P7f)', () 
     expect(anonymizedText).toContain('REF_2026_01');
   });
 });
+
+describe('tables (P8b — .docx and pasted HTML both need them)', () => {
+  it('converts a header row plus body rows into a Markdown table', () => {
+    const markdown = convertHtmlToMarkdown(
+      '<table><tr><th>Nombre</th><th>DNI</th></tr><tr><td>Mario Prieto</td><td>45678912Q</td></tr></table>',
+    );
+    expect(markdown.trim()).toBe(
+      ['| Nombre | DNI |', '| --- | --- |', '| Mario Prieto | 45678912Q |'].join('\n'),
+    );
+  });
+
+  it('treats the first row as the header even when the cells are td, not th', () => {
+    const markdown = convertHtmlToMarkdown(
+      '<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>',
+    );
+    expect(markdown.trim()).toBe(['| a | b |', '| --- | --- |', '| c | d |'].join('\n'));
+  });
+
+  it('sees through thead and tbody wrappers', () => {
+    const markdown = convertHtmlToMarkdown(
+      '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>v</td></tr></tbody></table>',
+    );
+    expect(markdown.trim()).toBe(['| h |', '| --- |', '| v |'].join('\n'));
+  });
+
+  it('escapes a pipe inside a cell so it cannot forge a column', () => {
+    const markdown = convertHtmlToMarkdown('<table><tr><td>a | b</td><td>c</td></tr></table>');
+    expect(markdown).toContain('| a \\| b | c |');
+  });
+
+  it('flattens a multi-line cell onto one row', () => {
+    const markdown = convertHtmlToMarkdown('<table><tr><td><p>one</p><p>two</p></td><td>x</td></tr></table>');
+    expect(markdown.trim().split('\n')[0]).toBe('| one two | x |');
+  });
+
+  it('separates a table from the prose around it with blank lines', () => {
+    const markdown = convertHtmlToMarkdown(
+      '<p>Before</p><table><tr><td>cell</td></tr></table><p>After</p>',
+    );
+    expect(markdown).toBe('Before\n\n| cell |\n| --- |\n\nAfter');
+  });
+
+  it('keeps a detectable ID intact through a table cell', () => {
+    const markdown = convertHtmlToMarkdown('<table><tr><td>DNI</td><td>76****12E</td></tr></table>');
+    expect(markdown).toContain('76****12E');
+  });
+});
+
+describe('list markers', () => {
+  it('uses - rather than turndown default *, which detectors read as a mask glyph', () => {
+    const markdown = convertHtmlToMarkdown('<ul><li>Mario Prieto</li><li>Laura Ferreiro</li></ul>');
+    expect(markdown).toContain('-   Mario Prieto');
+    expect(markdown).not.toContain('*');
+  });
+});
