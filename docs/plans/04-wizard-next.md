@@ -54,10 +54,12 @@ M4 is an open question for the user.
   and there's no Next because it's the last position. The AI response and the
   sub-step are lifted into `App`, so the pasted response now survives a trip
   back to Review. It still isn't persisted across reloads.
-- Follow-up (v0.4.10): 3.2's footer always offers **Start again →**, which
-  goes to Ingest. It's secondary until the restored text is copied, then
-  primary. It only navigates; the session is kept, and
-  pasting new text replaces it.
+- Follow-up (v0.4.10): 3.2's footer always offers **Start again →**. It's
+  secondary until the restored text is copied, then primary. After a
+  `window.confirm`, it clears the session (text, mappings, AI response, import
+  warnings) and returns to Ingest. Custom rules and the cached NER model are
+  kept. The confirmation says why it matters: without the mappings, that
+  document's AI response can't be restored.
 
 ### Verification
 

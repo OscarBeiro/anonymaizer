@@ -235,6 +235,25 @@ function App() {
     if (to.step === 'review' && to.subStep) setReviewSubStep(to.subStep as ReviewSubStep);
     if (to.step === 'restore' && to.subStep) setRestoreSubStep(to.subStep as RestoreSubStep);
   };
+  // The end of the round trip. It clears the document, its mappings and the AI
+  // response; custom rules and the cached NER model are kept, since they belong
+  // to the user, not to one document. Asks first: the mappings are the only
+  // way to restore an AI response, and they're gone once this runs.
+  const startOver = (): void => {
+    const ok = window.confirm(
+      'Start again with a new document?\n\n' +
+        'This clears the current text, its placeholders and the AI response. ' +
+        'Without the placeholders, an AI response for this document can no longer be restored.\n\n' +
+        'Your custom rules are kept.',
+    );
+    if (!ok) return;
+    setSession(emptySession());
+    setAiResponse('');
+    setImportWarnings([]);
+    setReviewSubStep('rules');
+    setRestoreSubStep('response');
+    setStep('ingest');
+  };
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
   const copyAction: CopyAction | undefined =
     position.subStep === 'sanitized'
@@ -307,6 +326,7 @@ function App() {
           gate={gate}
           onNavigate={navigate}
           copyAction={copyAction}
+          onStartOver={startOver}
         />
       </main>
     </div>

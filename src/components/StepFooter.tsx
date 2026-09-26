@@ -14,6 +14,8 @@ interface StepFooterProps {
   gate: WizardGate;
   onNavigate: (position: WizardPosition) => void;
   copyAction?: CopyAction;
+  // Clears the session (after its own confirmation) and returns to Ingest.
+  onStartOver: () => void;
 }
 
 // Why Next is disabled, when the order has a next position but the gate holds it back.
@@ -26,7 +28,7 @@ const blockedHint = (pos: WizardPosition): string => {
 // 3.1's Next is the restore itself, so it says so.
 const nextLabel = (to: WizardPosition): string => (to.subStep === 'restored' ? 'Restore' : `Next: ${labelOf(to)}`);
 
-export const StepFooter = ({ position, gate, onNavigate, copyAction }: StepFooterProps) => {
+export const StepFooter = ({ position, gate, onNavigate, copyAction, onStartOver }: StepFooterProps) => {
   // The exact text copied, not a flag: if the text changes afterwards,
   // "Copied" no longer holds and the Copy button comes back.
   const [copiedText, setCopiedText] = useState<string | null>(null);
@@ -61,14 +63,9 @@ export const StepFooter = ({ position, gate, onNavigate, copyAction }: StepFoote
           </button>
         )}
         {isLast && (
-          // The end of the round trip: back to Ingest for the next document.
-          // Always offered; primary once the restored text has been copied.
-          // Navigation only — the session is kept, pasting replaces it.
-          <button
-            type="button"
-            className={copied ? 'step-footer-next' : 'step-footer-back'}
-            onClick={() => onNavigate({ step: 'ingest' })}
-          >
+          // The end of the round trip. Always offered; primary once the
+          // restored text has been copied.
+          <button type="button" className={copied ? 'step-footer-next' : 'step-footer-back'} onClick={onStartOver}>
             Start again →
           </button>
         )}
