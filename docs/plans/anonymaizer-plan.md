@@ -19,7 +19,7 @@ session, because that is where the iteration happens.
 | M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
 | M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | done |
 | M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | in progress (P12–P13 done; P14–P15 deferred) |
-| M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | in progress (P16–P20 done) |
+| M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | in progress (P16–P21 done) |
 
 M4 is split in two: **M4a** is dependency-free user-visible output and control
 (export, category toggles); **M4b** is the one-way realistic-output mode and the
@@ -32,7 +32,7 @@ and that numbering is superseded. M5 continues at `P16`–`P22`.
 consent-gated analytics on the hosted deployment, so "no network calls at
 runtime" stops being absolute for the hosted build — and becomes *more*
 explicit for every local one. `P21` carries the exact replacement wording and
-changes `CLAUDE.md` itself; until it runs, hard rule 2 stands as written.
+changes `CLAUDE.md` itself — done 2026-09-27; `CLAUDE.md` now carries the amended rule.
 
 One-off task docs that are not milestones keep their own numbered files:
 [`01-wizard-layout-fixes.md`](01-wizard-layout-fixes.md),

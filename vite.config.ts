@@ -31,6 +31,9 @@ import pkg from './package.json' with { type: 'json' }
 // in both. The NER worker also stays a separate file in both — the P7d
 // "single-file for everything except the opt-in model" caveat is unchanged.
 const portable = process.env.ANONYMAIZER_PORTABLE === '1'
+// P21: analytics exist only in a build the deploy workflow flags, and never in
+// the portable one. When false, src/lib/analyticsLoader.ts is not bundled.
+const analytics = !portable && process.env.ANONYMAIZER_ANALYTICS === '1'
 
 // P19: robots.txt and sitemap.xml for the hosted build, generated so they
 // share VITE_SITE_ORIGIN (.env) with index.html instead of hardcoding it twice.
@@ -85,6 +88,7 @@ export default defineConfig(({ mode }) => ({
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
     __PORTABLE__: JSON.stringify(portable),
+    __ANALYTICS_ENABLED__: JSON.stringify(analytics),
   },
   server: {
     // Bind to all interfaces so the dev server is reachable from outside the

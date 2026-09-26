@@ -316,7 +316,32 @@ responsibility, not the tool's.
 > "last updated" date driven by a constant, not hand-typed.
 > Add the footer links in `P16`'s shell and the "About" links in `P18`'s menu.
 
-### [ ] P21 — Consent banner and analytics, public deployment only
+### [x] P21 — Consent banner and analytics, public deployment only
+
+**Done 2026-09-27 (v0.13.0).** CLAUDE.md hard rule 2 amended with the wording
+below. Gates: `__ANALYTICS_ENABLED__` (vite define; true only for
+`ANONYMAIZER_ANALYTICS=1` and never portable) and
+`isPublicDeploymentAt()` — https + hostname of `VITE_SITE_ORIGIN` exactly —
+both in `src/lib/analytics.ts`, predicate unit-tested against file://,
+localhost, http, a LAN IP, a lookalike, a subdomain/preview and a self-hosted
+host. All host-contacting code is in `src/lib/analyticsLoader.ts`, imported
+only behind the define: verified a plain `npm run build` and the portable build
+contain no `googletagmanager`/`metricool.com`, and a flagged build does. IDs
+come from `VITE_GA4_ID` / `VITE_METRICOOL_HASH` at build time (the loader skips
+a service whose ID is unset). Consent: `src/lib/consent.ts`
+(`anonymaizer.consent` in localStorage with timestamp and
+`CONSENT_POLICY_VERSION`; tested) and `src/landing/ConsentBanner.tsx` —
+Reject/Accept share one style, "Choose" shows an unticked Analytics box, no
+close button; the cookie page reopens it; reject-after-accept deletes `_ga*`
+cookies and reloads. GA4 via Consent Mode v2 (all denied, then
+`analytics_storage` granted), no Google signals/ad personalisation, page_view
+sent manually with the route path only. Verified end to end in Chromium
+against a flagged build served as `https://anonymaizer.test`: no external
+request before a choice or after Reject; both hosts after Accept.
+**For P22:** CSP must allow `www.googletagmanager.com` (script),
+`*.google-analytics.com` / `*.analytics.google.com` (connect, img),
+`tracker.metricool.com` (script, connect, img) — **check Metricool's actual
+beacon hosts in a browser**, they were not observable here.
 
 This is the session that amends hard rule 2, and it should read as narrowly as
 the amendment is.

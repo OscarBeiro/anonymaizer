@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect } from 'react';
 import { ROUTE_PATHS, useRoute, type Route } from './lib/router';
 import { SITE_ORIGIN } from './site';
+import { isPublicDeployment, trackPageView } from './lib/analytics';
+import { ConsentBanner } from './landing/ConsentBanner';
 
 // P19: the wizard is lazy, so a landing visitor does not download it — the
 // inverse of the parser code-splitting. (The portable build inlines dynamic
@@ -26,17 +28,21 @@ function HostedRoot() {
   useEffect(() => {
     document.title = TITLES[route];
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', `${SITE_ORIGIN}${ROUTE_PATHS[route]}`);
+    // A no-op unless analytics was consented to and loaded. Path only.
+    trackPageView(ROUTE_PATHS[route]);
   }, [route]);
 
-  if (route === 'app') {
-    return (
-      <Suspense fallback={<Loading />}>
-        <App />
-      </Suspense>
-    );
-  }
+  // P21: the banner exists only on the public deployment; anywhere else there
+  // is nothing to consent to.
+  const banner = isPublicDeployment() ? <ConsentBanner /> : null;
+
   return (
-    <Suspense fallback={<Loading />}>{route === 'landing' ? <Landing /> : <LegalPage page={route} />}</Suspense>
+    <>
+      <Suspense fallback={<Loading />}>
+        {route === 'app' ? <App /> : route === 'landing' ? <Landing /> : <LegalPage page={route} />}
+      </Suspense>
+      {banner}
+    </>
   );
 }
 
