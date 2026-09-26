@@ -1,5 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadTheme, parseTheme, saveTheme, THEME_KEY } from './session';
+import {
+  clearLocalData,
+  LOCAL_KEY_PREFIX,
+  loadTheme,
+  parseTheme,
+  saveCategorySettings,
+  saveDictionaryRules,
+  saveMoneyRange,
+  saveOutputMode,
+  saveSession,
+  saveStep,
+  saveTheme,
+  THEME_KEY,
+} from './session';
 
 const memoryStorage = () => {
   const store = new Map<string, string>();
@@ -35,5 +48,36 @@ describe('theme preference', () => {
     expect(loadTheme()).toBe('system');
     expect(parseTheme('"dark"')).toBe('system');
     expect(parseTheme(null)).toBe('system');
+  });
+});
+
+describe('clearLocalData', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('leaves no anonymaizer.-prefixed key behind, and nothing else touched', () => {
+    saveSession({
+      sessionId: 's',
+      createdAt: '',
+      inputType: 'PASTE',
+      originalFormat: 'raw_text',
+      mappings: [],
+      rawMarkdown: 'x',
+      anonymizedMarkdown: 'x',
+    });
+    saveDictionaryRules([]);
+    saveStep('review');
+    saveCategorySettings({});
+    saveOutputMode('realistic');
+    saveMoneyRange({ min: 5, max: 10 });
+    saveTheme('dark');
+    localStorage.setItem('anonymaizer.someFutureKey', '1');
+    localStorage.setItem('other-app', 'keep');
+
+    clearLocalData();
+
+    const left = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
+    expect(left.filter((k) => k?.startsWith(LOCAL_KEY_PREFIX))).toEqual([]);
+    expect(left).toEqual(['other-app']);
   });
 });

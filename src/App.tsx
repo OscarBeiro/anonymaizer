@@ -7,10 +7,12 @@ import { ReviewStep } from './components/ReviewStep';
 import { StepFooter } from './components/StepFooter';
 import { SidebarStats } from './components/SidebarStats';
 import { StepNav } from './components/StepNav';
-import { ThemeControl } from './components/ThemeControl';
+import { SettingsMenu, type SettingsSection } from './components/SettingsMenu';
+import { CategoryToggles } from './components/CategoryToggles';
+import { RulesEditor } from './components/RulesEditor';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
-import { toggleableCategories, type CategorySettings } from './core/categories';
+import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
 import { renderPseudonymized, type MoneyRange } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
@@ -21,6 +23,7 @@ import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
 import type { RestoreSubStep, ReviewSubStep, WizardGate, WizardPosition } from './lib/wizard';
 import {
+  clearLocalData,
   loadCategorySettings,
   loadDictionaryRules,
   loadMoneyRange,
@@ -58,7 +61,7 @@ function App() {
     loadCategorySettings(toggleableCategories(loadDictionaryRules())),
   );
   const [step, setStep] = useState<WizardStep>(() => loadStep());
-  const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('rules');
+  const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('placeholders');
   const [restoreSubStep, setRestoreSubStep] = useState<RestoreSubStep>('response');
   const [aiResponse, setAiResponse] = useState('');
   // Non-blocking parser warnings for the document currently imported
@@ -82,6 +85,12 @@ function App() {
   const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
   useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
   const [theme, setTheme] = useState<ThemePreference>(() => loadTheme());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection | undefined>();
+  const openSettings = (section?: SettingsSection) => {
+    setSettingsSection(section);
+    setSettingsOpen(true);
+  };
   useEffect(() => {
     saveTheme(theme);
     applyTheme(theme);
@@ -285,6 +294,21 @@ function App() {
   // response; custom rules and the cached NER model are kept, since they belong
   // to the user, not to one document. Asks first: the mappings are the only
   // way to restore an AI response, and they're gone once this runs.
+  // P18: wipe every anonymaizer.* key and the NER model cache, then reload.
+  // No state changes in between, so no save effect writes a key back.
+  const clearAllLocalData = (): void => {
+    const ok = window.confirm(
+      'Clear all local data?\n\n' +
+        'This removes the current document, its placeholders, your custom rules, your settings ' +
+        'and the downloaded AI model from this browser. It cannot be undone.',
+    );
+    if (!ok) return;
+    nerClientRef.current?.terminate();
+    nerClientRef.current = null;
+    clearLocalData();
+    void deleteModelCache().finally(() => window.location.reload());
+  };
+
   const startOver = (): void => {
     const ok = window.confirm(
       'Start again with a new document?\n\n' +
@@ -296,7 +320,7 @@ function App() {
     setSession(emptySession());
     setAiResponse('');
     setImportWarnings([]);
-    setReviewSubStep('rules');
+    setReviewSubStep('placeholders');
     setRestoreSubStep('response');
     setStep('ingest');
   };
@@ -321,7 +345,9 @@ function App() {
         </div>
         {/* P18: the settings menu button mounts here. */}
         <div className="app-header-slot">
-          <ThemeControl theme={theme} onChange={setTheme} />
+          <button type="button" className="settings-button" aria-haspopup="dialog" onClick={() => openSettings()}>
+            ⚙ Settings
+          </button>
         </div>
       </header>
 
@@ -350,12 +376,6 @@ function App() {
 
           {step === 'review' && (
             <>
-              <NerToggle
-                enabled={nerEnabled}
-                status={nerStatus}
-                onToggle={handleNerToggle}
-                onDeleteModel={handleDeleteModel}
-              />
               <ReviewStep
                 session={session}
                 anonymizedText={sanitizedText}
@@ -364,13 +384,11 @@ function App() {
                 moneyRange={moneyRange}
                 onMoneyRangeChange={setMoneyRange}
                 mappings={session.mappings}
-                dictionaryRules={dictionaryRules}
                 onToggle={handleToggle}
                 onSplit={handleSplit}
                 onMerge={handleMerge}
-                onRulesChange={updateRules}
-                categorySettings={categorySettings}
-                onCategorySettingsChange={updateCategorySettings}
+                categoriesOff={toggleableCategories(dictionaryRules).filter((c) => !isCategoryOn(categorySettings, c)).length}
+                onOpenDetectionSettings={() => openSettings('detection')}
                 subStep={reviewSubStep}
                 onSubStepChange={setReviewSubStep}
               />
@@ -399,6 +417,33 @@ function App() {
           />
         </main>
       </div>
+
+      <SettingsMenu
+        open={settingsOpen}
+        section={settingsSection}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+        detection={
+          <>
+            <CategoryToggles
+              settings={categorySettings}
+              rules={dictionaryRules}
+              mappings={session.mappings}
+              onChange={updateCategorySettings}
+              defaultOpen
+            />
+            <NerToggle
+              enabled={nerEnabled}
+              status={nerStatus}
+              onToggle={handleNerToggle}
+              onDeleteModel={handleDeleteModel}
+            />
+          </>
+        }
+        dictionary={<RulesEditor rules={dictionaryRules} onChange={updateRules} />}
+        onClearLocalData={clearAllLocalData}
+      />
 
       <footer className="app-footer">
         <span>Runs entirely in your browser — no text is uploaded.</span>

@@ -107,5 +107,19 @@ export const saveCategorySettings = (settings: CategorySettings): void => {
   localStorage.setItem(CATEGORY_SETTINGS_KEY, JSON.stringify(settings));
 };
 
+// P18: "clear all local data". Wipes every `anonymaizer.`-prefixed key — not
+// just the ones this file names — so a key added later cannot be missed. The
+// privacy policy (P20) promises this in writing; session.test.ts holds it to it.
+export const LOCAL_KEY_PREFIX = 'anonymaizer.';
+
+export const clearLocalData = (storage: Storage = localStorage): void => {
+  const keys: string[] = [];
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key?.startsWith(LOCAL_KEY_PREFIX)) keys.push(key);
+  }
+  keys.forEach((key) => storage.removeItem(key));
+};
+
 export const newSessionId = (): string =>
   `session_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;

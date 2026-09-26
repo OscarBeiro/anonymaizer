@@ -4,15 +4,15 @@ import type { WizardStep } from './session';
 // so the sidebar (StepNav), the sub-step tabs and the Back/Next footer can't
 // disagree.
 
-export type ReviewSubStep = 'rules' | 'placeholders' | 'sanitized' | 'statistics';
+// P18: the dictionary rules left the step flow for the settings menu.
+export type ReviewSubStep = 'placeholders' | 'sanitized' | 'statistics';
 export type RestoreSubStep = 'response' | 'restored';
 export type SubStep = ReviewSubStep | RestoreSubStep;
 
 export const REVIEW_SUB_STEPS: { id: ReviewSubStep; label: string }[] = [
-  { id: 'rules', label: '2.1 Rules' },
-  { id: 'placeholders', label: '2.2 Placeholders' },
-  { id: 'sanitized', label: '2.3 Sanitized text' },
-  { id: 'statistics', label: '2.4 Statistics' },
+  { id: 'placeholders', label: '2.1 Placeholders' },
+  { id: 'sanitized', label: '2.2 Sanitized text' },
+  { id: 'statistics', label: '2.3 Statistics' },
 ];
 
 export const RESTORE_SUB_STEPS: { id: RestoreSubStep; label: string }[] = [

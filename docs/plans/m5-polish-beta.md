@@ -137,7 +137,22 @@ the light surface; the live `<meta>` overrides it in the browser. A temporary
 > contrast — a `<mark>` tuned for a white page is unreadable on a dark one.
 > Aim for WCAG AA on body text in both themes.
 
-### [ ] P18 — The menu: language, theme, settings
+### [x] P18 — The menu: language, theme, settings
+
+**Done 2026-09-27 (v0.10.0).** `SettingsMenu.tsx` is a right-edge slide-over
+`<dialog>` opened with `showModal()` (page inert, Escape closes, backdrop click
+closes, focus returned explicitly), from a "⚙ Settings" header button. Sections:
+Language (M4b deferred — a disabled English-only selector marks the slot),
+Theme (`ThemeControl`, moved out of the header), Detection (`CategoryToggles`,
+open by default here, plus `NerToggle`), Dictionary (`RulesEditor`), About
+(version, a `legalLinks` slot for P20, "Clear all local data"). The rules
+editor leaving the step flow removed the old 2.1 Rules sub-step, so Review is
+now 2.1 Placeholders / 2.2 Sanitized text / 2.3 Statistics (`wizard.ts` and its
+tests updated). 2.1 keeps a "N categories off · Detection settings and custom
+rules" link that opens the menu at Detection. `clearLocalData()` in
+`session.ts` removes every `anonymaizer.`-prefixed key, not a fixed list; App
+then clears the NER cache and reloads. Test: `session.test.ts` asserts no
+prefixed key survives and unrelated keys do.
 
 Settings have been accumulating with nowhere to live — NER opt-in
 (`NerToggle.tsx`), the dictionary rules editor (`RulesEditor.tsx`), M4a's
