@@ -272,6 +272,35 @@ the amendment is.
 > A strict CSP in `P22`'s `_headers` is what makes this enforceable rather than
 > merely intended; the two sessions have to agree on the allowed hosts.
 
+### [ ] P21b — Service worker must not pin users to an old build
+
+Found 2026-09-26 (v0.4.5). `public/sw.js` is cache-first for every same-origin
+GET, and nothing ever invalidates it: `CACHE_NAME` is a hand-set constant
+(`anonymaizer-v2`), and `/` and `/index.html` are served from the cache. After a
+deploy, a returning user keeps the old `index.html`, which points to the old
+hashed `/assets/*` chunks. They run the previous release until the constant is
+bumped by hand, and the new release never reaches them. The same mechanism froze
+source modules in dev, where the NER word-boundary fix never reached the browser.
+v0.4.5 fixed that half by registering the worker in production only
+(`src/main.tsx`).
+
+> Fix before `P22` makes deploys routine:
+> - Serve the navigation request (`/`, `/index.html`) network-first, falling
+>   back to the cache offline. Keep hashed `/assets/*` cache-first; they are
+>   immutable by name.
+> - Derive `CACHE_NAME` from the build (inject `__APP_VERSION__` or a build
+>   hash into `sw.js` at build time) so that `activate` drops the previous
+>   release's cache.
+> - When a new worker is waiting, show a small "New version available —
+>   reload" prompt instead of taking over silently mid-session. A reload loses
+>   no work, since the session lives in localStorage.
+> - Still no network beyond same-origin (hard rules 2–3). The portable build is
+>   unaffected.
+>
+> Test: build v*N*, load it, build v*N+1*, reload once. You should get the
+> prompt, and after accepting it the new badge shows. Offline, the last cached
+> release still loads.
+
 ### [ ] P22 — Automated Cloudflare Pages deploy
 
 > A GitHub Actions workflow (`.github/workflows/deploy.yml`) on push to `main`:
