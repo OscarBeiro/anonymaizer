@@ -8,6 +8,8 @@ const STEP_KEY = 'anonymaizer.step';
 const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
 const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
+// Read verbatim by the inline pre-paint script in index.html — rename both or neither.
+export const THEME_KEY = 'anonymaizer.theme';
 
 // Wizard position is UI state, not part of the spec §3 MappingSession data
 // contract — kept under its own localStorage key.
@@ -30,6 +32,18 @@ export const loadOutputMode = (): OutputMode =>
 
 export const saveOutputMode = (mode: OutputMode): void => {
   localStorage.setItem(OUTPUT_MODE_KEY, mode);
+};
+
+// P17: `system` follows prefers-color-scheme; light/dark override it.
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+export const parseTheme = (raw: string | null): ThemePreference =>
+  raw === 'light' || raw === 'dark' ? raw : 'system';
+
+export const loadTheme = (): ThemePreference => parseTheme(localStorage.getItem(THEME_KEY));
+
+export const saveTheme = (theme: ThemePreference): void => {
+  localStorage.setItem(THEME_KEY, theme);
 };
 
 export const loadMoneyRange = (): MoneyRange => {

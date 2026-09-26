@@ -102,7 +102,21 @@ variable swap rather than a rewrite of every rule.
 > `npm run build:portable` both still produce a working page — the portable
 > build inlines CSS and is the one that notices a new stylesheet import.
 
-### [ ] P17 — Light/dark theme, the "two modes"
+### [x] P17 — Light/dark theme, the "two modes"
+
+**Done 2026-09-27 (v0.9.0).** `tokens.css` carries the dark block twice
+(`@media … :root:not([data-theme='light'])` and `:root[data-theme='dark']`),
+identical by convention — plain CSS cannot OR a media query with a selector.
+`anonymaizer.theme` via `loadTheme`/`saveTheme`/`parseTheme` in `session.ts`;
+`src/lib/theme.ts#applyTheme` sets the attribute and `<meta name="theme-color">`
+and re-runs on OS changes; the pre-paint inline script in `index.html` mirrors
+it. Placeholder `<mark>`s get `--color-mark-text` (accent-active in light,
+~6:1; the plain accent was under AA on its tint). The manifest cannot switch
+per theme — `theme_color`/`background_color` are static JSON — so it now uses
+the light surface; the live `<meta>` overrides it in the browser. A temporary
+`ThemeControl` sits in the header slot until P18's menu.
+**Note for P22:** the inline script needs a CSP hash (`'sha256-…'`), not
+`'unsafe-inline'`.
 
 > Three states, not two: `light`, `dark`, `system`. `system` is the default and
 > follows `prefers-color-scheme`; an explicit choice overrides it and persists.

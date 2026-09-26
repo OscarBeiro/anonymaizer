@@ -1,8 +1,14 @@
 /* P16: the design tokens. Every colour, space, radius, shadow and type size the
    UI uses is defined here and only here — a literal colour anywhere else in
-   src/ is a bug. P17's theme switch redefines the colour block below. */
+   src/ is a bug. P17: the dark values are written twice — once for `system` following
+   prefers-color-scheme (unless the user forced light), once for an explicit
+   data-theme='dark' — so every theme shares one set of values. Keep the two
+   blocks identical. data-theme is set before paint by the inline script in
+   index.html. */
 
+/* color-scheme drives native controls and scrollbars. */
 :root {
+  color-scheme: light;
   /* Colour — surfaces and text */
   --color-surface: #fff;
   --color-surface-raised: #f7f6f9;
@@ -20,6 +26,8 @@
   --color-accent-subtle: rgba(170, 59, 255, 0.1);
   --color-accent-border: rgba(170, 59, 255, 0.5);
   --color-on-accent: #fff;
+  /* Placeholder <mark> text: plain accent is ~4.3:1 on its subtle tint, under AA. */
+  --color-mark-text: #7d17cc;
 
   /* Colour — semantic */
   --color-success: #1a7f37;
@@ -63,7 +71,8 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
     --color-surface: #16171d;
     --color-surface-raised: #1c1d24;
     --color-surface-sunken: #1f2028;
@@ -89,5 +98,36 @@
 
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
     --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+    --color-mark-text: #dcb6fe;
   }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-surface: #16171d;
+  --color-surface-raised: #1c1d24;
+  --color-surface-sunken: #1f2028;
+  --color-text: #9ca3af;
+  --color-text-strong: #f3f4f6;
+  --color-text-muted: #9098a4;
+  --color-border: #2e303a;
+  --color-border-strong: #454856;
+
+  --color-accent: #c084fc;
+  --color-accent-hover: #cf9dfd;
+  --color-accent-active: #dcb6fe;
+  --color-accent-subtle: rgba(192, 132, 252, 0.15);
+  --color-accent-border: rgba(192, 132, 252, 0.5);
+  --color-on-accent: #16171d;
+
+  --color-success: #4ade80;
+  --color-warning: #e0b44c;
+  --color-warning-border: #c99a2e;
+  --color-warning-subtle: rgba(224, 180, 76, 0.1);
+  --color-danger: #f28b82;
+  --color-danger-subtle: rgba(242, 139, 130, 0.1);
+
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --color-mark-text: #dcb6fe;
 }

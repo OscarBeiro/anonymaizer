@@ -3,7 +3,6 @@
 :root {
   font: 18px/145% var(--font-sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
   color: var(--color-text);
   background: var(--color-surface);
   font-synthesis: none;

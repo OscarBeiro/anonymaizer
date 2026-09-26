@@ -4,7 +4,20 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#aa3bff" />
+    <meta name="theme-color" content="#ffffff" />
+    <!-- P17: set data-theme before the bundle loads, or a dark-mode user sees
+         a light flash. Mirrors applyTheme() in src/lib/theme.ts and reads
+         THEME_KEY from src/lib/session.ts. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('anonymaizer.theme');
+          if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+          var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', dark ? '#16171d' : '#ffffff');
+        } catch (e) {}
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AnonymAIzer</title>
   </head>

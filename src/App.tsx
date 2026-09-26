@@ -7,6 +7,8 @@ import { ReviewStep } from './components/ReviewStep';
 import { StepFooter } from './components/StepFooter';
 import { SidebarStats } from './components/SidebarStats';
 import { StepNav } from './components/StepNav';
+import { ThemeControl } from './components/ThemeControl';
+import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
@@ -25,6 +27,7 @@ import {
   loadOutputMode,
   loadSession,
   loadStep,
+  loadTheme,
   newSessionId,
   saveCategorySettings,
   saveDictionaryRules,
@@ -32,6 +35,8 @@ import {
   saveOutputMode,
   saveSession,
   saveStep,
+  saveTheme,
+  type ThemePreference,
   type OutputMode,
   type WizardStep,
 } from './lib/session';
@@ -76,6 +81,12 @@ function App() {
   useEffect(() => saveOutputMode(outputMode), [outputMode]);
   const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
   useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
+  const [theme, setTheme] = useState<ThemePreference>(() => loadTheme());
+  useEffect(() => {
+    saveTheme(theme);
+    applyTheme(theme);
+    return watchSystemTheme(() => applyTheme(theme));
+  }, [theme]);
   // P13: the realistic rendering is derived, never stored — the session and
   // its placeholder text stay the source of truth for step 3.
   const realisticText = useMemo(
@@ -309,7 +320,9 @@ function App() {
           <p className="app-tagline">Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
         </div>
         {/* P18: the settings menu button mounts here. */}
-        <div className="app-header-slot" />
+        <div className="app-header-slot">
+          <ThemeControl theme={theme} onChange={setTheme} />
+        </div>
       </header>
 
       <div className="app">
