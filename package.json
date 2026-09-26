@@ -1,12 +1,12 @@
 {
   "name": "anonymaizer",
   "private": true,
-  "version": "0.6.0",
+  "version": "0.6.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
-    "build:portable": "tsc -b && ANONYMAIZER_PORTABLE=1 vite build",
+    "build": "tsc -b && NODE_ENV=production vite build",
+    "build:portable": "tsc -b && NODE_ENV=production ANONYMAIZER_PORTABLE=1 vite build",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",

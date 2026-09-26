@@ -196,3 +196,10 @@ hardcoded.
 - **Bundle:** the entry chunk is now 501.33 kB (from 497.98 kB), over Vite's
   500 kB warning. It is a warning, not an error; code-splitting or raising
   `chunkSizeWarningLimit` is the user's call.
+- **Fixed right after (v0.6.1): the build was shipping React's *development*
+  build.** The Podman dev container sets `NODE_ENV=development`
+  (`~/containers/anonymaizer/compose-anonymaizer-5173-dev.yml`) and `vite build`
+  honours an existing `NODE_ENV`. Both build scripts now set
+  `NODE_ENV=production` themselves. Entry chunk 501.33 → **282.36 kB** (gzip
+  152.78 → 90.04 kB). Every "entry chunk" size recorded in earlier plan files
+  (e.g. M3's 482.98 kB) was measured with the dev React inside.
