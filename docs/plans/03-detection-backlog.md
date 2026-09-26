@@ -1,6 +1,7 @@
 # 03 — Detection backlog after M3
 
-Four bugs left open when M3 closed (2026-09-21). Three were found by *using*
+Four bugs left open when M3 closed (2026-09-21), plus two more (D5, D6)
+found by using v0.4.1 on 2026-09-26. Three of the first four were found by *using*
 the parsers rather than by testing them, which is why they are grouped here
 instead of being spread across the milestone files where they were noticed.
 
@@ -18,7 +19,8 @@ the over-mask — but say so in a comment, and add the false positive it
 introduces to the tests so the cost is measured rather than assumed.
 
 Ordered by severity: D1 and D2 are leaks, D3 is noise, D4 is a correctness bug
-in the restore path that only user-defined rules can trigger.
+in the restore path that only user-defined rules can trigger. D5 and D6 are
+noise (false positives).
 
 ---
 
@@ -285,6 +287,70 @@ in the restore path that only user-defined rules can trigger.
 
 ---
 
+### [ ] D5 — Acronyms are not companies
+
+Found 2026-09-26 by using the app on v0.4.1. `detectCompanyAcronyms`
+(`src/core/detectors.ts`) flags every run of two or more capitals as COMPANY.
+Only a fiscal list (`IVA`, `DNI`, `PDF`, …) is excluded, so `NDA`, `CNMV` and
+`AEAT` all show up. They start unticked, but they clutter step 2 enough that
+the real detections are hard to find.
+
+Reproduced:
+
+| Input | Detected |
+|---|---|
+| `Firmamos el NDA con Acme S.L. ayer.` | `NDA` → COMPANY (disabled) |
+| `Enviar a la CNMV y la AEAT el PDF.` | `CNMV`, `AEAT` → COMPANY (disabled) |
+
+> Write tests first:
+> - `NDA`, `SLA`, `CEO`, `RGPD`, `LOPD`, `KPI`, `ONG`, `BOE`, `EUR`, `IT`
+>   produce no COMPANY span.
+> - `AEAT`, `CNMV`, `SEPE`, `DGT`, `INSS`, `TGSS` become SHIELD spans, the same
+>   way D3 shields institutions by their full names.
+> - Regression: `Acme S.L.` and an unknown acronym such as `ACME` are still
+>   detected (the unknown one stays a disabled suggestion).
+>
+> Implementation: rename `FISCAL_ACRONYM_EXCLUSIONS` to `ACRONYM_EXCLUSIONS`
+> and extend it with common legal, business and tech terms. Add the institution
+> acronyms to D3's shield lexicon (`INSTITUTION_HEADS`, next to
+> `detectPublicInstitutions`) so that arbitration suppresses them. Leave the
+> rung of the remaining unknown acronyms unchanged: a disabled suggestion is an
+> over-mask, not a leak.
+
+---
+
+### [ ] D6 — A lone initial is not a name
+
+Found the same day. `NAME_TOKEN` accepts `\p{Lu}\.` so that `J. Smith` and
+`Juan G. Pérez` work. As a side effect, any capitalised noun followed by a
+lettered item gets read as a person:
+
+| Input | Detected |
+|---|---|
+| `Punto G. Anexo A del contrato.` | `Punto G. Anexo` → NAME |
+| `Juan G. Pérez firmó el NDA.` | `Juan G. Pérez` → NAME (correct, must stay) |
+
+The user also saw a bare single letter ("G") masked. That may be the path
+above, or it may be NER returning a one-character entity. **Get the real text
+from the user and add it as a fixture before choosing the fix.**
+
+> Write tests first:
+> - `Punto G. Anexo A`, `Anexo B. Cláusula`, `Opción C. Según lo` produce no
+>   NAME.
+> - Still detected: `Juan G. Pérez`, `J. Smith`, `María J. López García`.
+> - `mapNerEntitiesToSpans` (`src/core/ner.ts`) drops entities that have fewer
+>   than two letters or consist only of initials (`ner.test.ts`).
+>
+> Implementation: add a small `NON_NAME_HEADS` list (`Punto`, `Anexo`,
+> `Apartado`, `Opción`, `Plan`, `Artículo`, `Cláusula`, `Sección`, …). A match
+> whose first token is one of these and whose next token is an initial is
+> rejected. As a final guard, drop any NAME span that has fewer than two
+> tokens once initials are left out, reusing the existing token-floor helper.
+> Per the standing trade-off, a real name that starts with one of these heads
+> is an accepted cost: record it as a test.
+
+---
+
 ### Verification
 
 Development runs in Podman (`~/containers/anonymaizer/README.md`) and
@@ -294,7 +360,7 @@ container**: `podman exec anonymaizer-5173-dev npm test`, likewise
 
 Per session: `npm test` and `npm run lint`.
 
-**And verify in a real browser.** Every one of these four was found by using the
+**And verify in a real browser.** Every one of these was found by using the
 app or reading its output, not by the suite — and M3 turned up three bugs the
 same way (a silently-dropped CJK PDF, `**From:**` being masked as an ID,
 turndown returning an empty string under happy-dom). `npm run dev`, paste or

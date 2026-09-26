@@ -1,0 +1,74 @@
+# 04 — Wizard navigation: Back/Next buttons and sidebar stats
+
+Found on 2026-09-26 while testing v0.4.1 by hand: the only way to move
+between steps is the sidebar `StepNav`. Nothing on the page tells a new user
+what to do after pasting text. This isn't P9 (P9 is "Save as…" export). Do it
+after D5–D6 in [`03-detection-backlog.md`](03-detection-backlog.md), and before
+P9.
+
+The wider visual polish stays in M5 (`P16`–`P17`). Whether to move it ahead of
+M4 is an open question for the user.
+
+---
+
+### [ ] W1 — Back/Next footer on every step
+
+- New component `src/components/StepFooter.tsx`, rendered by `App.tsx` below
+  the active step: a secondary **Back** button and a primary **Next** button.
+- Step order: Ingest → Review (sub-steps from `ReviewStep.tsx`: Rules →
+  Placeholders → Sanitized → Statistics) → Restore. Next walks the Review
+  sub-steps before it moves on to Restore, so the sub-step state has to be
+  lifted from `ReviewStep` into `App` (or passed through a callback).
+- Gating: reuse the `canReview` / `canRestore` conditions that `App.tsx`
+  already passes to `StepNav`, extracted into one shared helper so the sidebar
+  and the footer can't disagree. A disabled Next shows why (for example, "Paste
+  or drop a document first").
+- Ingest shows only Next. Restore shows only Back.
+- Put the ordering logic in a pure helper (`nextStep` / `prevStep` in
+  `src/lib/`) and test it there. That covers the logic without needing a
+  component-testing setup.
+
+> Write tests first: `nextStep`/`prevStep` over every step and sub-step,
+> including the gated cases (no text → no Next from Ingest; no mappings → no
+> Restore).
+
+### Verification
+
+`podman exec anonymaizer-5173-dev npm test`, plus `npm run lint` and
+`npm run build`. Then in the browser (:5173): on an empty session, Next is
+disabled and its hint is visible. Paste text and click Next all the way to
+Restore, then click Back all the way to Ingest. Check that the sidebar
+highlight follows at every step.
+
+---
+
+### [ ] W2 — Compact stats in the sidebar
+
+Requested 2026-09-26: below `StepNav`, the left column (`<aside
+className="app-sidebar">` in `App.tsx`) is empty. Fill it with a live summary.
+**This is in addition to** the detailed Statistics sub-step
+(`StatisticsPanel`, `src/components/MappingPanels.tsx`), which stays as it is.
+
+- New component `src/components/SidebarStats.tsx`, rendered under `StepNav`
+  once `session.mappings.length > 0`. Before that it shows nothing, or a
+  one-line hint.
+- Contents: the total number of masked items (enabled mappings) and how many
+  are unticked; one row per category with its count, using the same category
+  colour as the placeholder highlighting; and the source file name and format
+  when the session came from a file.
+- Data: reuse `countByCategory` from `src/core/stats.ts`. If a new aggregate is
+  needed (enabled vs disabled, for example), add it there with a test.
+  `src/core/` stays pure (hard rule 4).
+- Clicking a category row could jump to Review → Placeholders filtered to that
+  category. That's nice to have; leave it out if the filter doesn't exist yet.
+- On narrow screens, where the sidebar collapses, hide the block or turn it
+  into a single summary line.
+
+> Write tests first for any new function in `stats.ts` (enabled/disabled split,
+> empty session).
+
+### Verification
+
+In addition to W1's checks: with an empty session the sidebar shows no stats.
+Paste text and the counts appear. Untick a mapping in Review and the sidebar
+updates immediately and still matches the Statistics sub-step.

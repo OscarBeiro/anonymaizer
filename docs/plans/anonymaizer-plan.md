@@ -41,6 +41,10 @@ M3 and fixed out of band — names at the start of a line were never masked) and
 **[`03-detection-backlog.md`](03-detection-backlog.md)** — four open detection
 bugs left after M3, `D1`–`D4`, one block per session like a milestone file.
 Three of the four were found by *using* the parsers, not by testing them.
+`D5`–`D6` (acronym and lone-initial false positives) were added 2026-09-26.
+[`04-wizard-next.md`](04-wizard-next.md) — `W1`, Back/Next buttons for the
+wizard, and `W2`, compact live stats in the sidebar, both found in the same
+round of manual testing.
 
 **The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
 "the §6 Spanish test bench case", read that section from `docs/spec.md`.
