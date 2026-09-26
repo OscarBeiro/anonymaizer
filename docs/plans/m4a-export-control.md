@@ -25,7 +25,7 @@ Decided in planning (2026-09-21), do not re-litigate:
 
 ---
 
-### [ ] P9 — Save as… for the easy tier (`.txt`, `.md`, `.html`)
+### [x] P9 — Save as… for the easy tier (`.txt`, `.md`, `.html`)
 
 The download mechanism already exists in the codebase — `exportRules`
 (`RulesEditor.tsx:72`) is `Blob` → `createObjectURL` → synthetic `<a download>`
@@ -61,6 +61,17 @@ the saved file shows what the screen showed.
 > so there is a single implementation.
 > In `MappingPanels.tsx` and `ReversalPanel.tsx`, add a format `<select>` plus a
 > "Save as…" button beside the existing copy-to-clipboard control.
+
+**Done 2026-09-26 (v0.5.0).**
+- `src/core/export/textExport.ts`: `buildExport(kind, text, session, side,
+  { highlight })` and `exportFileStem`, tested in `textExport.test.ts` (8 tests).
+  `side` (`sanitized` / `restored`) is an explicit argument, it picks the suffix.
+- `PLACEHOLDER_PATTERN` now lives there; `MappingPanels.tsx` imports it, so the
+  saved HTML and the screen share one regex.
+- The HTML shell has light and dark colours via `prefers-color-scheme`, inline.
+- `src/lib/download.ts#downloadFile`; `RulesEditor#exportRules` uses it.
+- `src/components/SaveAsControl.tsx` (format select + "Save as…"), on 2.3 beside
+  the panel's copy button and on 3.2 under the restored text. Default: `.txt`.
 
 ### [ ] P10 — `.xlsx` export for tabular sources
 

@@ -1,8 +1,8 @@
 import { type ReactNode, useState } from 'react';
 import { countByCategory } from '../core/stats';
-import type { MappingItem } from '../core/types';
-
-const PLACEHOLDER_PATTERN = /(\[\[[A-Z][A-Z0-9_]*\]\])/g;
+import { PLACEHOLDER_PATTERN } from '../core/export/textExport';
+import type { MappingItem, MappingSession } from '../core/types';
+import { SaveAsControl } from './SaveAsControl';
 
 const renderHighlighted = (text: string): ReactNode[] =>
   text.split(PLACEHOLDER_PATTERN).map((segment, i) =>
@@ -17,20 +17,24 @@ const renderHighlighted = (text: string): ReactNode[] =>
 
 interface SanitizedTextPanelProps {
   anonymizedText: string;
+  session: MappingSession;
 }
 
-export const SanitizedTextPanel = ({ anonymizedText }: SanitizedTextPanelProps) => (
+export const SanitizedTextPanel = ({ anonymizedText, session }: SanitizedTextPanelProps) => (
   <section className="panel">
     <h2>Sanitized text</h2>
     <div className="panel-textarea sanitized-highlight">{renderHighlighted(anonymizedText)}</div>
-    <button
-      type="button"
-      className="copy-button"
-      disabled={!anonymizedText}
-      onClick={() => navigator.clipboard.writeText(anonymizedText)}
-    >
-      Copy sanitized text
-    </button>
+    <div className="panel-actions">
+      <button
+        type="button"
+        className="copy-button"
+        disabled={!anonymizedText}
+        onClick={() => navigator.clipboard.writeText(anonymizedText)}
+      >
+        Copy sanitized text
+      </button>
+      <SaveAsControl text={anonymizedText} session={session} side="sanitized" />
+    </div>
   </section>
 );
 

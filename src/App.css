@@ -276,6 +276,25 @@
 }
 
 .create-rule-button,
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.save-as {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.save-as select {
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 5px 6px;
+}
+
 .copy-button {
   align-self: flex-start;
   font-size: 0.85rem;

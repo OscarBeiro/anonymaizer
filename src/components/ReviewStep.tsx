@@ -1,9 +1,10 @@
-import type { CustomDictionaryRule, MappingItem } from '../core/types';
+import type { CustomDictionaryRule, MappingItem, MappingSession } from '../core/types';
 import { MappingList, SanitizedTextPanel, StatisticsPanel } from './MappingPanels';
 import { RulesEditor } from './RulesEditor';
 import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
 
 interface ReviewStepProps {
+  session: MappingSession;
   anonymizedText: string;
   mappings: MappingItem[];
   dictionaryRules: CustomDictionaryRule[];
@@ -17,6 +18,7 @@ interface ReviewStepProps {
 }
 
 export const ReviewStep = ({
+  session,
   anonymizedText,
   mappings,
   dictionaryRules,
@@ -49,7 +51,7 @@ export const ReviewStep = ({
         <MappingList mappings={mappings} onToggle={onToggle} onSplit={onSplit} onMerge={onMerge} />
       )}
 
-      {subStep === 'sanitized' && <SanitizedTextPanel anonymizedText={anonymizedText} />}
+      {subStep === 'sanitized' && <SanitizedTextPanel anonymizedText={anonymizedText} session={session} />}
 
       {subStep === 'statistics' && <StatisticsPanel mappings={mappings} />}
     </div>

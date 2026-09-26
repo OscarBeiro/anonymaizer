@@ -1,7 +1,10 @@
+import type { MappingSession } from '../core/types';
 import type { RestoreSubStep } from '../lib/wizard';
 import { RESTORE_SUB_STEPS } from '../lib/wizard';
+import { SaveAsControl } from './SaveAsControl';
 
 interface ReversalPanelProps {
+  session: MappingSession;
   aiResponse: string;
   restored: string;
   onAiResponseChange: (text: string) => void;
@@ -11,7 +14,7 @@ interface ReversalPanelProps {
   onSubStepChange: (subStep: RestoreSubStep) => void;
 }
 
-export const ReversalPanel = ({ aiResponse, restored, onAiResponseChange, subStep, onSubStepChange }: ReversalPanelProps) => (
+export const ReversalPanel = ({ session, aiResponse, restored, onAiResponseChange, subStep, onSubStepChange }: ReversalPanelProps) => (
   <div className="restore-step">
     <nav className="review-sub-nav">
       {RESTORE_SUB_STEPS.map((s) => (
@@ -43,6 +46,9 @@ export const ReversalPanel = ({ aiResponse, restored, onAiResponseChange, subSte
       <section className="panel">
         <h2>Restored text</h2>
         <textarea className="panel-textarea" readOnly value={restored} placeholder="Restored text appears here…" />
+        <div className="panel-actions">
+          <SaveAsControl text={restored} session={session} side="restored" />
+        </div>
       </section>
     )}
   </div>

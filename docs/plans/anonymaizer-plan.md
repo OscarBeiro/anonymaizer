@@ -17,7 +17,7 @@ session, because that is where the iteration happens.
 | M1 — "Paste & Revert" PoC | [`m1-poc.md`](m1-poc.md) | done |
 | M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](m2-detection-ner.md) | done |
 | M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
-| M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | planned, not started |
+| M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | in progress (P9 done) |
 | M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | planned, not started |
 | M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | planned, not started |
 

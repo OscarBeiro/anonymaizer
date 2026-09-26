@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { isValidRegexPattern, parseImportedRules, validateRuleInput } from '../core/ruleValidation';
 import type { CustomDictionaryRule } from '../core/types';
+import { downloadFile } from '../lib/download';
 
 interface RulesEditorProps {
   rules: CustomDictionaryRule[];
@@ -69,15 +70,8 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
     if (editingId === id) cancelEdit();
   };
 
-  const exportRules = () => {
-    const blob = new Blob([JSON.stringify(rules, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'anonymaizer-dictionary-rules.json';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  const exportRules = () =>
+    downloadFile('anonymaizer-dictionary-rules.json', JSON.stringify(rules, null, 2), 'application/json');
 
   const importRules = async (file: File) => {
     setImportError(null);

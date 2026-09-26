@@ -304,6 +304,7 @@ function App() {
               onDeleteModel={handleDeleteModel}
             />
             <ReviewStep
+              session={session}
               anonymizedText={session.anonymizedMarkdown}
               mappings={session.mappings}
               dictionaryRules={dictionaryRules}
@@ -319,6 +320,7 @@ function App() {
 
         {step === 'restore' && (
           <ReversalPanel
+            session={session}
             aiResponse={aiResponse}
             restored={restored}
             onAiResponseChange={setAiResponse}
