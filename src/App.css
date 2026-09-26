@@ -15,18 +15,6 @@
   background: var(--color-surface-raised);
 }
 
-.app-mark {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-lg);
-}
 
 .app-title {
   min-width: 0;

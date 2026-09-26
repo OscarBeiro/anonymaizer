@@ -1,5 +1,5 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 import pkg from './package.json' with { type: 'json' }
 
@@ -32,15 +32,47 @@ import pkg from './package.json' with { type: 'json' }
 // "single-file for everything except the opt-in model" caveat is unchanged.
 const portable = process.env.ANONYMAIZER_PORTABLE === '1'
 
+// P19: robots.txt and sitemap.xml for the hosted build, generated so they
+// share VITE_SITE_ORIGIN (.env) with index.html instead of hardcoding it twice.
+// The portable build is never crawled and gets neither.
+const seoFiles = (origin: string): Plugin => ({
+  name: 'anonymaizer-seo-files',
+  apply: 'build',
+  generateBundle() {
+    const paths = ['/', '/app', '/privacy', '/cookies', '/terms']
+    this.emitFile({
+      type: 'asset',
+      fileName: 'robots.txt',
+      source: `User-agent: *\nAllow: /\n\nSitemap: ${origin}/sitemap.xml\n`,
+    })
+    this.emitFile({
+      type: 'asset',
+      fileName: 'sitemap.xml',
+      source:
+        '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+        paths.map((p) => `  <url><loc>${origin}${p}</loc></url>\n`).join('') +
+        '</urlset>\n',
+    })
+  },
+})
+
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react(), ...(portable ? [viteSingleFile()] : [])],
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    react(),
+    ...(portable ? [viteSingleFile()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN)]),
+  ],
   build: portable ? { outDir: 'dist-portable' } : {},
-  // Relative, so the portable index.html and its siblings resolve from a
-  // file:// origin, and so a hosted copy works from a subdirectory.
-  // (viteSingleFile's recommended config sets this too; stating it keeps the
-  // two builds' asset URLs identical in shape.)
-  base: './',
+  // P19: the base differs per build, and getting it wrong ships a white page.
+  // Portable: relative, so index.html resolves its siblings from a file://
+  // origin (viteSingleFile's recommended config sets this too) — and so the
+  // portable build has no router at all (see src/Root.tsx), since file:// has
+  // no server to rewrite /app or /privacy back to index.html.
+  // Hosted: absolute, because the history router serves index.html at /app,
+  // /privacy, … and a relative `./assets/x.js` would resolve to
+  // `/app/assets/x.js` and 404. The hosted build therefore needs to live at
+  // the domain root, not a subdirectory.
+  base: portable ? './' : '/',
   resolve: {
     // onnxruntime-web 1.31's default browser entry embeds its ~54MB of
     // .wasm runtimes via `new URL(...)`, which viteSingleFile happily
@@ -52,6 +84,7 @@ export default defineConfig({
   },
   define: {
     __APP_VERSION__: JSON.stringify(pkg.version),
+    __PORTABLE__: JSON.stringify(portable),
   },
   server: {
     // Bind to all interfaces so the dev server is reachable from outside the
@@ -63,4 +96,4 @@ export default defineConfig({
       usePolling: true,
     },
   },
-})
+}))

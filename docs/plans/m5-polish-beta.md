@@ -182,7 +182,28 @@ menu with theme + the existing settings and leave a marked slot for language.
 > a test that "clear all local data" leaves no `anonymaizer.`-prefixed key
 > behind, since that is a promise the privacy policy will make in writing.
 
-### [ ] P19 — Landing page and the routing split
+### [x] P19 — Landing page and the routing split
+
+**Done 2026-09-27 (v0.11.0).** Hand-rolled router in `src/lib/router.ts`
+(`matchRoute` is unit-tested; unknown paths fall back to the landing).
+`src/Root.tsx` picks `PortableRoot` (wizard only) or `HostedRoot` on the
+`__PORTABLE__` define; the wizard, landing and legal pages are all
+`React.lazy`, and the landing/legal lazies are guarded by the constant so the
+portable output contains none of it (verified by grep). `base` is `'/'` hosted,
+`'./'` portable, commented in `vite.config.ts` — the hosted build must now sit
+at a domain root. The landing's paste box / file picker / drop zone hands the
+document over in memory (`src/lib/handoff.ts`, never localStorage) and the
+wizard opens at Review with it loaded. `sw.js` (cache `v3`): **every**
+navigation is network-first with a cache fallback, not only the landing and
+legal routes — `/app` is the same `index.html`, and keeping it cache-first is
+exactly P21b's stale-release bug; hashed assets stay cache-first. SEO: meta,
+canonical (updated per route), OG/Twitter tags, a self-rendered
+`public/og-image.png`; `robots.txt`/`sitemap.xml` are generated at build time
+from `VITE_SITE_ORIGIN` in `.env` (**`https://anonymaizer.pages.dev` is a
+placeholder — set the real domain before launch**). Manifest `start_url` is
+now `/app`. **Not done:** `lang` switching with the M4b locale — M4b P14/P15
+are deferred, so there is only `en`; wire `document.documentElement.lang` when
+the `t()` layer lands.
 
 Reference point is saferlayer — as a reference for *structure and register*,
 not something to copy. What a page like that gets right is that the tool is

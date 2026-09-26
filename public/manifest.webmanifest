@@ -2,7 +2,7 @@
   "name": "AnonymAIzer",
   "short_name": "AnonymAIzer",
   "description": "Client-side text anonymization & reversal tool. Zero backend, zero egress.",
-  "start_url": ".",
+  "start_url": "/app",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",

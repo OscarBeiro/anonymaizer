@@ -17,6 +17,9 @@ import { applyEnabledMappings } from './core/apply';
 import { renderPseudonymized, type MoneyRange } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
+import { parseDocument } from './core/parsers';
+import { takeHandoff } from './lib/handoff';
+import { linkProps } from './lib/router';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
@@ -128,6 +131,31 @@ function App() {
       originalFormat: format,
     }));
   };
+
+  // P19: text or a file handed over by the landing's call to action. It
+  // replaces the current document, like a paste or an import would.
+  useEffect(() => {
+    const handoff = takeHandoff();
+    if (!handoff) return;
+    if (handoff.kind === 'text') {
+      handlePasteChange(handoff.text);
+      setStep('review');
+      return;
+    }
+    void handoff.file
+      .arrayBuffer()
+      .then((bytes) => parseDocument(handoff.file.name, bytes))
+      .then((parsed) => {
+        handleFileImport(parsed.markdown, parsed.format, handoff.file.name, parsed.warnings ?? []);
+        setStep('review');
+      })
+      .catch((e: unknown) => {
+        setStep('ingest');
+        setImportWarnings([`Could not read ${handoff.file.name}: ${e instanceof Error ? e.message : 'unknown error'}`]);
+      });
+    // Mount only: a handoff is consumed once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runNerScan = async (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
     nerClientRef.current ??= new NerClient();
@@ -335,7 +363,12 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-mark" aria-hidden="true">A</span>
+        {/* The portable build has no landing to go back to. */}
+        {__PORTABLE__ ? (
+          <span className="app-mark" aria-hidden="true">A</span>
+        ) : (
+          <a className="app-mark" aria-label="AnonymAIzer home" {...linkProps('/')}>A</a>
+        )}
         <div className="app-title">
           <h1>
             AnonymAIzer
