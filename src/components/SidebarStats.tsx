@@ -30,8 +30,12 @@ export const SidebarStats = ({ session }: SidebarStatsProps) => {
       )}
       <p className="sidebar-stats-total">
         <strong>{enabled}</strong> masked
-        {disabled > 0 && <span className="sidebar-stats-muted"> · {disabled} unticked</span>}
       </p>
+      {disabled > 0 && (
+        <p className="sidebar-stats-total sidebar-stats-muted">
+          <strong>{disabled}</strong> unticked
+        </p>
+      )}
       {byCategory.length > 0 && (
         <ul className="sidebar-stats-list">
           {byCategory.map(({ category, count }) => (

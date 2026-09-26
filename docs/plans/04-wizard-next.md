@@ -100,7 +100,7 @@ className="app-sidebar">` in `App.tsx`) is empty. Fill it with a live summary.
 - `summarizeMappings` in `src/core/stats.ts` (enabled / disabled / per-category
   over enabled only), tested in `stats.test.ts`.
 - `src/components/SidebarStats.tsx` under `StepNav`: file name + format badge
-  (file sessions only), "N masked · M unticked", one row per category. Renders
+  (file sessions only), "N masked" and "M unticked" on separate lines, one row per category. Renders
   nothing while there are no mappings.
 - There is no per-category colour yet: placeholder highlighting uses the one
   accent colour, so the category chips use it too. Per-category colours belong
