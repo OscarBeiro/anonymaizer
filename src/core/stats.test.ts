@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { countByCategory } from './stats';
+import { countByCategory, summarizeMappings } from './stats';
 import type { MappingItem } from './types';
 
 const mapping = (category: string, id: string): MappingItem => ({
@@ -45,5 +45,33 @@ describe('countByCategory', () => {
   it('counts a clustered NAME mapping once, not per variant', () => {
     const clustered: MappingItem = { ...mapping('NAME', 'a'), variants: ['Ester Cuni', 'Ester Cuni Peirote'] };
     expect(countByCategory([clustered])).toEqual([{ category: 'NAME', count: 1 }]);
+  });
+});
+
+describe('summarizeMappings', () => {
+  it('returns zeros and no categories for an empty session', () => {
+    expect(summarizeMappings([])).toEqual({ enabled: 0, disabled: 0, byCategory: [] });
+  });
+
+  it('splits enabled from disabled and counts categories over enabled mappings only', () => {
+    const mappings = [
+      mapping('NAME', 'a'),
+      mapping('NAME', 'b'),
+      { ...mapping('EMAIL', 'c'), enabled: false },
+      mapping('COMPANY', 'd'),
+    ];
+    expect(summarizeMappings(mappings)).toEqual({
+      enabled: 3,
+      disabled: 1,
+      byCategory: [
+        { category: 'NAME', count: 2 },
+        { category: 'COMPANY', count: 1 },
+      ],
+    });
+  });
+
+  it('drops a category whose mappings are all unticked', () => {
+    const mappings = [{ ...mapping('EMAIL', 'a'), enabled: false }];
+    expect(summarizeMappings(mappings)).toEqual({ enabled: 0, disabled: 1, byCategory: [] });
   });
 });

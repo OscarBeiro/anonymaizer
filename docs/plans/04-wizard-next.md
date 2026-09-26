@@ -71,7 +71,7 @@ highlight follows at every step.
 
 ---
 
-### [ ] W2 — Compact stats in the sidebar
+### [x] W2 — Compact stats in the sidebar
 
 Requested 2026-09-26: below `StepNav`, the left column (`<aside
 className="app-sidebar">` in `App.tsx`) is empty. Fill it with a live summary.
@@ -95,6 +95,19 @@ className="app-sidebar">` in `App.tsx`) is empty. Fill it with a live summary.
 
 > Write tests first for any new function in `stats.ts` (enabled/disabled split,
 > empty session).
+
+**Done 2026-09-26 (v0.4.11).**
+- `summarizeMappings` in `src/core/stats.ts` (enabled / disabled / per-category
+  over enabled only), tested in `stats.test.ts`.
+- `src/components/SidebarStats.tsx` under `StepNav`: file name + format badge
+  (file sessions only), "N masked · M unticked", one row per category. Renders
+  nothing while there are no mappings.
+- There is no per-category colour yet: placeholder highlighting uses the one
+  accent colour, so the category chips use it too. Per-category colours belong
+  in the M5 design pass (P16).
+- The sidebar never collapses today (fixed 220px, no breakpoint), so no narrow
+  layout was added. Revisit with P16's shell work.
+- Category-row click-to-filter left out: Placeholders has no category filter.
 
 ### Verification
 

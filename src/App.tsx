@@ -5,6 +5,7 @@ import { NerToggle } from './components/NerToggle';
 import { ReversalPanel } from './components/ReversalPanel';
 import { ReviewStep } from './components/ReviewStep';
 import { StepFooter } from './components/StepFooter';
+import { SidebarStats } from './components/SidebarStats';
 import { StepNav } from './components/StepNav';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { applyEnabledMappings } from './core/apply';
@@ -274,6 +275,7 @@ function App() {
         </header>
 
         <StepNav step={step} gate={gate} onSelect={setStep} />
+        <SidebarStats session={session} />
       </aside>
 
       <main className="app-main">

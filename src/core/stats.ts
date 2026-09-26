@@ -12,3 +12,15 @@ export const countByCategory = (mappings: MappingItem[]): CategoryCount[] =>
   [...mappings.reduce((acc, m) => acc.set(m.category, (acc.get(m.category) ?? 0) + 1), new Map<string, number>())]
     .map(([category, count]) => ({ category, count }))
     .sort((a, b) => b.count - a.count || a.category.localeCompare(b.category));
+
+export interface MappingSummary {
+  enabled: number;
+  disabled: number;
+  // Enabled mappings only — an unticked mapping isn't masked in the output.
+  byCategory: CategoryCount[];
+}
+
+export const summarizeMappings = (mappings: MappingItem[]): MappingSummary => {
+  const enabled = mappings.filter((m) => m.enabled);
+  return { enabled: enabled.length, disabled: mappings.length - enabled.length, byCategory: countByCategory(enabled) };
+};
