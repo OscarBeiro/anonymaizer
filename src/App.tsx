@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { IngestStep } from './components/IngestStep';
 import { NerToggle } from './components/NerToggle';
@@ -10,6 +10,7 @@ import { StepNav } from './components/StepNav';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
+import { renderPseudonymized } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
 import { NerClient, type NerStatus } from './lib/nerClient';
@@ -20,13 +21,16 @@ import type { RestoreSubStep, ReviewSubStep, WizardGate, WizardPosition } from '
 import {
   loadCategorySettings,
   loadDictionaryRules,
+  loadOutputMode,
   loadSession,
   loadStep,
   newSessionId,
   saveCategorySettings,
   saveDictionaryRules,
+  saveOutputMode,
   saveSession,
   saveStep,
+  type OutputMode,
   type WizardStep,
 } from './lib/session';
 
@@ -66,6 +70,15 @@ function App() {
   useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules]);
   useEffect(() => saveCategorySettings(categorySettings), [categorySettings]);
   useEffect(() => saveStep(step), [step]);
+  const [outputMode, setOutputMode] = useState<OutputMode>(() => loadOutputMode());
+  useEffect(() => saveOutputMode(outputMode), [outputMode]);
+  // P13: the realistic rendering is derived, never stored — the session and
+  // its placeholder text stay the source of truth for step 3.
+  const realisticText = useMemo(
+    () => (outputMode === 'realistic' ? renderPseudonymized(session) : ''),
+    [outputMode, session],
+  );
+  const sanitizedText = outputMode === 'realistic' ? realisticText : session.anonymizedMarkdown;
   useEffect(() => () => nerClientRef.current?.terminate(), []);
 
   const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
@@ -275,7 +288,7 @@ function App() {
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
   const copyAction: CopyAction | undefined =
     position.subStep === 'sanitized'
-      ? { label: 'Copy sanitized text', text: session.anonymizedMarkdown, doneMessage: 'Copied — your text is ready to send to the AI.' }
+      ? { label: 'Copy sanitized text', text: sanitizedText, doneMessage: 'Copied — your text is ready to send to the AI.' }
       : position.subStep === 'restored'
         ? { label: 'Copy restored text', text: restored, doneMessage: 'Copied — your restored text is on the clipboard.' }
         : undefined;
@@ -322,7 +335,9 @@ function App() {
             />
             <ReviewStep
               session={session}
-              anonymizedText={session.anonymizedMarkdown}
+              anonymizedText={sanitizedText}
+              outputMode={outputMode}
+              onOutputModeChange={setOutputMode}
               mappings={session.mappings}
               dictionaryRules={dictionaryRules}
               onToggle={handleToggle}

@@ -4,10 +4,13 @@ import { RulesEditor } from './RulesEditor';
 import { CategoryToggles } from './CategoryToggles';
 import type { CategorySettings } from '../core/categories';
 import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
+import type { OutputMode } from '../lib/session';
 
 interface ReviewStepProps {
   session: MappingSession;
   anonymizedText: string;
+  outputMode: OutputMode;
+  onOutputModeChange: (mode: OutputMode) => void;
   mappings: MappingItem[];
   dictionaryRules: CustomDictionaryRule[];
   onToggle: (id: string) => void;
@@ -24,6 +27,8 @@ interface ReviewStepProps {
 export const ReviewStep = ({
   session,
   anonymizedText,
+  outputMode,
+  onOutputModeChange,
   mappings,
   dictionaryRules,
   onToggle,
@@ -65,7 +70,14 @@ export const ReviewStep = ({
         </>
       )}
 
-      {subStep === 'sanitized' && <SanitizedTextPanel anonymizedText={anonymizedText} session={session} />}
+      {subStep === 'sanitized' && (
+        <SanitizedTextPanel
+          anonymizedText={anonymizedText}
+          session={session}
+          outputMode={outputMode}
+          onOutputModeChange={onOutputModeChange}
+        />
+      )}
 
       {subStep === 'statistics' && <StatisticsPanel mappings={mappings} />}
     </div>

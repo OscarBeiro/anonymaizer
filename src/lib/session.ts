@@ -5,6 +5,7 @@ const SESSION_KEY = 'anonymaizer.session';
 const RULES_KEY = 'anonymaizer.dictionaryRules';
 const STEP_KEY = 'anonymaizer.step';
 const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
+const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
 
 // Wizard position is UI state, not part of the spec §3 MappingSession data
 // contract — kept under its own localStorage key.
@@ -17,6 +18,16 @@ export const loadStep = (): WizardStep => {
 
 export const saveStep = (step: WizardStep): void => {
   localStorage.setItem(STEP_KEY, step);
+};
+
+// P13: which rendering 2.3 shows, copies and exports. UI state like the step.
+export type OutputMode = 'placeholders' | 'realistic';
+
+export const loadOutputMode = (): OutputMode =>
+  localStorage.getItem(OUTPUT_MODE_KEY) === 'realistic' ? 'realistic' : 'placeholders';
+
+export const saveOutputMode = (mode: OutputMode): void => {
+  localStorage.setItem(OUTPUT_MODE_KEY, mode);
 };
 
 export const loadSession = (): MappingSession | null => {

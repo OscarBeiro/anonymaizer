@@ -33,6 +33,10 @@ export const ReversalPanel = ({ session, aiResponse, restored, onAiResponseChang
     {subStep === 'response' && (
       <section className="panel">
         <h2>AI response</h2>
+        <p className="panel-hint">
+          Only placeholders can be restored. The fake names, companies and amounts of Realistic output stay as
+          they are — they cannot be mapped back to the originals.
+        </p>
         <textarea
           className="panel-textarea"
           placeholder="Paste the AI's response here…"

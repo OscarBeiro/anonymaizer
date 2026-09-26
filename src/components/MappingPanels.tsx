@@ -2,6 +2,7 @@ import { type ReactNode, useState } from 'react';
 import { countByCategory } from '../core/stats';
 import { PLACEHOLDER_PATTERN } from '../core/export/textExport';
 import type { MappingItem, MappingSession } from '../core/types';
+import type { OutputMode } from '../lib/session';
 import { SaveAsControl } from './SaveAsControl';
 
 const renderHighlighted = (text: string): ReactNode[] =>
@@ -18,11 +19,33 @@ const renderHighlighted = (text: string): ReactNode[] =>
 interface SanitizedTextPanelProps {
   anonymizedText: string;
   session: MappingSession;
+  outputMode: OutputMode;
+  onOutputModeChange: (mode: OutputMode) => void;
 }
 
-export const SanitizedTextPanel = ({ anonymizedText, session }: SanitizedTextPanelProps) => (
+export const SanitizedTextPanel = ({ anonymizedText, session, outputMode, onOutputModeChange }: SanitizedTextPanelProps) => (
   <section className="panel">
     <h2>Sanitized text</h2>
+    <fieldset className="output-mode">
+      <legend>Output</legend>
+      {(['placeholders', 'realistic'] as const).map((mode) => (
+        <label key={mode}>
+          <input
+            type="radio"
+            name="output-mode"
+            checked={outputMode === mode}
+            onChange={() => onOutputModeChange(mode)}
+          />
+          {mode === 'placeholders' ? 'Placeholders' : 'Realistic'}
+        </label>
+      ))}
+    </fieldset>
+    {outputMode === 'realistic' && (
+      <p className="output-mode-warning" role="note">
+        Realistic output swaps in fake names, companies and amounts, and those cannot be restored in step 3. Use
+        Placeholders for text you will send to an AI and restore afterwards.
+      </p>
+    )}
     <div className="panel-textarea sanitized-highlight">{renderHighlighted(anonymizedText)}</div>
     <div className="panel-actions">
       <button

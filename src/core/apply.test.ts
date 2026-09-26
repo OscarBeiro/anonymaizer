@@ -43,3 +43,26 @@ describe('applyEnabledMappings', () => {
     expect(applyEnabledMappings(text, mappings)).toBe('[[NAME_001]] llamó a [[NAME_002]].');
   });
 });
+
+describe('applyEnabledMappings — non-word edges', () => {
+  it('masks a variant that starts or ends in a symbol (MONEY)', () => {
+    const out = applyEnabledMappings('Total 1.234,56 € y pérdida (1.200 €).', [
+      mapping({ placeholder: '[[MONEY_001]]', originalText: '1.234,56 €', category: 'MONEY' }),
+      mapping({ placeholder: '[[MONEY_002]]', originalText: '(1.200 €)', category: 'MONEY' }),
+    ]);
+    expect(out).toBe('Total [[MONEY_001]] y pérdida [[MONEY_002]].');
+  });
+
+  it('still keeps word boundaries on word-edged variants, Unicode-aware', () => {
+    const out = applyEnabledMappings('Ana y Análisis; Ángel y Ángeles', [
+      mapping({ placeholder: '[[NAME_001]]', originalText: 'Ana' }),
+      mapping({ placeholder: '[[NAME_002]]', originalText: 'Ángel' }),
+    ]);
+    expect(out).toBe('[[NAME_001]] y Análisis; [[NAME_002]] y Ángeles');
+  });
+
+  it('uses a custom render function and inserts "$" literally', () => {
+    const out = applyEnabledMappings('Ana pagó', [mapping({ placeholder: '[[NAME_001]]', originalText: 'Ana' })], () => '$1 Eva');
+    expect(out).toBe('$1 Eva pagó');
+  });
+});

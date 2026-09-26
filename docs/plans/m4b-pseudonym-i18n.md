@@ -27,7 +27,7 @@ Decided in planning (2026-09-21), do not re-litigate:
 
 ### [x] P12 — MONEY detector
 
-**Done 2026-09-26 (v0.7.0).** Lives in `src/core/money.ts` (not `detectors.ts`)
+**Done 2026-09-26 (v0.7.0).** (Masking of symbol-edged amounts was broken until v0.7.1 — see P13.) Lives in `src/core/money.ts` (not `detectors.ts`)
 with its companion API: `inferMoneyConvention(text)` is the recorded
 convention — P13 calls it on the same text — and `parseMoneyAmount(span,
 convention)` gives the signed value (magnitude words applied, null for
@@ -62,7 +62,24 @@ re-emit a perturbed amount in the same style it found.
 > number inside a matched IBAN/card span never mints a MONEY span.
 > Add MONEY to the P11 category-toggle list (default **on**).
 
-### [ ] P13 — Realistic output mode
+### [x] P13 — Realistic output mode
+
+**Done 2026-09-26 (v0.7.1).** `src/core/pseudonymize.ts` (`pseudonymFor`,
+`pseudonymMap` for session-wide uniqueness, `renderPseudonymized`),
+`src/core/random.ts` (mulberry32 + FNV-1a seed), pools in
+`src/core/data/es/pseudonyms.ts` — the `data/<lang>/<purpose>.ts` convention for
+D3's lexicon and the stopword packs to follow. `applyEnabledMappings` takes a
+`render` function, so both modes go through one replacement. NAME keeps token
+count and all-caps; COMPANY keeps the legal suffix; MONEY keeps
+precision/roundness, grouping and marker; written-out amounts and every other
+category pass the placeholder through. The mode is UI state
+(`anonymaizer.outputMode`), the realistic text is derived, never stored.
+Step 3 decision: **states it, does not refuse** — realistic text can't be
+recognised reliably, and its passthrough placeholders still restore.
+Found on the way (P12 bug): `applyEnabledMappings` wrapped every variant in
+`\b…\b`, which never matches beside `€` or `(`, so symbol-edged MONEY spans
+were detected but never masked. Boundaries now apply only on word-character
+edges, Unicode-aware.
 
 One detection run, two renderings. The mappings are unchanged; what differs is
 the string each placeholder resolves to when the sanitized text is built.
