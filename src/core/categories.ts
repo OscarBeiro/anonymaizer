@@ -31,6 +31,7 @@ export const TOGGLEABLE_CATEGORIES = [
   'CREDIT_CARD',
   'MASKED_ID',
   'ID_CODE',
+  'MONEY',
   'CUSTOM',
 ] as const;
 

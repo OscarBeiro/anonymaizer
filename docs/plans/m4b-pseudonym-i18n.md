@@ -25,7 +25,17 @@ Decided in planning (2026-09-21), do not re-litigate:
 
 ---
 
-### [ ] P12 — MONEY detector
+### [x] P12 — MONEY detector
+
+**Done 2026-09-26 (v0.7.0).** Lives in `src/core/money.ts` (not `detectors.ts`)
+with its companion API: `inferMoneyConvention(text)` is the recorded
+convention — P13 calls it on the same text — and `parseMoneyAmount(span,
+convention)` gives the signed value (magnitude words applied, null for
+written-out). Rung `MONEY: 3.7`. Only currency-marked numbers vote on the
+convention; dates and versions would be noise. Found on the way: a spaced
+IBAN followed by a token (`… 1332 EUR`) was never detected — the group run
+swallowed the token and the checksum failed; `detectIbans` now retries with
+trailing groups dropped.
 
 No detector for amounts exists today. Detection is useful standalone (an
 invoice's figures are often the confidential part) and it is what P13's

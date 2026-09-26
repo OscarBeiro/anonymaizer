@@ -18,7 +18,7 @@ session, because that is where the iteration happens.
 | M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](m2-detection-ner.md) | done |
 | M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
 | M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | done |
-| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | planned, not started |
+| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | in progress (P12 done) |
 | M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | planned, not started |
 
 M4 is split in two: **M4a** is dependency-free user-visible output and control

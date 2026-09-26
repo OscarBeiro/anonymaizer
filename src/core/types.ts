@@ -1,7 +1,7 @@
 export type KnownCategory =
   | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'COMPANY'
   | 'DNI' | 'NIE' | 'INVALID_ID' | 'IBAN' | 'CREDIT_CARD'
-  | 'MASKED_ID' | 'ID_CODE'
+  | 'MASKED_ID' | 'ID_CODE' | 'MONEY'
   | 'CUSTOM' | 'REGEX';
 
 // CATEGORY dictionary rules mint their own (e.g. 'PROJECT_NAME'), so the type
@@ -89,6 +89,9 @@ export const RUNG = {
                    // 45678912Q") is better evidence of what the number is
                    // than its failed checksum, and both end up masked either
                    // way. Above ADDRESS, which it can never overlap anyway.
+  MONEY: 3.7, // P12: below every checksum/shape detector, so a digit run
+              // inside an IBAN or card number never loses its span to an
+              // amount; above ADDRESS.
   ADDRESS: 4,
   COMPANY: 5, // suffix and prefix forms
   NER: 5.5, // opt-in model (P7d) — outranks NAME and the ALL-CAPS COMPANY

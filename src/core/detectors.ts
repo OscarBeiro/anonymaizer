@@ -1,4 +1,5 @@
 import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
+import { detectMoney } from './money';
 import { RUNG, type DetectedSpan } from './types';
 import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
@@ -183,12 +184,19 @@ const IBAN_REGEX = /\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{1,4}){2,7}\b/g;
 
 export const detectIbans = (text: string): DetectedSpan[] =>
   collect(new RegExp(IBAN_REGEX), text, (m) => {
-    if (!ibanCheck(m[0])) return null;
+    // The greedy group run can swallow a trailing token ("… 1332 EUR"), so on
+    // a failed checksum retry with trailing groups dropped before giving up.
+    let candidate = m[0];
+    while (!ibanCheck(candidate)) {
+      const cut = candidate.search(/\s?[A-Z0-9]{1,4}$/);
+      if (cut <= 4) return null;
+      candidate = candidate.slice(0, cut);
+    }
     return {
       start: m.index,
-      end: m.index + m[0].length,
+      end: m.index + candidate.length,
       category: 'IBAN',
-      text: m[0],
+      text: candidate,
       confidence: 1,
       source: 'regex',
       rung: RUNG.VALIDATED_REGEX,
@@ -314,6 +322,7 @@ export const runDeterministicDetectors = (
   ...gated(settings, ['MASKED_ID'], detectMaskedIds, text),
   ...gated(settings, ['ID_CODE'], detectIdCodes, text),
   ...gated(settings, ['PHONE'], detectPhones, text),
+  ...gated(settings, ['MONEY'], detectMoney, text),
   ...gated(settings, ['ADDRESS'], detectAddresses, text),
 ];
 

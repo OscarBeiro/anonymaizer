@@ -183,6 +183,13 @@ describe('detectIbans', () => {
   });
 });
 
+describe('detectIbans — trailing token', () => {
+  it('drops a token the group run swallowed when the checksum fails with it', () => {
+    const spans = detectIbans('Cuenta ES91 2100 0418 4502 0005 1332 EUR');
+    expect(spans.map((s) => s.text)).toEqual(['ES91 2100 0418 4502 0005 1332']);
+  });
+});
+
 describe('detectCreditCards', () => {
   it('accepts a valid Luhn number', () => {
     const spans = detectCreditCards('paga con 4111111111111111 ahora');
