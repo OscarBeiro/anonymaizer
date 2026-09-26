@@ -3,6 +3,7 @@ import type { MappingSession } from '../core/types';
 
 interface SidebarStatsProps {
   session: MappingSession;
+  onOpen: () => void;
 }
 
 const FORMAT_LABELS: Record<MappingSession['originalFormat'], string> = {
@@ -16,36 +17,36 @@ const FORMAT_LABELS: Record<MappingSession['originalFormat'], string> = {
   pptx: 'PPTX',
 };
 
-// Live summary under the step nav; the detailed view stays in Review → Statistics.
-export const SidebarStats = ({ session }: SidebarStatsProps) => {
+// Live summary under the step nav; clicking it opens 2.2 Placeholders; the detailed view stays in Review → Statistics.
+export const SidebarStats = ({ session, onOpen }: SidebarStatsProps) => {
   if (session.mappings.length === 0) return null;
   const { enabled, disabled, byCategory } = summarizeMappings(session.mappings);
 
   return (
-    <section className="sidebar-stats" aria-label="Session summary">
+    <button type="button" className="sidebar-stats" title="Open 2.2 Placeholders" onClick={onOpen}>
       {session.inputType === 'FILE' && session.fileName && (
-        <p className="sidebar-stats-file" title={session.fileName}>
+        <span className="sidebar-stats-file" title={session.fileName}>
           <span className="sidebar-stats-format">{FORMAT_LABELS[session.originalFormat]}</span> {session.fileName}
-        </p>
+        </span>
       )}
-      <p className="sidebar-stats-total">
+      <span className="sidebar-stats-total">
         <strong>{enabled}</strong> masked
-      </p>
+      </span>
       {disabled > 0 && (
-        <p className="sidebar-stats-total sidebar-stats-muted">
+        <span className="sidebar-stats-total sidebar-stats-muted">
           <strong>{disabled}</strong> unticked
-        </p>
+        </span>
       )}
       {byCategory.length > 0 && (
-        <ul className="sidebar-stats-list">
+        <span className="sidebar-stats-list">
           {byCategory.map(({ category, count }) => (
-            <li key={category}>
+            <span className="sidebar-stats-row" key={category}>
               <span className="sidebar-stats-category">{category}</span>
               <span className="sidebar-stats-count">{count}</span>
-            </li>
+            </span>
           ))}
-        </ul>
+        </span>
       )}
-    </section>
+    </button>
   );
 };

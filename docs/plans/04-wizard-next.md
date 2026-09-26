@@ -107,7 +107,8 @@ className="app-sidebar">` in `App.tsx`) is empty. Fill it with a live summary.
   in the M5 design pass (P16).
 - The sidebar never collapses today (fixed 220px, no breakpoint), so no narrow
   layout was added. Revisit with P16's shell work.
-- Category-row click-to-filter left out: Placeholders has no category filter.
+- Follow-up (v0.4.13, user request): the whole block is one button that opens
+  Review → 2.2 Placeholders (unfiltered — Placeholders has no category filter).
 
 ### Verification
 

@@ -70,13 +70,27 @@
 }
 
 .sidebar-stats {
+  display: block;
+  width: 100%;
   margin-top: 24px;
-  padding-top: 16px;
+  padding: 16px 0 0;
+  border: none;
   border-top: 1px solid var(--border);
+  background: none;
+  color: inherit;
+  font: inherit;
   font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
 }
 
-.sidebar-stats p {
+.sidebar-stats:hover .sidebar-stats-category {
+  text-decoration: underline;
+}
+
+.sidebar-stats-total,
+.sidebar-stats-file {
+  display: block;
   margin: 0 0 8px;
 }
 
@@ -99,12 +113,10 @@
 }
 
 .sidebar-stats-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+  display: block;
 }
 
-.sidebar-stats-list li {
+.sidebar-stats-row {
   display: flex;
   justify-content: space-between;
   padding: 2px 0;

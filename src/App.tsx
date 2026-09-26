@@ -275,7 +275,13 @@ function App() {
         </header>
 
         <StepNav step={step} gate={gate} onSelect={setStep} />
-        <SidebarStats session={session} />
+        <SidebarStats
+          session={session}
+          onOpen={() => {
+            setStep('review');
+            setReviewSubStep('placeholders');
+          }}
+        />
       </aside>
 
       <main className="app-main">
