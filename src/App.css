@@ -102,6 +102,11 @@
   gap: var(--space-4);
 }
 
+.app-footer-links a,
+.settings-links a {
+  color: var(--color-text);
+}
+
 .app {
   flex: 1;
   min-height: 0;

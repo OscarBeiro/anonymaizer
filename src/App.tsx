@@ -20,6 +20,7 @@ import './lib/parsers';
 import { parseDocument } from './core/parsers';
 import { takeHandoff } from './lib/handoff';
 import { linkProps } from './lib/router';
+import { SiteLinks } from './landing/SiteLinks';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
@@ -475,13 +476,15 @@ function App() {
           </>
         }
         dictionary={<RulesEditor rules={dictionaryRules} onChange={updateRules} />}
+        legalLinks={<SiteLinks />}
         onClearLocalData={clearAllLocalData}
       />
 
       <footer className="app-footer">
         <span>Runs entirely in your browser — no text is uploaded.</span>
-        {/* P20: legal-notice, privacy and cookie links go here. */}
-        <nav className="app-footer-links" aria-label="Legal" />
+        <nav className="app-footer-links" aria-label="Legal">
+          <SiteLinks />
+        </nav>
       </footer>
     </div>
   );

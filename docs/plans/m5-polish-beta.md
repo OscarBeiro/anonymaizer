@@ -243,7 +243,31 @@ that merely navigates.
 > Keep the landing in `src/landing/`, treated like the rest of the React UI.
 > `src/core/` is untouched by this entire milestone (hard rule 4).
 
-### [ ] P20 — Legal: privacy, cookies, terms
+### [x] P20 — Legal: privacy, cookies, terms
+
+**Done 2026-09-27 (v0.12.0) — drafts, not for publication until reviewed.**
+Texts in `src/legal/{privacy,cookies,terms}.tsx`, Spanish and English, one
+layout (`src/landing/LegalPage.tsx`: `?lang=` or browser language, sets
+`<html lang>`). "Last updated" is `LEGAL_LAST_UPDATED` in `src/legal/meta.ts`,
+next to `CONSENT_POLICY_VERSION` for P21. Operator facts come from
+`src/site.ts`. The cookie page's "Change cookie settings" button fires
+`requestConsentBanner()` (`src/lib/consentBus.ts`) for P21's banner. Links:
+landing/legal footer, wizard footer and the menu's About (`SiteLinks`; the
+portable build links to the public copies). `meta.test.ts` fails if a
+placeholder is used but missing from `LEGAL_PLACEHOLDERS`.
+
+**Placeholders to fill before launch** (values in `src/site.ts`, or in the
+legal texts where marked):
+`{{LEGAL_NAME}}`, `{{NIF}}`, `{{ADDRESS}}`, `{{CONTACT_EMAIL}}`,
+`{{REGISTRY_DATA}}` (Registro Mercantil data, or remove if a natural person),
+`{{DPO_CONTACT_OR_NONE}}`, `{{JURISDICTION}}`, `{{GA4_MEASUREMENT_ID}}`,
+`{{METRICOOL_COOKIES}}` and `{{METRICOOL_COOKIE_DURATION}}` (**check in a
+browser with the Metricool tag loaded — not verified here**),
+`{{METRICOOL_RETENTION}}`, `{{CLOUDFLARE_LOG_RETENTION}}`, `{{LICENSE}}` (the
+repo has no LICENSE file yet), `{{TRADEMARK_STATUS}}`.
+Also confirm: GA4 data retention set to 2 months in the GA4 admin (the policy
+says so); the NER download hosts named (Hugging Face, jsDelivr) still match
+`src/workers/ner.worker.ts`.
 
 Drafts for review. The pages are real pages in the app (`P19`'s routes), in
 Spanish and English, sharing one layout component.
