@@ -60,6 +60,13 @@ export const StepFooter = ({ position, gate, onNavigate, copyAction }: StepFoote
             {copyAction.label}
           </button>
         )}
+        {isLast && copied && (
+          // The end of the round trip: back to Ingest for the next document.
+          // Navigation only — the session is kept, pasting replaces it.
+          <button type="button" className="step-footer-next" onClick={() => onNavigate({ step: 'ingest' })}>
+            Start again →
+          </button>
+        )}
         {!isLast && (!copyAction || copied) && (
           <>
             {!next && <span className="empty-hint">{blockedHint(position)}</span>}
