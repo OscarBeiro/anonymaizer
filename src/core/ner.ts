@@ -167,6 +167,9 @@ export const mapNerEntitiesToSpans = (entities: NerEntity[]): DetectedSpan[] =>
   entities.flatMap((entity) => {
     const category = ENTITY_GROUP_TO_CATEGORY[entity.entityGroup];
     if (!category) return [];
+    // D6: "G", "G.", "J. M." — no word of two or more letters, so nothing a
+    // placeholder could meaningfully stand for.
+    if (!/\p{L}{2,}/u.test(entity.text)) return [];
     return [{
       start: entity.start,
       end: entity.end,

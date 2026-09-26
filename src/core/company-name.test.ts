@@ -47,6 +47,22 @@ describe('detectCompanyAcronyms', () => {
   });
 });
 
+describe('detectNames: lone initials (D6)', () => {
+  it.each([
+    'Véase el Punto G. Anexo A del contrato.',
+    'Según el Anexo B. Cláusula tercera, procede.',
+    'Elegimos la Opción C. Según lo acordado, sigue.',
+    'Ver Apartado D. Sección segunda.',
+  ])('does not read a lettered item as a person: %s', (text) => {
+    expect(detectNames(text)).toEqual([]);
+  });
+
+  it.each(['Juan G. Pérez', 'J. Smith', 'María J. López García'])('still detects %s', (name) => {
+    const spans = detectNames(`Firmó ayer ${name} el acuerdo.`);
+    expect(spans.map((s) => s.text)).toContain(name);
+  });
+});
+
 describe('detectNames', () => {
   it.each([
     'Oscar Beiro',

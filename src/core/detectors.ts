@@ -455,6 +455,29 @@ const STRUCTURE_HEADS = [
   'Company', 'Project', 'Contract', 'Reference', 'Title', 'Table', 'Figure',
 ];
 
+// D6: nouns that introduce a lettered item ("Punto G.", "Opción C.") — with
+// NAME_TOKEN's initial exception, "Punto G. Anexo" otherwise reads as a person
+// with a middle initial. Consulted only for a match that contains an initial.
+const LETTERED_ITEM_HEADS = [
+  'Punto', 'Opción', 'Opcion', 'Plan', 'Artículo', 'Articulo', 'Cláusula',
+  'Clausula', 'Epígrafe', 'Epigrafe', 'Letra', 'Grupo', 'Tipo', 'Modelo',
+  'Nivel', 'Fase', 'Zona', 'Bloque', 'Parte', 'Caso', 'Según', 'Segun',
+  'Option', 'Section', 'Clause', 'Article', 'Item', 'Point', 'Appendix', 'Annex',
+];
+const LETTERED_CONTEXT_WORDS = new Set(
+  [...LETTERED_ITEM_HEADS, ...STRUCTURE_HEADS].map((word) => word.toLowerCase()),
+);
+const INITIAL_TOKEN_RE = /^\p{Lu}\.$/u;
+
+// A match with an initial is a lettered item, not a person, when any of its
+// full words is a structure or lettered-item head: "Punto G. Anexo",
+// "B. Cláusula". A real "Juan G. Pérez" has no such word.
+const isLetteredItem = (match: string): boolean => {
+  const words = match.split(/\s+/);
+  if (!words.some((word) => INITIAL_TOKEN_RE.test(word))) return false;
+  return words.some((word) => LETTERED_CONTEXT_WORDS.has(word.toLowerCase()));
+};
+
 const isSentenceInitial = (text: string, index: number): boolean => {
   let i = index - 1;
   while (i >= 0 && /\s/.test(text[i])) i--;
@@ -602,6 +625,7 @@ const tryExtendCommaForm = (
 
 export const detectNames = (text: string): DetectedSpan[] =>
   collect(new RegExp(NAME_REGEX), text, (m) => {
+    if (isLetteredItem(m[0])) return null;
     const { text: matchText, start } = stripLeadingLabels(m[0], m.index);
     if (tokenCount(matchText) < 2) return null;
     // A sentence-initial candidate is accepted, but only on the strength of

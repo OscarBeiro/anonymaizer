@@ -337,7 +337,7 @@ Reproduced:
 
 ---
 
-### [ ] D6 — A lone initial is not a name
+### [x] D6 — A lone initial is not a name
 
 Found the same day. `NAME_TOKEN` accepts `\p{Lu}\.` so that `J. Smith` and
 `Juan G. Pérez` work. As a side effect, any capitalised noun followed by a
@@ -374,6 +374,17 @@ from the user and add it as a fixture before choosing the fix.**
 > tokens once initials are left out, reusing the existing token-floor helper.
 > Per the standing trade-off, a real name that starts with one of these heads
 > is an accepted cost: record it as a test.
+
+**Done 2026-09-26 (v0.4.6).** Rather than a head-then-initial position rule,
+`isLetteredItem` rejects any NAME match that contains an initial *and* a word
+from `LETTERED_ITEM_HEADS` ∪ `STRUCTURE_HEADS` (case-insensitive). That covers
+`Punto G. Anexo`, and `B. Cláusula` after "Anexo" has been peeled. Matches
+without an initial are untouched, so the blast radius is only names that have
+an initial. `mapNerEntitiesToSpans` drops entities with no word of two or more
+letters (`G`, `G.`, `J. M.`). The user's bare "G" wasn't reproduced with real
+text. It was most likely the NER word-piece truncation fixed in v0.4.4, or a
+stale service-worker copy (v0.4.5). Reopen with the actual text if it comes
+back.
 
 ---
 

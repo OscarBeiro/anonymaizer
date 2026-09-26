@@ -84,6 +84,18 @@ describe('aggregateBioTokens', () => {
 });
 
 describe('mapNerEntitiesToSpans', () => {
+  // D6: a one-letter or initials-only entity ("G", "G.", "J. M.") is never a
+  // maskable name on its own; masking it only leaves noise in the output.
+  it.each(['G', 'G.', 'J. M.'])('drops the initials-only entity %s', (text) => {
+    const entities: NerEntity[] = [{ entityGroup: 'PER', score: 0.95, start: 0, end: text.length, text }];
+    expect(mapNerEntitiesToSpans(entities)).toEqual([]);
+  });
+
+  it('keeps a short but real name', () => {
+    const entities: NerEntity[] = [{ entityGroup: 'PER', score: 0.95, start: 0, end: 3, text: 'Ana' }];
+    expect(mapNerEntitiesToSpans(entities)).toHaveLength(1);
+  });
+
   it('maps a PER entity to a NAME span', () => {
     const entities: NerEntity[] = [
       { entityGroup: 'PER', score: 0.97, start: 10, end: 21, text: 'Clara Vance' },
