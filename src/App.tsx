@@ -278,7 +278,14 @@ function App() {
 
         {step === 'restore' && <ReversalPanel mappings={session.mappings} />}
 
-        <StepFooter position={position} gate={gate} onNavigate={navigate} />
+        <StepFooter
+          // Remount per position, so coming back to 2.3 asks to copy again.
+          key={`${position.step}:${position.subStep ?? ''}`}
+          position={position}
+          gate={gate}
+          onNavigate={navigate}
+          sanitizedText={session.anonymizedMarkdown}
+        />
       </main>
     </div>
   );

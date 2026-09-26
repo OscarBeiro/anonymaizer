@@ -41,6 +41,11 @@ M4 is an open question for the user.
 - Restore's own internal "Restore →" flow (`ReversalPanel`) is untouched; the
   footer only shows Back there.
 - The Review sub-step isn't persisted: a reload re-enters Review at Rules.
+- Follow-up (v0.4.8, user request): on 2.3 Sanitized text, the footer's primary
+  button is **Copy sanitized text**. Once the copy succeeds, it's replaced by
+  "✓ Copied — your text is ready to send to the AI." and **Next: Statistics**.
+  The footer stores the exact text copied, so if a later change edits the
+  sanitized text, the Copy button returns. The panel's own copy button stays.
 
 ### Verification
 
