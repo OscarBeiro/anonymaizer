@@ -63,6 +63,24 @@ describe('detectPublicInstitutions', () => {
     expect(spans.some((s) => s.text === institution && s.shield)).toBe(true);
   });
 
+  // D5: public bodies are also written by acronym.
+  it.each(['AEAT', 'CNMV', 'TGSS', 'DGT', 'SEPE', 'INSS'])('shields the acronym %s', (acronym) => {
+    const spans = detectPublicInstitutions(`Se presentó ante la ${acronym} el lunes.`);
+    expect(spans.some((s) => s.text === acronym && s.shield)).toBe(true);
+  });
+
+  it.each(['la AEAT', 'Hacienda'])('does not shield a person joined to %s by "y"', (institution) => {
+    const text = `Escribió a ${institution} y Juan Pérez respondió.`;
+    const { anonymizedText } = runDetectionPipeline(text, runAllDetectors(text));
+    expect(anonymizedText).not.toContain('Juan Pérez');
+  });
+
+  it('does not surface institution acronyms as COMPANY suggestions', () => {
+    const text = 'Enviar a la CNMV y la AEAT el PDF.';
+    const { mappings } = runDetectionPipeline(text, runAllDetectors(text));
+    expect(mappings).toHaveLength(0);
+  });
+
   it('does not let two institutions joined by "y" survive arbitration as a NAME', () => {
     const text = 'Seguridad Social y Agencia Tributaria remitieron el requerimiento.';
     const { anonymizedText } = runDetectionPipeline(text, runAllDetectors(text));

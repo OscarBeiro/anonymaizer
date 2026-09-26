@@ -287,7 +287,7 @@ noise (false positives).
 
 ---
 
-### [ ] D5 — Acronyms are not companies
+### [x] D5 — Acronyms are not companies
 
 Found 2026-09-26 by using the app on v0.4.1. `detectCompanyAcronyms`
 (`src/core/detectors.ts`) flags every run of two or more capitals as COMPANY.
@@ -316,6 +316,24 @@ Reproduced:
 > `detectPublicInstitutions`) so that arbitration suppresses them. Leave the
 > rung of the remaining unknown acronyms unchanged: a disabled suggestion is an
 > over-mask, not a leak.
+
+**Done 2026-09-26 (v0.4.3).**
+- `ACRONYM_EXCLUSIONS` replaces the fiscal-only list (legal, business, tech,
+  currency terms).
+- `INSTITUTION_HEADS` gains `AEAT`, `TGSS`, `CNMV`, `DGT`, `CNMC`, `AEPD`,
+  closed on the right with `(?!\p{L})`.
+- **A leak found along the way, older than D5:** `Escribió a Hacienda y Juan
+  Pérez` did not mask Juan Pérez. There were two causes. (1) The institution
+  shield reused `LEGAL_CONTINUATION`, which runs across `y` and any capitalised
+  word, so it swallowed the person. It now has its own
+  `INSTITUTION_CONTINUATION` without `y`. (2) NAME treats `y` as a particle,
+  so it matched `Hacienda y Juan Pérez`, overlapped the shield, and arbitration
+  dropped it whole. `stripLeadingLabels` now peels a leading institution plus
+  its `y`/`e` (`INSTITUTION_LEAD_RE`). Both are tested in `shields.test.ts`.
+- Possible cost: an institution name that continues after `y` is now shielded
+  only up to the `y`. Checked with `Ministerio de Trabajo y Economía Social`,
+  and nothing surfaces. If a case turns up where it does, it will show in step 2
+  and can be unticked.
 
 ---
 

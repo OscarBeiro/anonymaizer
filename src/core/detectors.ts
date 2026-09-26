@@ -341,15 +341,22 @@ export const detectCompanies = (text: string): DetectedSpan[] => {
   ];
 };
 
-const FISCAL_ACRONYM_EXCLUSIONS = new Set([
+// Fiscal/technical terms, plus (D5) legal, business and tech vocabulary that
+// reads as an acronym but never names a counterparty. Public bodies written as
+// acronyms (AEAT, CNMV…) are not here: they are shielded via INSTITUTION_HEADS.
+const ACRONYM_EXCLUSIONS = new Set([
   'IVA', 'IRPF', 'NIF', 'CIF', 'DNI', 'NIE', 'IBAN', 'SEPA', 'PDF', 'URL', 'API', 'OK',
+  'NDA', 'SLA', 'RGPD', 'GDPR', 'LOPD', 'LOPDGDD', 'BOE', 'DOUE', 'UE', 'EU',
+  'CEO', 'CTO', 'CFO', 'COO', 'RRHH', 'HR', 'KPI', 'ONG', 'SL', 'SA', 'SLU',
+  'EUR', 'USD', 'GBP', 'IT', 'TI', 'CRM', 'ERP', 'FAQ', 'PYME', 'PYMES',
+  'TPV', 'CP', 'NB', 'PS', 'RE', 'CC', 'CCO', 'ID', 'PIN', 'SMS', 'USB', 'WIFI',
 ]);
 
 const COMPANY_ACRONYM_REGEX = /\b[A-Z]{2,}\b/g;
 
 export const detectCompanyAcronyms = (text: string): DetectedSpan[] =>
   collect(new RegExp(COMPANY_ACRONYM_REGEX), text, (m) => {
-    if (FISCAL_ACRONYM_EXCLUSIONS.has(m[0])) return null;
+    if (ACRONYM_EXCLUSIONS.has(m[0])) return null;
     return {
       start: m.index,
       end: m.index + m[0].length,
@@ -501,6 +508,7 @@ const stripLeadingLabels = (matchText: string, start: number): { text: string; s
       LEADING_LABEL_RE.exec(text) ??
       HONORIFIC_RE.exec(text) ??
       STRUCTURE_HEAD_RE.exec(text) ??
+      INSTITUTION_LEAD_RE.exec(text) ??
       LEADING_PARTICLE_RE.exec(text);
     if (!leading) break;
     const consumed = leading[0].length;
@@ -712,11 +720,31 @@ const INSTITUTION_HEADS = [
   'Tesorería General', 'Seguridad Social', 'Agencia Tributaria', 'Hacienda',
   'INSS', 'SEPE', 'INEM', 'Ministerio', 'Consellería', 'Consejería',
   'Ayuntamiento', 'Diputación', 'Junta', 'Xunta',
+  // D5: the same bodies by acronym, which COMPANY's acronym rule would
+  // otherwise surface as suggestions. Closed on the right so "DGT" doesn't
+  // shield the head of an unrelated "DGTX".
+  ...['AEAT', 'TGSS', 'CNMV', 'DGT', 'CNMC', 'AEPD'].map((a) => `${a}(?!\\p{L})`),
 ];
 
+// Unlike a legal citation, an institution's name never continues across "y":
+// with it, "Hacienda y Juan Pérez" shielded the person. Two institutions joined
+// by "y" are each a head, so they are still shielded separately.
+const INSTITUTION_CONTINUATION = '(?:de|del|la|las|los|\\p{Lu}\\p{L}*|\\d+)';
+
 const INSTITUTION_REGEX = new RegExp(
-  `\\b(?:${INSTITUTION_HEADS.join('|')})(?:${WS}+${LEGAL_CONTINUATION})*`,
+  `\\b(?:${INSTITUTION_HEADS.join('|')})(?:${WS}+${INSTITUTION_CONTINUATION})*`,
   'gu',
+);
+
+// NAME treats "y" as a particle, so "Hacienda y Juan Pérez" is one NAME
+// candidate; it overlaps the Hacienda shield and arbitration drops it whole,
+// leaking the person. Peeling the institution (and its "y") off the front, like
+// any other leading label, leaves "Juan Pérez" to be masked on its own.
+// Referenced only at call time by stripLeadingLabels, so declaring it here,
+// after INSTITUTION_HEADS, is safe.
+const INSTITUTION_LEAD_RE = new RegExp(
+  `^(?:${INSTITUTION_HEADS.join('|')})(?:${WS}+[ye])?${WS}+`,
+  'u',
 );
 
 export const detectPublicInstitutions = (text: string): DetectedSpan[] =>

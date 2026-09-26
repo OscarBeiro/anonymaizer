@@ -32,6 +32,19 @@ describe('detectCompanyAcronyms', () => {
     const spans = detectCompanyAcronyms('el IVA y el IRPF se calculan con el NIF, no el DNI, ni el PDF ni la URL de la API. OK.');
     expect(spans).toHaveLength(0);
   });
+
+  // D5: legal/business/tech acronyms are vocabulary, not counterparties.
+  it.each(['NDA', 'SLA', 'CEO', 'CTO', 'RGPD', 'GDPR', 'LOPD', 'KPI', 'ONG', 'BOE', 'EUR', 'USD', 'IT', 'RRHH', 'CRM', 'ERP', 'FAQ'])(
+    'does not flag %s',
+    (acronym) => {
+      expect(detectCompanyAcronyms(`Revisad el ${acronym} antes del lunes.`)).toHaveLength(0);
+    },
+  );
+
+  it('still flags an unknown acronym next to a known one', () => {
+    const spans = detectCompanyAcronyms('Firmamos el NDA con ACME ayer.');
+    expect(spans.map((s) => s.text)).toEqual(['ACME']);
+  });
 });
 
 describe('detectNames', () => {
