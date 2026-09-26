@@ -1,6 +1,9 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
+import { createHash } from 'node:crypto'
+import { readFileSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import pkg from './package.json' with { type: 'json' }
 
 // Two production builds, because one output cannot keep both promises
@@ -59,11 +62,54 @@ const seoFiles = (origin: string): Plugin => ({
   },
 })
 
+// P21b: stamp dist/sw.js's CACHE_NAME with the version and a hash of the
+// emitted file names — a rebuild with no change keeps the cache; any change to
+// the bundle, or a version bump, produces a new one — and give it the list of
+// chunks to precache: the entry plus the three lazy routes (wizard, landing,
+// legal) and everything they statically import, with their CSS. Without it an
+// installed PWA opened offline at /app finds no wizard chunk, since P19 made
+// it lazy. Parser and NER chunks stay fetch-on-first-use, as before.
+const ROUTE_CHUNKS = /\/src\/(App|landing\/Landing|landing\/LegalPage)\.tsx$/
+const swVersion = (): Plugin => {
+  let outDir = 'dist'
+  return {
+    name: 'anonymaizer-sw-version',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    writeBundle(_options, bundle) {
+      const chunks = Object.values(bundle).filter((f) => f.type === 'chunk')
+      const byName = new Map(chunks.map((c) => [c.fileName, c]))
+      const keep = new Set<string>()
+      const visit = (fileName: string) => {
+        const chunk = byName.get(fileName)
+        if (!chunk || keep.has(fileName)) return
+        keep.add(fileName)
+        chunk.viteMetadata?.importedCss.forEach((css) => keep.add(css))
+        chunk.imports.forEach(visit)
+        chunk.dynamicImports.filter((d) => ROUTE_CHUNKS.test(byName.get(d)?.facadeModuleId ?? '')).forEach(visit)
+      }
+      chunks.filter((c) => c.isEntry).forEach((c) => visit(c.fileName))
+      const precache = [...keep].sort().map((f) => `/${f}`)
+
+      const file = join(outDir, 'sw.js')
+      const hash = createHash('sha256').update(Object.keys(bundle).sort().join('\n')).digest('hex').slice(0, 8)
+      writeFileSync(
+        file,
+        readFileSync(file, 'utf8')
+          .replace('__SW_VERSION__', `${pkg.version}-${hash}`)
+          .replace("'__PRECACHE__'", JSON.stringify(precache).slice(1, -1)),
+      )
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    ...(portable ? [viteSingleFile()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN)]),
+    ...(portable ? [viteSingleFile()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN), swVersion()]),
   ],
   build: portable ? { outDir: 'dist-portable' } : {},
   // P19: the base differs per build, and getting it wrong ships a white page.

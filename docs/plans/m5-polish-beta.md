@@ -381,7 +381,25 @@ the amendment is.
 > A strict CSP in `P22`'s `_headers` is what makes this enforceable rather than
 > merely intended; the two sessions have to agree on the allowed hosts.
 
-### [ ] P21b — Service worker must not pin users to an old build
+### [x] P21b — Service worker must not pin users to an old build
+
+**Done 2026-09-27 (v0.14.0).** Navigations network-first since P19. `CACHE_NAME`
+is stamped at build time by the `swVersion` plugin in `vite.config.ts`
+(`anonymaizer-<version>-<hash of emitted file names>`); `activate` drops older
+caches. No `skipWaiting()` on install: `src/lib/swUpdate.ts` detects a waiting
+worker (also re-checked when the tab becomes visible) and `UpdatePrompt.tsx`
+shows "New version available — Reload", which posts `SKIP_WAITING` and reloads
+on `controllerchange`. Registration skipped in the portable build.
+**Found and fixed on the way:** P19's lazy wizard broke offline `/app` for an
+installed PWA that had never opened the wizard online. The same plugin now
+injects a precache list (entry + App/Landing/LegalPage chunks, their static
+imports and CSS; parsers and NER stay fetch-on-use).
+Tested in Chromium (persistent profile, static server, symlink swapped between
+two builds): v*N* loads and is controlled → swap to v*N+1*, reload once → the
+prompt shows → Reload → new version, only the new cache remains → offline
+reload and offline `/app` both load. Note: because navigations are
+network-first, the reload before the prompt already shows the new page; the
+prompt then only activates the new worker (and its cache).
 
 Found 2026-09-26 (v0.4.5). `public/sw.js` is cache-first for every same-origin
 GET, and nothing ever invalidates it: `CACHE_NAME` is a hand-set constant

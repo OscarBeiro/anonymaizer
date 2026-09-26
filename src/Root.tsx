@@ -3,6 +3,7 @@ import { ROUTE_PATHS, useRoute, type Route } from './lib/router';
 import { SITE_ORIGIN } from './site';
 import { isPublicDeployment, trackPageView } from './lib/analytics';
 import { ConsentBanner } from './landing/ConsentBanner';
+import { UpdatePrompt } from './components/UpdatePrompt';
 
 // P19: the wizard is lazy, so a landing visitor does not download it — the
 // inverse of the parser code-splitting. (The portable build inlines dynamic
@@ -42,6 +43,7 @@ function HostedRoot() {
         {route === 'app' ? <App /> : route === 'landing' ? <Landing /> : <LegalPage page={route} />}
       </Suspense>
       {banner}
+      <UpdatePrompt />
     </>
   );
 }

@@ -15,12 +15,22 @@
 //   format — the same trade the lazy split makes over the network.
 //
 // Still no network beyond same-origin (hard rules 2–3).
-const CACHE_NAME = 'anonymaizer-v3';
-const APP_SHELL = ['/', '/manifest.webmanifest', '/favicon.svg'];
+// P21b: replaced at build time with the app version plus a hash of the
+// bundle's file names (vite.config.ts, swVersion plugin), so every release
+// gets its own cache and `activate` drops the previous one.
+const CACHE_NAME = 'anonymaizer-__SW_VERSION__';
+// The last entry is replaced with the entry and route chunks at build time (P21b).
+const APP_SHELL = ['/', '/manifest.webmanifest', '/favicon.svg', '__PRECACHE__'];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
-  self.skipWaiting();
+  // No skipWaiting() here (P21b): a new worker waits until the page's
+  // "New version available — reload" prompt asks it to take over, instead of
+  // swapping the app out from under an open session.
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
