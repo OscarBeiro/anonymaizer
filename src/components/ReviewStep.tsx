@@ -1,6 +1,8 @@
 import type { CustomDictionaryRule, MappingItem, MappingSession } from '../core/types';
 import { MappingList, SanitizedTextPanel, StatisticsPanel } from './MappingPanels';
 import { RulesEditor } from './RulesEditor';
+import { CategoryToggles } from './CategoryToggles';
+import type { CategorySettings } from '../core/categories';
 import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
 
 interface ReviewStepProps {
@@ -12,6 +14,8 @@ interface ReviewStepProps {
   onSplit: (id: string) => void;
   onMerge: (ids: string[]) => void;
   onRulesChange: (rules: CustomDictionaryRule[]) => void;
+  categorySettings: CategorySettings;
+  onCategorySettingsChange: (settings: CategorySettings) => void;
   // Lifted into App (W1) so the Back/Next footer can walk the sub-steps.
   subStep: ReviewSubStep;
   onSubStepChange: (subStep: ReviewSubStep) => void;
@@ -26,6 +30,8 @@ export const ReviewStep = ({
   onSplit,
   onMerge,
   onRulesChange,
+  categorySettings,
+  onCategorySettingsChange,
   subStep,
   onSubStepChange,
 }: ReviewStepProps) => {
@@ -48,7 +54,15 @@ export const ReviewStep = ({
       {subStep === 'rules' && <RulesEditor rules={dictionaryRules} onChange={onRulesChange} />}
 
       {subStep === 'placeholders' && (
-        <MappingList mappings={mappings} onToggle={onToggle} onSplit={onSplit} onMerge={onMerge} />
+        <>
+          <CategoryToggles
+            settings={categorySettings}
+            rules={dictionaryRules}
+            mappings={mappings}
+            onChange={onCategorySettingsChange}
+          />
+          <MappingList mappings={mappings} onToggle={onToggle} onSplit={onSplit} onMerge={onMerge} />
+        </>
       )}
 
       {subStep === 'sanitized' && <SanitizedTextPanel anonymizedText={anonymizedText} session={session} />}

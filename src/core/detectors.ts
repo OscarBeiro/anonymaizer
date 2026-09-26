@@ -1,3 +1,4 @@
+import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { RUNG, type DetectedSpan } from './types';
 import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
@@ -286,16 +287,34 @@ export const detectIdCodes = (text: string): DetectedSpan[] => {
   return spans;
 };
 
-export const runDeterministicDetectors = (text: string): DetectedSpan[] => [
-  ...detectEmails(text),
-  ...detectIbans(text),
-  ...detectCreditCards(text),
-  ...detectDni(text),
-  ...detectNie(text),
-  ...detectMaskedIds(text),
-  ...detectIdCodes(text),
-  ...detectPhones(text),
-  ...detectAddresses(text),
+// P11: a detector runs only when one of the categories it can emit is on
+// (skipping the work, not hiding it afterwards); its output is then trimmed
+// to the categories that are on — detectDni/detectNie emit both a valid
+// category and INVALID_ID, which toggle independently.
+const gated = (
+  settings: CategorySettings,
+  categories: string[],
+  detect: (text: string) => DetectedSpan[],
+  text: string,
+): DetectedSpan[] => {
+  const on = categories.filter((c) => isCategoryOn(settings, c));
+  if (on.length === 0) return [];
+  return detect(text).filter((span) => on.includes(span.category));
+};
+
+export const runDeterministicDetectors = (
+  text: string,
+  settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
+): DetectedSpan[] => [
+  ...gated(settings, ['EMAIL'], detectEmails, text),
+  ...gated(settings, ['IBAN'], detectIbans, text),
+  ...gated(settings, ['CREDIT_CARD'], detectCreditCards, text),
+  ...gated(settings, ['DNI', 'INVALID_ID'], detectDni, text),
+  ...gated(settings, ['NIE', 'INVALID_ID'], detectNie, text),
+  ...gated(settings, ['MASKED_ID'], detectMaskedIds, text),
+  ...gated(settings, ['ID_CODE'], detectIdCodes, text),
+  ...gated(settings, ['PHONE'], detectPhones, text),
+  ...gated(settings, ['ADDRESS'], detectAddresses, text),
 ];
 
 // Legal-form suffixes, longest/most-specific first so alternation doesn't
@@ -817,14 +836,22 @@ export const runShieldDetectors = (text: string): DetectedSpan[] => [
   ...detectDateTimes(text),
 ];
 
-export const runHeuristicDetectors = (text: string): DetectedSpan[] => [
-  ...detectCompanies(text),
-  ...detectNames(text),
-  ...detectCompanyAcronyms(text),
+export const runHeuristicDetectors = (
+  text: string,
+  settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
+): DetectedSpan[] => [
+  ...gated(settings, ['COMPANY'], detectCompanies, text),
+  ...gated(settings, ['NAME'], detectNames, text),
+  // The acronym guess is a COMPANY span: it needs COMPANY on as well as its own switch.
+  ...(isCategoryOn(settings, COMPANY_ACRONYM) ? gated(settings, ['COMPANY'], detectCompanyAcronyms, text) : []),
 ];
 
-export const runAllDetectors = (text: string): DetectedSpan[] => [
+// Shields ignore the settings: they are never toggleable.
+export const runAllDetectors = (
+  text: string,
+  settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
+): DetectedSpan[] => [
   ...runShieldDetectors(text),
-  ...runDeterministicDetectors(text),
-  ...runHeuristicDetectors(text),
+  ...runDeterministicDetectors(text, settings),
+  ...runHeuristicDetectors(text, settings),
 ];

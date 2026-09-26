@@ -8,6 +8,7 @@ import { StepFooter } from './components/StepFooter';
 import { SidebarStats } from './components/SidebarStats';
 import { StepNav } from './components/StepNav';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
+import { toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
@@ -17,10 +18,12 @@ import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
 import type { RestoreSubStep, ReviewSubStep, WizardGate, WizardPosition } from './lib/wizard';
 import {
+  loadCategorySettings,
   loadDictionaryRules,
   loadSession,
   loadStep,
   newSessionId,
+  saveCategorySettings,
   saveDictionaryRules,
   saveSession,
   saveStep,
@@ -40,6 +43,9 @@ const emptySession = (): MappingSession => ({
 function App() {
   const [session, setSession] = useState<MappingSession>(() => loadSession() ?? emptySession());
   const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
+  const [categorySettings, setCategorySettings] = useState<CategorySettings>(() =>
+    loadCategorySettings(toggleableCategories(loadDictionaryRules())),
+  );
   const [step, setStep] = useState<WizardStep>(() => loadStep());
   const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('rules');
   const [restoreSubStep, setRestoreSubStep] = useState<RestoreSubStep>('response');
@@ -58,11 +64,12 @@ function App() {
 
   useEffect(() => saveSession(session), [session]);
   useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules]);
+  useEffect(() => saveCategorySettings(categorySettings), [categorySettings]);
   useEffect(() => saveStep(step), [step]);
   useEffect(() => () => nerClientRef.current?.terminate(), []);
 
-  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[]) => {
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules);
+  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings);
     setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
   };
 
@@ -73,7 +80,7 @@ function App() {
     warnings: string[],
   ) => {
     setImportWarnings(warnings);
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings);
     setSession((prev) => ({
       ...prev,
       rawMarkdown,
@@ -85,11 +92,11 @@ function App() {
     }));
   };
 
-  const runNerScan = async (rawMarkdown: string, rules: CustomDictionaryRule[]) => {
+  const runNerScan = async (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
     nerClientRef.current ??= new NerClient();
     try {
       const entities = await nerClientRef.current.runNer(rawMarkdown, setNerStatus);
-      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities);
+      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings);
       setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
     } catch {
       // nerStatus is already set to the error by the client's onStatus
@@ -215,6 +222,16 @@ function App() {
     }
   };
 
+  // P11: changing a category toggle re-runs detection for the current document.
+  const updateCategorySettings = (settings: CategorySettings) => {
+    setCategorySettings(settings);
+    if (nerEnabled && nerStatus.state === 'ready') {
+      void runNerScan(session.rawMarkdown, dictionaryRules, settings);
+    } else {
+      runAnonymize(session.rawMarkdown, dictionaryRules, settings);
+    }
+  };
+
   const handleCreateRule = (selectedText: string) => {
     const trimmed = selectedText.trim();
     if (!trimmed) return;
@@ -312,6 +329,8 @@ function App() {
               onSplit={handleSplit}
               onMerge={handleMerge}
               onRulesChange={updateRules}
+              categorySettings={categorySettings}
+              onCategorySettingsChange={updateCategorySettings}
               subStep={reviewSubStep}
               onSubStepChange={setReviewSubStep}
             />

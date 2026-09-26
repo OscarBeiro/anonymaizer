@@ -122,7 +122,7 @@ document can easily contain `&` or `<`.
   importer gives back the identical Markdown, escapes and pipes included.
 - Not checked in Excel/LibreOffice by hand yet.
 
-### [ ] P11 — Pre-detection category toggles, persisted
+### [x] P11 — Pre-detection category toggles, persisted
 
 Today every category is detected and every hit lands in 2.2's review table; the
 only control is the per-row `enabled` checkbox — a post-hoc, one-at-a-time
@@ -166,3 +166,33 @@ hardcoded.
 > Tests: a category switched off contributes no spans; switching off `NAME` does
 > not affect `EMAIL`; shields still fire with an all-off settings map; the
 > persistence round-trip including the unknown-key and missing-key cases.
+
+**Done 2026-09-26 (v0.6.0).** Deviations from the prompt, on purpose:
+- **`src/core/categories.ts`**, not `types.ts`: `CategorySettings`,
+  `DEFAULT_CATEGORY_SETTINGS`, `TOGGLEABLE_CATEGORIES`, `isCategoryOn`,
+  `toggleableCategories(rules)` and `parseCategorySettings(raw, known)` (the
+  pure half of persistence, so the round-trip is tested in core without a DOM).
+  Tested in `categories.test.ts`.
+- **`COMPANY_ACRONYM` defaults *on***, read as "the switch that lets the
+  guesses appear at all". The guesses themselves still arrive unticked
+  (`enabled: false`) — that is what "stays off" meant. Defaulting the switch
+  off would have silently removed them from every review table, contradicting
+  "every existing caller and test keeps working unchanged". The acronym guess
+  also needs `COMPANY` on.
+- **`REGEX` is not listed**: nothing emits it (a regex rule mints `CUSTOM` or
+  its target).
+- **Threaded through `anonymize`/`anonymizeWithNer`, not
+  `runDetectionPipeline`**: the pipeline only sees candidate spans, so gating
+  there would be the output filter the prompt rules out. Detectors are skipped
+  when none of their categories is on (`gated` in `detectors.ts`); `detectDni`/
+  `detectNie` output is then trimmed, because they emit both a valid category
+  and `INVALID_ID`. Dictionary rules of an off category are skipped before
+  matching. NER can't skip a category, so its spans are dropped by category.
+- UI: `src/components/CategoryToggles.tsx`, a `<details>` (closed by default)
+  above the 2.2 table: checkbox, per-category count in the current document,
+  "N off" in the summary, "Restore defaults". No count on the acronym row — its
+  mappings are `COMPANY` and count there.
+- Persisted under `anonymaizer.categorySettings` (`src/lib/session.ts`).
+- **Bundle:** the entry chunk is now 501.33 kB (from 497.98 kB), over Vite's
+  500 kB warning. It is a warning, not an error; code-splitting or raising
+  `chunkSizeWarningLimit` is the user's call.

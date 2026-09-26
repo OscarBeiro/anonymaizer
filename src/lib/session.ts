@@ -1,8 +1,10 @@
+import { parseCategorySettings, type CategorySettings } from '../core/categories';
 import type { CustomDictionaryRule, MappingSession } from '../core/types';
 
 const SESSION_KEY = 'anonymaizer.session';
 const RULES_KEY = 'anonymaizer.dictionaryRules';
 const STEP_KEY = 'anonymaizer.step';
+const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 
 // Wizard position is UI state, not part of the spec §3 MappingSession data
 // contract — kept under its own localStorage key.
@@ -50,6 +52,20 @@ export const loadDictionaryRules = (): CustomDictionaryRule[] => {
 
 export const saveDictionaryRules = (rules: CustomDictionaryRule[]): void => {
   localStorage.setItem(RULES_KEY, JSON.stringify(rules));
+};
+
+// P11: the user's general preference across documents, not part of the
+// MappingSession. Parsing (unknown keys, bad values) lives in core.
+export const loadCategorySettings = (known: readonly string[]): CategorySettings => {
+  try {
+    return parseCategorySettings(localStorage.getItem(CATEGORY_SETTINGS_KEY), known);
+  } catch {
+    return {};
+  }
+};
+
+export const saveCategorySettings = (settings: CategorySettings): void => {
+  localStorage.setItem(CATEGORY_SETTINGS_KEY, JSON.stringify(settings));
 };
 
 export const newSessionId = (): string =>
