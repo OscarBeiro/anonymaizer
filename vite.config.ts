@@ -105,11 +105,80 @@ const swVersion = (): Plugin => {
   }
 }
 
+// P22: dist/_headers for Cloudflare Pages, generated rather than static so the
+// CSP can carry the hash of index.html's inline theme script (P17) — no
+// 'unsafe-inline' for scripts — and so the analytics hosts are allowed only in
+// a build flagged for analytics (P21): a preview deploy's CSP forbids them.
+const NER_HOSTS = ['https://huggingface.co', 'https://*.huggingface.co', 'https://*.hf.co', 'https://cdn.jsdelivr.net']
+const ANALYTICS_HOSTS = {
+  script: ['https://www.googletagmanager.com', 'https://tracker.metricool.com'],
+  connect: [
+    'https://www.googletagmanager.com',
+    'https://*.google-analytics.com',
+    'https://*.analytics.google.com',
+    'https://tracker.metricool.com',
+  ],
+  img: ['https://www.googletagmanager.com', 'https://*.google-analytics.com', 'https://tracker.metricool.com'],
+}
+const headersFile = (withAnalytics: boolean): Plugin => {
+  let outDir = 'dist'
+  return {
+    name: 'anonymaizer-headers',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    writeBundle() {
+      const html = readFileSync(join(outDir, 'index.html'), 'utf8')
+      const hashes = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(
+        (m) => `'sha256-${createHash('sha256').update(m[1]).digest('base64')}'`,
+      )
+      const a = withAnalytics ? ANALYTICS_HOSTS : { script: [], connect: [], img: [] }
+      const csp = [
+        "default-src 'self'",
+        // wasm-unsafe-eval + jsDelivr: the opt-in NER worker's onnxruntime.
+        ['script-src', "'self'", "'wasm-unsafe-eval'", ...hashes, 'https://cdn.jsdelivr.net', ...a.script].join(' '),
+        ['connect-src', "'self'", ...NER_HOSTS, ...a.connect].join(' '),
+        ['img-src', "'self'", 'data:', 'blob:', ...a.img].join(' '),
+        // React renders a few style attributes; styles cannot run code.
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self'",
+        "worker-src 'self' blob:",
+        "manifest-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+      ].join('; ')
+      const noCache = ['/', '/index.html', '/app', '/privacy', '/cookies', '/terms', '/sw.js', '/manifest.webmanifest']
+      writeFileSync(
+        join(outDir, '_headers'),
+        [
+          '/*',
+          `  Content-Security-Policy: ${csp}`,
+          '  Referrer-Policy: strict-origin-when-cross-origin',
+          '  X-Content-Type-Options: nosniff',
+          '  X-Frame-Options: DENY',
+          '  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), browsing-topics=()',
+          '  Strict-Transport-Security: max-age=31536000; includeSubDomains',
+          '',
+          // Hashed names never change content.
+          '/assets/*',
+          '  Cache-Control: public, max-age=31536000, immutable',
+          '',
+          // Must revalidate, or the CDN undoes the service-worker update path (P21b).
+          ...noCache.flatMap((p) => [p, '  Cache-Control: no-cache', '']),
+        ].join('\n'),
+      )
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    ...(portable ? [viteSingleFile()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN), swVersion()]),
+    ...(portable ? [viteSingleFile()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN), swVersion(), headersFile(analytics)]),
   ],
   build: portable ? { outDir: 'dist-portable' } : {},
   // P19: the base differs per build, and getting it wrong ships a white page.

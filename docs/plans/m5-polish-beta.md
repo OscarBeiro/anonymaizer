@@ -428,7 +428,34 @@ v0.4.5 fixed that half by registering the worker in production only
 > prompt, and after accepting it the new badge shows. Offline, the last cached
 > release still loads.
 
-### [ ] P22 — Automated Cloudflare Pages deploy
+### [x] P22 — Automated Cloudflare Pages deploy
+
+**Done 2026-09-27 (v0.15.0) — written and checked locally; never run on
+GitHub.** `.github/workflows/deploy.yml`: lint, test, build; push to `main`
+is the only build with `ANONYMAIZER_ANALYTICS=1` (IDs from repo *variables*
+`VITE_GA4_ID`/`VITE_METRICOOL_HASH`); PRs build without it, are checked with
+`scripts/check-no-analytics.sh` (POSIX find/grep; fails on a grep error rather
+than passing), and get a preview deploy + PR comment unless from a fork (no
+secrets). The portable build is checked on every run; on a `v*` tag it is
+attached to the release as `anonymaizer-portable-<tag>.html`. One-time manual
+steps (Pages project via Direct Upload, token scope, secrets, custom domain and
+DNS, `VITE_SITE_ORIGIN`) are in the workflow's header comment.
+`public/_redirects` holds the SPA fallback; no `_routes.json` (that file is for
+Pages Functions, which this project has none of). `_headers` is **generated**
+by the `headersFile` plugin in `vite.config.ts`: the CSP carries the sha256 of
+index.html's inline theme script (no `'unsafe-inline'` for scripts), allows
+the NER hosts (`huggingface.co`, `*.huggingface.co`, `*.hf.co`,
+`cdn.jsdelivr.net`, plus `'wasm-unsafe-eval'`), and the P21 analytics hosts
+only in a flagged build; plus Referrer-Policy, nosniff, X-Frame-Options,
+Permissions-Policy, HSTS, immutable `/assets/*`, and `no-cache` for
+`index.html`, every route path, `sw.js` and the manifest. Verified in Chromium
+with the generated CSP applied: pre-paint theme script, paste handoff, PDF
+import (pdf.js worker), settings, legal page — no violations.
+**Still to verify on the real deployment:** the NER model download under the
+CSP (the model hosts redirect; `*.hf.co` should cover the current CDN), and
+the Metricool beacon hosts once the tag runs. **Known limit:** the released
+portable "single file" still needs its sibling `ner.worker-*.js` for the
+opt-in NER (the P7d caveat); everything else works from the one file.
 
 > A GitHub Actions workflow (`.github/workflows/deploy.yml`) on push to `main`:
 > `npm ci`, `npm run lint`, `npm test`, `npm run build`, then publish `dist/`

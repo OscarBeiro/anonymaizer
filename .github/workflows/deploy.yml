@@ -1,0 +1,131 @@
+# P22 — Build, check and deploy AnonymAIzer to Cloudflare Pages.
+#
+#   push to main    → production deploy, the only build with analytics enabled
+#   pull request    → preview deploy, analytics compiled out (and the runtime
+#                     gate would refuse a preview hostname anyway)
+#   tag v*          → also attaches the portable single-file build to a GitHub
+#                     release, so the landing's "Download the offline version"
+#                     link (releases/latest) has something to download
+#
+# ── One-time manual setup (cannot be automated from a cold start) ───────────
+# 1. Cloudflare dashboard → Workers & Pages → Create → Pages → "Direct Upload",
+#    project name `anonymaizer` (must match PROJECT_NAME below). Do NOT connect
+#    the Git integration — this workflow is the deploy.
+#    Production branch: `main`.
+# 2. Cloudflare → My Profile → API Tokens → Create token → Custom token with
+#    one permission: Account · Cloudflare Pages · Edit, scoped to this account.
+# 3. GitHub → repo Settings → Secrets and variables → Actions:
+#      secrets:   CLOUDFLARE_API_TOKEN   (step 2)
+#                 CLOUDFLARE_ACCOUNT_ID  (dashboard sidebar → Account ID)
+#      variables: VITE_GA4_ID            (G-XXXXXXX; leave unset to skip GA4)
+#                 VITE_METRICOOL_HASH    (Metricool tracker hash; unset skips it)
+# 4. Custom domain: Pages project → Custom domains → add the production domain.
+#    If the zone is on Cloudflare the DNS record (CNAME to
+#    anonymaizer.pages.dev) is created for you; otherwise add that CNAME at
+#    your DNS provider. Then set VITE_SITE_ORIGIN in .env to
+#    https://<that domain> and commit — analytics only run on that exact
+#    hostname (src/lib/analytics.ts), and canonical/sitemap use it.
+# 5. Settings → Actions → General → Workflow permissions: read and write
+#    (for the release upload), or rely on the `permissions:` block below.
+# ─────────────────────────────────────────────────────────────────────────────
+name: deploy
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PROJECT_NAME: anonymaizer
+  NODE_VERSION: '22'
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+      # Analytics are set here and nowhere else, and only for a push to main.
+      - name: Build (production, analytics enabled)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm run build
+        env:
+          ANONYMAIZER_ANALYTICS: '1'
+          VITE_GA4_ID: ${{ vars.VITE_GA4_ID }}
+          VITE_METRICOOL_HASH: ${{ vars.VITE_METRICOOL_HASH }}
+
+      - name: Build (preview, no analytics)
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        run: npm run build
+
+      - name: Preview build must contain no analytics code
+        if: ${{ !(github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        run: sh scripts/check-no-analytics.sh dist
+
+      - name: Portable build must contain no analytics code
+        run: npm run build:portable && sh scripts/check-no-analytics.sh dist-portable
+
+      # Pull requests from forks get no secrets; they are built and checked
+      # above but not deployed.
+      - name: Deploy to Cloudflare Pages
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        id: deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=${{ env.PROJECT_NAME }} --branch=${{ github.head_ref || github.ref_name }} --commit-hash=${{ github.sha }}
+
+      - name: Comment the preview URL
+        if: github.event_name == 'pull_request' && steps.deploy.outputs.deployment-url != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `Preview (no analytics): ${{ steps.deploy.outputs.deployment-url }}`,
+            })
+
+  release-portable:
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:portable
+      - run: sh scripts/check-no-analytics.sh dist-portable
+      - name: Attach the portable build to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cp dist-portable/index.html "anonymaizer-portable-${TAG}.html"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "AnonymAIzer ${TAG}" --generate-notes
+          gh release upload "$TAG" "anonymaizer-portable-${TAG}.html" --clobber
