@@ -64,7 +64,17 @@ else in M5 is independent of M4 and could run first if the beta date pulls in.
 
 ---
 
-### [ ] P16 — Design pass: tokens, then the shell
+### [x] P16 — Design pass: tokens, then the shell
+
+**Done 2026-09-27 (v0.8.0).** Tokens in `src/styles/tokens.css` (imported by
+`index.css`, so the portable build inlines it); no literal colours remain in
+`App.css`/`index.css`. Off-scale spacings (5/6/10/14px) were snapped to the 4px
+scale. The shell is now header (mark, version, tagline, empty `.app-header-slot`
+for P18) / sidebar + main / footer (empty `.app-footer-links` for P20). Below
+640px the sidebar folds into a horizontal step strip and the sidebar stats are
+hidden; the mapping table scrolls horizontally inside its wrapper. The dark
+values from the old `index.css` moved into `tokens.css` under
+`prefers-color-scheme` only — P17 adds the `data-theme` guards.
 
 The UI is 393 lines of `App.css` plus 109 of `index.css`, grown one component
 at a time. This session does not redesign screen by screen; it extracts the

@@ -298,87 +298,100 @@ function App() {
         : undefined;
 
   return (
-    <div className="app">
-      <aside className="app-sidebar">
-        <header className="app-header">
+    <div className="app-shell">
+      <header className="app-header">
+        <span className="app-mark" aria-hidden="true">A</span>
+        <div className="app-title">
           <h1>
             AnonymAIzer
             <span className="app-version">v{__APP_VERSION__}</span>
           </h1>
-          <p>Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
-        </header>
+          <p className="app-tagline">Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
+        </div>
+        {/* P18: the settings menu button mounts here. */}
+        <div className="app-header-slot" />
+      </header>
 
-        <StepNav step={step} gate={gate} onSelect={setStep} />
-        <SidebarStats
-          session={session}
-          onOpen={() => {
-            setStep('review');
-            setReviewSubStep('placeholders');
-          }}
-        />
-      </aside>
-
-      <main className="app-main">
-        {step === 'ingest' && (
-          <IngestStep
-            rawMarkdown={session.rawMarkdown}
-            warnings={importWarnings}
-            onChange={handlePasteChange}
-            onCreateRule={handleCreateRule}
-            onFileImport={handleFileImport}
-          />
-        )}
-
-        {step === 'review' && (
-          <>
-            <NerToggle
-              enabled={nerEnabled}
-              status={nerStatus}
-              onToggle={handleNerToggle}
-              onDeleteModel={handleDeleteModel}
-            />
-            <ReviewStep
-              session={session}
-              anonymizedText={sanitizedText}
-              outputMode={outputMode}
-              onOutputModeChange={setOutputMode}
-              moneyRange={moneyRange}
-              onMoneyRangeChange={setMoneyRange}
-              mappings={session.mappings}
-              dictionaryRules={dictionaryRules}
-              onToggle={handleToggle}
-              onSplit={handleSplit}
-              onMerge={handleMerge}
-              onRulesChange={updateRules}
-              categorySettings={categorySettings}
-              onCategorySettingsChange={updateCategorySettings}
-              subStep={reviewSubStep}
-              onSubStepChange={setReviewSubStep}
-            />
-          </>
-        )}
-
-        {step === 'restore' && (
-          <ReversalPanel
+      <div className="app">
+        <aside className="app-sidebar">
+          <StepNav step={step} gate={gate} onSelect={setStep} />
+          <SidebarStats
             session={session}
-            aiResponse={aiResponse}
-            restored={restored}
-            onAiResponseChange={setAiResponse}
-            subStep={restoreSubStep}
-            onSubStepChange={setRestoreSubStep}
+            onOpen={() => {
+              setStep('review');
+              setReviewSubStep('placeholders');
+            }}
           />
-        )}
+        </aside>
 
-        <StepFooter
-          // Remount per position, so coming back to a copy tab asks to copy again.
-          key={`${position.step}:${position.subStep ?? ''}`}
-          position={position}
-          gate={gate}
-          onNavigate={navigate}
-          copyAction={copyAction}
-          onStartOver={startOver}
-        />
-      </main>
+        <main className="app-main">
+          {step === 'ingest' && (
+            <IngestStep
+              rawMarkdown={session.rawMarkdown}
+              warnings={importWarnings}
+              onChange={handlePasteChange}
+              onCreateRule={handleCreateRule}
+              onFileImport={handleFileImport}
+            />
+          )}
+
+          {step === 'review' && (
+            <>
+              <NerToggle
+                enabled={nerEnabled}
+                status={nerStatus}
+                onToggle={handleNerToggle}
+                onDeleteModel={handleDeleteModel}
+              />
+              <ReviewStep
+                session={session}
+                anonymizedText={sanitizedText}
+                outputMode={outputMode}
+                onOutputModeChange={setOutputMode}
+                moneyRange={moneyRange}
+                onMoneyRangeChange={setMoneyRange}
+                mappings={session.mappings}
+                dictionaryRules={dictionaryRules}
+                onToggle={handleToggle}
+                onSplit={handleSplit}
+                onMerge={handleMerge}
+                onRulesChange={updateRules}
+                categorySettings={categorySettings}
+                onCategorySettingsChange={updateCategorySettings}
+                subStep={reviewSubStep}
+                onSubStepChange={setReviewSubStep}
+              />
+            </>
+          )}
+
+          {step === 'restore' && (
+            <ReversalPanel
+              session={session}
+              aiResponse={aiResponse}
+              restored={restored}
+              onAiResponseChange={setAiResponse}
+              subStep={restoreSubStep}
+              onSubStepChange={setRestoreSubStep}
+            />
+          )}
+
+          <StepFooter
+            // Remount per position, so coming back to a copy tab asks to copy again.
+            key={`${position.step}:${position.subStep ?? ''}`}
+            position={position}
+            gate={gate}
+            onNavigate={navigate}
+            copyAction={copyAction}
+            onStartOver={startOver}
+          />
+        </main>
+      </div>
+
+      <footer className="app-footer">
+        <span>Runs entirely in your browser — no text is uploaded.</span>
+        {/* P20: legal-notice, privacy and cookie links go here. */}
+        <nav className="app-footer-links" aria-label="Legal" />
+      </footer>
     </div>
   );
 }

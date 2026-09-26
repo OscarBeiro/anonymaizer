@@ -126,6 +126,8 @@ The seeded PRNG is a few lines (mulberry32 or similar); no dependency, and
 
 ### [ ] P14 — Extract strings + i18n layer
 
+**Deferred (2026-09-27).** Postponed for later by decision; P15 stays blocked on it.
+
 **Decided — plain language codes, not region-qualified.** Locale files are `en`,
 `es`, `gl`, `pt`, not `en_GB`/`gl_ES`. Region variants double the translation
 work for near-identical text, and `gl` has no second region to disambiguate
