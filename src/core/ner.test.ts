@@ -16,6 +16,32 @@ describe('aggregateBioTokens', () => {
     expect(entities[0].score).toBeCloseTo(0.98, 5);
   });
 
+  // Live bug 2026-09-26: "Souto" split as "So" + "##uto", the continuation
+  // tagged O, and the entity ended mid-word ("Daniel Couso So"), beating the
+  // regex's correct full-name span in arbitration.
+  it('never ends an entity mid-word when a continuation piece is tagged O', () => {
+    const text = 'con Daniel Couso Souto ayer';
+    const tokens: RawNerToken[] = [
+      { word: 'Daniel', score: 0.99, entity: 'B-PER', index: 0, start: 4, end: 10 },
+      { word: 'Couso', score: 0.98, entity: 'I-PER', index: 1, start: 11, end: 16 },
+      { word: 'So', score: 0.9, entity: 'I-PER', index: 2, start: 17, end: 19 },
+      { word: '##uto', score: 0.6, entity: 'O', index: 3, start: 19, end: 22 },
+      { word: 'ayer', score: 0.99, entity: 'O', index: 4, start: 23, end: 27 },
+    ];
+    const entities = aggregateBioTokens(tokens, text);
+    expect(entities).toHaveLength(1);
+    expect(entities[0]).toMatchObject({ start: 4, end: 22, text: 'Daniel Couso Souto' });
+  });
+
+  it('never starts an entity mid-word either', () => {
+    const text = 'Souto firmó';
+    const tokens: RawNerToken[] = [
+      { word: 'So', score: 0.5, entity: 'O', index: 0, start: 0, end: 2 },
+      { word: '##uto', score: 0.9, entity: 'B-PER', index: 1, start: 2, end: 5 },
+    ];
+    expect(aggregateBioTokens(tokens, text)[0]).toMatchObject({ start: 0, end: 5, text: 'Souto' });
+  });
+
   it('starts a new entity on a new B- even of the same type with no O between', () => {
     const text = 'Ana Beatriz';
     const tokens: RawNerToken[] = [

@@ -102,12 +102,19 @@ export const computeTokenOffsets = (tokens: RawNerToken[], text: string): RawNer
  * currently open entity of the same type regardless of its own B/I prefix —
  * only a non-`##` token can start a fresh entity.
  */
+const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u;
+
 export const aggregateBioTokens = (tokens: RawNerToken[], text: string): NerEntity[] => {
   const entities: NerEntity[] = [];
   let current: { type: string; start: number; end: number; scores: number[] } | null = null;
 
   const flush = (): void => {
     if (!current) return;
+    // A word is never half a name: snap both edges out to word boundaries, so
+    // a continuation piece the model tagged O ("So" + "##uto" -> "So") can't
+    // leave a truncated span that outranks the regex's full one in arbitration.
+    while (current.start > 0 && WORD_CHAR.test(text[current.start - 1])) current.start--;
+    while (current.end < text.length && WORD_CHAR.test(text[current.end])) current.end++;
     entities.push({
       entityGroup: current.type,
       score: current.scores.reduce((a, b) => a + b, 0) / current.scores.length,

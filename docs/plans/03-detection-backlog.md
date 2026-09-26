@@ -348,6 +348,14 @@ lettered item gets read as a person:
 | `Punto G. Anexo A del contrato.` | `Punto G. Anexo` → NAME |
 | `Juan G. Pérez firmó el NDA.` | `Juan G. Pérez` → NAME (correct, must stay) |
 
+**Partly fixed out of band, 2026-09-26 (v0.4.4):** the user reported
+`Daniel Couso Souto` masked as `Daniel Couso So`. The regex gets the full name
+right. The cause was NER: WordPiece split `Souto` into `So` + `##uto`, the
+continuation was tagged O, and `aggregateBioTokens` closed the entity mid-word.
+Because the NER rung outranks NAME, the truncated span won. Entity edges now
+snap out to word boundaries (`ner.test.ts`). This is the likely source of the
+bare "G" below too, so check it against this fix first.
+
 The user also saw a bare single letter ("G") masked. That may be the path
 above, or it may be NER returning a one-character entity. **Get the real text
 from the user and add it as a fixture before choosing the fix.**
