@@ -29,6 +29,22 @@ const MANY_ROWS = 5000;
 // declares its own code, checked separately.
 const BUILTIN_DATE_FORMATS = new Set([14, 15, 16, 17, 18, 19, 20, 21, 22, 45, 46, 47]);
 
+// Built-in percent formats: 9 is `0%`, 10 is `0.00%`. Value = decimals shown.
+const BUILTIN_PERCENT_FORMATS = new Map([
+  [9, 0],
+  [10, 2],
+]);
+
+/**
+ * Decimals a percent format code shows (`0.0%` → 1), or undefined when the
+ * code is not a percentage. Only the first (positive) section counts.
+ */
+const percentDecimals = (code: string): number | undefined => {
+  const section = code.replace(/"[^"]*"/g, '').replace(/\[[^\]]*\]/g, '').split(';')[0];
+  if (!section.includes('%')) return undefined;
+  return /\.([0#?]+)/.exec(section)?.[1].length ?? 0;
+};
+
 /** Does this format code render a date rather than a number? */
 const isDateFormatCode = (code: string): boolean =>
   // Strip quoted literals and colour/condition sections first, so a currency
@@ -86,6 +102,9 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
   // attribute indexes into it.
   const stylesXml = await zip.file('xl/styles.xml')?.async('string');
   const dateStyles = new Set<number>();
+  // Style index → decimals, for cells Excel shows as a percentage: the stored
+  // value is the fraction (0.25), the user sees 25%.
+  const percentStyles = new Map<number, number>();
   if (stylesXml) {
     const styles = parser.parseFromString(stylesXml, 'text/xml');
     const customDateFormats = new Set(
@@ -93,11 +112,19 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
         .filter((fmt) => isDateFormatCode(fmt.getAttribute('formatCode') ?? ''))
         .map((fmt) => Number(fmt.getAttribute('numFmtId'))),
     );
+    const customPercentFormats = new Map<number, number>();
+    for (const fmt of byLocalName(styles, 'numFmt')) {
+      const decimals = percentDecimals(fmt.getAttribute('formatCode') ?? '');
+      if (decimals !== undefined) customPercentFormats.set(Number(fmt.getAttribute('numFmtId')), decimals);
+    }
     const cellXfs = byLocalName(styles, 'cellXfs')[0];
     const xfs = cellXfs ? [...cellXfs.children].filter((xf) => xf.localName === 'xf') : [];
     xfs.forEach((xf, index) => {
       const numFmtId = Number(xf.getAttribute('numFmtId') ?? 0);
-      if (BUILTIN_DATE_FORMATS.has(numFmtId) || customDateFormats.has(numFmtId)) {
+      const percent = BUILTIN_PERCENT_FORMATS.get(numFmtId) ?? customPercentFormats.get(numFmtId);
+      if (percent !== undefined) {
+        percentStyles.set(index, percent);
+      } else if (BUILTIN_DATE_FORMATS.has(numFmtId) || customDateFormats.has(numFmtId)) {
         dateStyles.add(index);
       }
     });
@@ -148,10 +175,14 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
         } else {
           const raw = valueElement?.textContent ?? '';
           const style = Number(cell.getAttribute('s') ?? -1);
+          const numeric = raw !== '' && Number.isFinite(Number(raw));
+          const percentDigits = percentStyles.get(style);
           value =
-            raw !== '' && dateStyles.has(style) && Number.isFinite(Number(raw))
-              ? serialToIsoDate(Number(raw))
-              : raw;
+            numeric && percentDigits !== undefined
+              ? `${(Number(raw) * 100).toFixed(percentDigits)}%`
+              : numeric && dateStyles.has(style)
+                ? serialToIsoDate(Number(raw))
+                : raw;
         }
 
         while (cells.length < column) cells.push('');

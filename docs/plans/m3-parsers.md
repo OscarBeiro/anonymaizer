@@ -702,6 +702,13 @@ Verified live from `file://` on a two-sheet workbook: **1 request total**, ISO
 dates instead of serial numbers, and `NAME`, `DNI`, `EMAIL` and `PHONE` all
 detected across both sheets.
 
+**Follow-up (2026-09-26, v0.5.2):** percent-formatted cells came through as
+the stored fraction (`0.25` for a cell Excel shows as `25%`). The importer
+now reads built-in formats 9/10 and any custom code with a `%`, and renders
+`value × 100` with the format's decimals (`12.50%`). Covered in `xlsx.test.ts`;
+the fixture gained a `percent()` cell. Percentages in prose were already left
+untouched by detection — checked, no change needed.
+
 ### [x] P8g — `.eml` (postal-mime — *neither* library the prompt named)
 
 > Add `src/lib/parsers/eml.ts`. Parse MIME, prefer the `text/plain` part; when

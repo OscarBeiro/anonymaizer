@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildXlsx, date, empty, formula, number, text } from './__fixtures__/xlsx';
+import { buildXlsx, date, empty, formula, number, percent, text } from './__fixtures__/xlsx';
 import { parse } from './xlsx';
 
 describe('.xlsx parser', () => {
@@ -25,6 +25,16 @@ describe('.xlsx parser', () => {
         '| F-001 |',
       ].join('\n'),
     );
+  });
+
+  it('renders a percent cell as Excel shows it, not as the stored fraction', async () => {
+    const bytes = await buildXlsx([
+      { name: 'P', rows: [[text('Avance'), text('Desvío')], [percent(0.25), percent(0.125, 2)], [percent(1), percent(0.0007, 2)]] },
+    ]);
+    const { markdown } = await parse(bytes, 'p.xlsx');
+    expect(markdown).toContain('| 25% | 12.50% |');
+    expect(markdown).toContain('| 100% | 0.07% |');
+    expect(markdown).not.toContain('0.25');
   });
 
   it('renders a date cell as a date, not an Excel serial number', async () => {

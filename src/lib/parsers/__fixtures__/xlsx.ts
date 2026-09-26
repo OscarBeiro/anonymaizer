@@ -21,12 +21,15 @@ export type CellValue =
   | { kind: 'text'; value: string }
   | { kind: 'number'; value: number }
   | { kind: 'date'; serial: number }
+  | { kind: 'percent'; value: number; decimals: 0 | 2 }
   | { kind: 'formula'; formula: string; cached: string }
   | { kind: 'empty' };
 
 export const text = (value: string): CellValue => ({ kind: 'text', value });
 export const number = (value: number): CellValue => ({ kind: 'number', value });
 export const date = (serial: number): CellValue => ({ kind: 'date', serial });
+/** A fraction shown as a percentage: built-in numFmt 9 (`0%`) or 10 (`0.00%`). */
+export const percent = (value: number, decimals: 0 | 2 = 0): CellValue => ({ kind: 'percent', value, decimals });
 export const formula = (f: string, cached: string): CellValue => ({
   kind: 'formula',
   formula: f,
@@ -51,6 +54,8 @@ const columnName = (index: number): string => {
 
 // Style index 1 is wired to a date number format in STYLES below; 0 is General.
 const DATE_STYLE = 1;
+const PERCENT_STYLE = 2;
+const PERCENT_2_STYLE = 3;
 
 const sheetXml = (rows: CellValue[][], sharedStrings: string[]): string => {
   const rowXml = rows
@@ -68,6 +73,8 @@ const sheetXml = (rows: CellValue[][], sharedStrings: string[]): string => {
               return `<c r="${ref}"><v>${cell.value}</v></c>`;
             case 'date':
               return `<c r="${ref}" s="${DATE_STYLE}"><v>${cell.serial}</v></c>`;
+            case 'percent':
+              return `<c r="${ref}" s="${cell.decimals === 0 ? PERCENT_STYLE : PERCENT_2_STYLE}"><v>${cell.value}</v></c>`;
             case 'formula':
               return `<c r="${ref}"><f>${escapeXml(cell.formula)}</f><v>${escapeXml(cell.cached)}</v></c>`;
             case 'empty':
@@ -85,9 +92,11 @@ const sheetXml = (rows: CellValue[][], sharedStrings: string[]): string => {
 const STYLES = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <styleSheet xmlns="${SS_NS}">
   <numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts>
-  <cellXfs count="2">
+  <cellXfs count="4">
     <xf numFmtId="0" applyNumberFormat="0"/>
     <xf numFmtId="164" applyNumberFormat="1"/>
+    <xf numFmtId="9" applyNumberFormat="1"/>
+    <xf numFmtId="10" applyNumberFormat="1"/>
   </cellXfs>
 </styleSheet>`;
 
