@@ -12,7 +12,9 @@ import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession 
 import './lib/parsers';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
-import type { ReviewSubStep, WizardGate, WizardPosition } from './lib/wizard';
+import { reverseText } from './core/reverse';
+import type { CopyAction } from './components/StepFooter';
+import type { RestoreSubStep, ReviewSubStep, WizardGate, WizardPosition } from './lib/wizard';
 import {
   loadDictionaryRules,
   loadSession,
@@ -39,6 +41,8 @@ function App() {
   const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
   const [step, setStep] = useState<WizardStep>(() => loadStep());
   const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('rules');
+  const [restoreSubStep, setRestoreSubStep] = useState<RestoreSubStep>('response');
+  const [aiResponse, setAiResponse] = useState('');
   // Non-blocking parser warnings for the document currently imported
   // (dropped images, an unreadable sheet). Deliberately not persisted with
   // the session — they describe one import action, not the mapping.
@@ -222,12 +226,22 @@ function App() {
   const gate: WizardGate = {
     hasText: session.rawMarkdown.length > 0,
     hasMappings: session.mappings.length > 0,
+    hasAiResponse: aiResponse.length > 0,
   };
-  const position: WizardPosition = step === 'review' ? { step, subStep: reviewSubStep } : { step };
+  const position: WizardPosition =
+    step === 'review' ? { step, subStep: reviewSubStep } : step === 'restore' ? { step, subStep: restoreSubStep } : { step };
   const navigate = (to: WizardPosition): void => {
     setStep(to.step);
-    if (to.subStep) setReviewSubStep(to.subStep);
+    if (to.step === 'review' && to.subStep) setReviewSubStep(to.subStep as ReviewSubStep);
+    if (to.step === 'restore' && to.subStep) setRestoreSubStep(to.subStep as RestoreSubStep);
   };
+  const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
+  const copyAction: CopyAction | undefined =
+    position.subStep === 'sanitized'
+      ? { label: 'Copy sanitized text', text: session.anonymizedMarkdown, doneMessage: 'Copied — your text is ready to send to the AI.' }
+      : position.subStep === 'restored'
+        ? { label: 'Copy restored text', text: restored, doneMessage: 'Copied — your restored text is on the clipboard.' }
+        : undefined;
 
   return (
     <div className="app">
@@ -276,15 +290,23 @@ function App() {
           </>
         )}
 
-        {step === 'restore' && <ReversalPanel mappings={session.mappings} />}
+        {step === 'restore' && (
+          <ReversalPanel
+            aiResponse={aiResponse}
+            restored={restored}
+            onAiResponseChange={setAiResponse}
+            subStep={restoreSubStep}
+            onSubStepChange={setRestoreSubStep}
+          />
+        )}
 
         <StepFooter
-          // Remount per position, so coming back to 2.3 asks to copy again.
+          // Remount per position, so coming back to a copy tab asks to copy again.
           key={`${position.step}:${position.subStep ?? ''}`}
           position={position}
           gate={gate}
           onNavigate={navigate}
-          sanitizedText={session.anonymizedMarkdown}
+          copyAction={copyAction}
         />
       </main>
     </div>

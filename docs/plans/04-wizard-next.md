@@ -46,6 +46,14 @@ M4 is an open question for the user.
   "✓ Copied — your text is ready to send to the AI." and **Next: Statistics**.
   The footer stores the exact text copied, so if a later change edits the
   sanitized text, the Copy button returns. The panel's own copy button stays.
+- Follow-up (v0.4.9, user request): Restore's 3.1/3.2 are now wizard positions
+  (`RESTORE_SUB_STEPS` in `wizard.ts`), and their buttons have moved to the
+  footer on the bottom right. On 3.1, Next reads **Restore →** and stays
+  disabled until an AI response is pasted (`gate.hasAiResponse`). On 3.2, the
+  footer shows **Copy restored text** (the same `CopyAction` pattern as 2.3),
+  and there's no Next because it's the last position. The AI response and the
+  sub-step are lifted into `App`, so the pasted response now survives a trip
+  back to Review. It still isn't persisted across reloads.
 
 ### Verification
 
