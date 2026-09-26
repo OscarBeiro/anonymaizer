@@ -80,6 +80,9 @@ Found on the way (P12 bug): `applyEnabledMappings` wrapped every variant in
 `\b…\b`, which never matches beside `€` or `(`, so symbol-edged MONEY spans
 were detected but never masked. Boundaries now apply only on word-character
 edges, Unicode-aware.
+Follow-up (v0.7.2, user request): the MONEY band is a parameter —
+`MoneyRange { min, max }` in percent (default 10–25, clamped 0–90), edited on
+2.3 while Realistic is selected, persisted as `anonymaizer.moneyRange`.
 
 One detection run, two renderings. The mappings are unchanged; what differs is
 the string each placeholder resolves to when the sanitized text is built.

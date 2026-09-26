@@ -3,6 +3,7 @@ import { countByCategory } from '../core/stats';
 import { PLACEHOLDER_PATTERN } from '../core/export/textExport';
 import type { MappingItem, MappingSession } from '../core/types';
 import type { OutputMode } from '../lib/session';
+import { MAX_MONEY_PERCENT, type MoneyRange } from '../core/pseudonymize';
 import { SaveAsControl } from './SaveAsControl';
 
 const renderHighlighted = (text: string): ReactNode[] =>
@@ -21,9 +22,33 @@ interface SanitizedTextPanelProps {
   session: MappingSession;
   outputMode: OutputMode;
   onOutputModeChange: (mode: OutputMode) => void;
+  moneyRange: MoneyRange;
+  onMoneyRangeChange: (range: MoneyRange) => void;
 }
 
-export const SanitizedTextPanel = ({ anonymizedText, session, outputMode, onOutputModeChange }: SanitizedTextPanelProps) => (
+// An emptied field is stored as NaN; normalizeMoneyRange gives it the default when rendering.
+const percentInput = (label: string, value: number, onChange: (v: number) => void) => (
+  <label>
+    {label}
+    <input
+      type="number"
+      min={0}
+      max={MAX_MONEY_PERCENT}
+      step={1}
+      value={Number.isNaN(value) ? '' : value}
+      onChange={(e) => onChange(e.target.value === '' ? Number.NaN : Number(e.target.value))}
+    />
+  </label>
+);
+
+export const SanitizedTextPanel = ({
+  anonymizedText,
+  session,
+  outputMode,
+  onOutputModeChange,
+  moneyRange,
+  onMoneyRangeChange,
+}: SanitizedTextPanelProps) => (
   <section className="panel">
     <h2>Sanitized text</h2>
     <fieldset className="output-mode">
@@ -45,6 +70,14 @@ export const SanitizedTextPanel = ({ anonymizedText, session, outputMode, onOutp
         Realistic output swaps in fake names, companies and amounts, and those cannot be restored in step 3. Use
         Placeholders for text you will send to an AI and restore afterwards.
       </p>
+    )}
+    {outputMode === 'realistic' && (
+      <div className="money-range">
+        <span>Amounts vary by ±</span>
+        {percentInput('from', moneyRange.min, (min) => onMoneyRangeChange({ ...moneyRange, min }))}
+        {percentInput('to', moneyRange.max, (max) => onMoneyRangeChange({ ...moneyRange, max }))}
+        <span>%</span>
+      </div>
     )}
     <div className="panel-textarea sanitized-highlight">{renderHighlighted(anonymizedText)}</div>
     <div className="panel-actions">

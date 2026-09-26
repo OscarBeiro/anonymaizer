@@ -14,9 +14,30 @@ import type { MappingItem, MappingSession } from './types';
 // string each enabled mapping renders as differs. One-way by design: nothing
 // here is reversible, and step 3 does not try.
 
+/** How far MONEY moves, in percent either way: a draw lands in ±[min, max]. */
+export interface MoneyRange {
+  min: number;
+  max: number;
+}
+
+export const DEFAULT_MONEY_RANGE: MoneyRange = { min: 10, max: 25 };
+// Below 100 so a perturbed amount can never reach zero or flip sign.
+export const MAX_MONEY_PERCENT = 90;
+
+/** Clamp to 0–MAX_MONEY_PERCENT, whole-ish numbers, min ≤ max; garbage takes the default. */
+export const normalizeMoneyRange = (range: Partial<MoneyRange> | null | undefined): MoneyRange => {
+  const clean = (v: unknown, fallback: number): number =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(MAX_MONEY_PERCENT, Math.max(0, v)) : fallback;
+  const min = clean(range?.min, DEFAULT_MONEY_RANGE.min);
+  const max = clean(range?.max, DEFAULT_MONEY_RANGE.max);
+  return min <= max ? { min, max } : { min: max, max: min };
+};
+
 export interface PseudonymOptions {
   /** The document's grouping convention (P12), for amounts that can't settle it themselves. */
   convention?: MoneyConvention;
+  /** Perturbation band for MONEY; DEFAULT_MONEY_RANGE when omitted. */
+  moneyRange?: MoneyRange;
   /** Redraw counter, used by pseudonymMap to resolve collisions. */
   attempt?: number;
 }
@@ -81,12 +102,17 @@ const formatNumeral = (value: number, n: Numeral): string => {
 };
 
 /**
- * Multiply by a random factor in ±10–25% and round to the original's
+ * Multiply by a random factor in ±[min, max]% and round to the original's
  * precision — to its decimals, or for a whole round figure to its trailing
  * zeros, so "1.250.000 €" stays a round figure — then nudge by one rounding
  * unit if rounding pushed the result out of the band.
  */
-const perturbMoney = (original: string, rng: () => number, convention: MoneyConvention): string | null => {
+const perturbMoney = (
+  original: string,
+  rng: () => number,
+  convention: MoneyConvention,
+  range: MoneyRange,
+): string | null => {
   const match = NUMERAL.exec(original);
   if (!match) return null; // written-out: no plausible numeric re-rendering
   const n = readNumeral(match[0], convention);
@@ -96,14 +122,18 @@ const perturbMoney = (original: string, rng: () => number, convention: MoneyConv
   if (n.decimals === 0) {
     const zeros = /0*$/.exec(String(Math.round(n.value)))![0].length;
     unit = 10 ** zeros;
-    while (unit > 1 && unit > 0.15 * n.value) unit /= 10;
+    // Keep the rounding unit narrower than the band, or no rounded value fits in it.
+    const width = Math.max(range.max - range.min, 1) / 100;
+    while (unit > 1 && unit > width * n.value) unit /= 10;
   }
   const direction = rng() < 0.5 ? -1 : 1;
-  const factor = 1 + direction * (0.1 + rng() * 0.15);
+  const lo = range.min / 100;
+  const hi = range.max / 100;
+  const factor = 1 + direction * (lo + rng() * (hi - lo));
   let fake = Math.round((n.value * factor) / unit) * unit;
   const deviation = () => Math.abs(fake / n.value - 1);
-  for (let i = 0; i < 4 && deviation() < 0.1; i++) fake += direction * unit;
-  for (let i = 0; i < 4 && deviation() > 0.25; i++) fake -= direction * unit;
+  for (let i = 0; i < 4 && deviation() < lo; i++) fake += direction * unit;
+  for (let i = 0; i < 4 && deviation() > hi; i++) fake -= direction * unit;
   if (fake <= 0) fake = unit;
 
   const numeral = formatNumeral(fake, n);
@@ -125,7 +155,7 @@ export const pseudonymFor = (item: MappingItem, seed: string, options: Pseudonym
     case 'COMPANY':
       return fakeCompany(item.originalText, rng);
     case 'MONEY':
-      return perturbMoney(item.originalText, rng, options.convention ?? 'ES') ?? item.placeholder;
+      return perturbMoney(item.originalText, rng, options.convention ?? 'ES', normalizeMoneyRange(options.moneyRange)) ?? item.placeholder;
     default:
       return item.placeholder;
   }
@@ -162,8 +192,9 @@ export const pseudonymMap = (
  * as the placeholder output (applyEnabledMappings) so the two cannot drift.
  * Seeded from the session id: reopening a document shows the same fakes.
  */
-export const renderPseudonymized = (session: MappingSession): string => {
+export const renderPseudonymized = (session: MappingSession, moneyRange: MoneyRange = DEFAULT_MONEY_RANGE): string => {
   const fakes = pseudonymMap(session.mappings, session.sessionId, {
+    moneyRange,
     convention: inferMoneyConvention(session.rawMarkdown),
   });
   return applyEnabledMappings(session.rawMarkdown, session.mappings, (m) => fakes.get(m.id) ?? m.placeholder);

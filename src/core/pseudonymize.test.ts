@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { applyEnabledMappings } from './apply';
 import { inferMoneyConvention, parseMoneyAmount } from './money';
-import { pseudonymFor, pseudonymMap, renderPseudonymized } from './pseudonymize';
+import {
+  DEFAULT_MONEY_RANGE,
+  normalizeMoneyRange,
+  pseudonymFor,
+  pseudonymMap,
+  renderPseudonymized,
+} from './pseudonymize';
 import type { MappingItem, MappingSession } from './types';
 
 const item = (category: string, originalText: string, n = 1, extra: Partial<MappingItem> = {}): MappingItem => ({
@@ -175,5 +181,47 @@ describe('renderPseudonymized', () => {
   it('inserts a fake containing "$" literally', () => {
     const s = session('Paid $1,200.00 today', [item('MONEY', '$1,200.00')]);
     expect(renderPseudonymized(s)).toMatch(/^Paid \$(?:\d,)?\d{3}\.\d{2} today$/);
+  });
+});
+
+describe('MONEY range parameter', () => {
+  const seeds = Array.from({ length: 40 }, (_, i) => `seed-${i}`);
+  const ratios = (original: string, range: { min: number; max: number }) =>
+    seeds.map((seed) => {
+      const fake = pseudonymFor(item('MONEY', original), seed, { convention: 'ES', moneyRange: range });
+      return Math.abs(parseMoneyAmount(fake, 'ES')! / parseMoneyAmount(original, 'ES')! - 1);
+    });
+
+  it('lands in a custom band', () => {
+    for (const d of ratios('12.450,00 €', { min: 30, max: 50 })) {
+      expect(d).toBeGreaterThanOrEqual(0.3 - 0.001);
+      expect(d).toBeLessThanOrEqual(0.5 + 0.001);
+    }
+  });
+
+  it('keeps round figures inside a narrow band', () => {
+    for (const d of ratios('1.250.000 €', { min: 5, max: 7 })) {
+      expect(d).toBeGreaterThanOrEqual(0.05 - 0.001);
+      expect(d).toBeLessThanOrEqual(0.07 + 0.001);
+    }
+  });
+
+  it('0–0 leaves amounts as they are', () => {
+    expect(pseudonymFor(item('MONEY', '1.234,56 €'), 's', { convention: 'ES', moneyRange: { min: 0, max: 0 } })).toBe('1.234,56 €');
+  });
+
+  it('reaches renderPseudonymized', () => {
+    const s = session('Paga 1.000,00 €', [item('MONEY', '1.000,00 €')]);
+    const value = parseMoneyAmount(renderPseudonymized(s, { min: 40, max: 40 }).slice(5), 'ES')!;
+    expect([600, 1400]).toContain(value);
+  });
+});
+
+describe('normalizeMoneyRange', () => {
+  it('defaults garbage, clamps, and orders min ≤ max', () => {
+    expect(normalizeMoneyRange(null)).toEqual(DEFAULT_MONEY_RANGE);
+    expect(normalizeMoneyRange({ min: Number.NaN, max: 30 })).toEqual({ min: DEFAULT_MONEY_RANGE.min, max: 30 });
+    expect(normalizeMoneyRange({ min: -5, max: 500 })).toEqual({ min: 0, max: 90 });
+    expect(normalizeMoneyRange({ min: 40, max: 20 })).toEqual({ min: 20, max: 40 });
   });
 });

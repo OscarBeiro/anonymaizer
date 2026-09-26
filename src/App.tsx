@@ -10,7 +10,7 @@ import { StepNav } from './components/StepNav';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
-import { renderPseudonymized } from './core/pseudonymize';
+import { renderPseudonymized, type MoneyRange } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
 import { NerClient, type NerStatus } from './lib/nerClient';
@@ -21,12 +21,14 @@ import type { RestoreSubStep, ReviewSubStep, WizardGate, WizardPosition } from '
 import {
   loadCategorySettings,
   loadDictionaryRules,
+  loadMoneyRange,
   loadOutputMode,
   loadSession,
   loadStep,
   newSessionId,
   saveCategorySettings,
   saveDictionaryRules,
+  saveMoneyRange,
   saveOutputMode,
   saveSession,
   saveStep,
@@ -72,11 +74,13 @@ function App() {
   useEffect(() => saveStep(step), [step]);
   const [outputMode, setOutputMode] = useState<OutputMode>(() => loadOutputMode());
   useEffect(() => saveOutputMode(outputMode), [outputMode]);
+  const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
+  useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
   // P13: the realistic rendering is derived, never stored — the session and
   // its placeholder text stay the source of truth for step 3.
   const realisticText = useMemo(
-    () => (outputMode === 'realistic' ? renderPseudonymized(session) : ''),
-    [outputMode, session],
+    () => (outputMode === 'realistic' ? renderPseudonymized(session, moneyRange) : ''),
+    [outputMode, session, moneyRange],
   );
   const sanitizedText = outputMode === 'realistic' ? realisticText : session.anonymizedMarkdown;
   useEffect(() => () => nerClientRef.current?.terminate(), []);
@@ -338,6 +342,8 @@ function App() {
               anonymizedText={sanitizedText}
               outputMode={outputMode}
               onOutputModeChange={setOutputMode}
+              moneyRange={moneyRange}
+              onMoneyRangeChange={setMoneyRange}
               mappings={session.mappings}
               dictionaryRules={dictionaryRules}
               onToggle={handleToggle}

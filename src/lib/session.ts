@@ -1,4 +1,5 @@
 import { parseCategorySettings, type CategorySettings } from '../core/categories';
+import { normalizeMoneyRange, type MoneyRange } from '../core/pseudonymize';
 import type { CustomDictionaryRule, MappingSession } from '../core/types';
 
 const SESSION_KEY = 'anonymaizer.session';
@@ -6,6 +7,7 @@ const RULES_KEY = 'anonymaizer.dictionaryRules';
 const STEP_KEY = 'anonymaizer.step';
 const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
+const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
 
 // Wizard position is UI state, not part of the spec §3 MappingSession data
 // contract — kept under its own localStorage key.
@@ -28,6 +30,18 @@ export const loadOutputMode = (): OutputMode =>
 
 export const saveOutputMode = (mode: OutputMode): void => {
   localStorage.setItem(OUTPUT_MODE_KEY, mode);
+};
+
+export const loadMoneyRange = (): MoneyRange => {
+  try {
+    return normalizeMoneyRange(JSON.parse(localStorage.getItem(MONEY_RANGE_KEY) ?? 'null'));
+  } catch {
+    return normalizeMoneyRange(null);
+  }
+};
+
+export const saveMoneyRange = (range: MoneyRange): void => {
+  localStorage.setItem(MONEY_RANGE_KEY, JSON.stringify(normalizeMoneyRange(range)));
 };
 
 export const loadSession = (): MappingSession | null => {

@@ -303,6 +303,24 @@
   color: #8a6508;
 }
 
+.money-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 0.85rem;
+}
+
+.money-range label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.money-range input {
+  width: 4.5em;
+}
+
 .panel-hint {
   margin: 0 0 8px;
   font-size: 0.8rem;

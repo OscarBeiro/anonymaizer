@@ -5,12 +5,15 @@ import { CategoryToggles } from './CategoryToggles';
 import type { CategorySettings } from '../core/categories';
 import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
 import type { OutputMode } from '../lib/session';
+import type { MoneyRange } from '../core/pseudonymize';
 
 interface ReviewStepProps {
   session: MappingSession;
   anonymizedText: string;
   outputMode: OutputMode;
   onOutputModeChange: (mode: OutputMode) => void;
+  moneyRange: MoneyRange;
+  onMoneyRangeChange: (range: MoneyRange) => void;
   mappings: MappingItem[];
   dictionaryRules: CustomDictionaryRule[];
   onToggle: (id: string) => void;
@@ -29,6 +32,8 @@ export const ReviewStep = ({
   anonymizedText,
   outputMode,
   onOutputModeChange,
+  moneyRange,
+  onMoneyRangeChange,
   mappings,
   dictionaryRules,
   onToggle,
@@ -76,6 +81,8 @@ export const ReviewStep = ({
           session={session}
           outputMode={outputMode}
           onOutputModeChange={onOutputModeChange}
+          moneyRange={moneyRange}
+          onMoneyRangeChange={onMoneyRangeChange}
         />
       )}
 
