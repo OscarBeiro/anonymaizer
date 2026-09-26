@@ -11,7 +11,7 @@ M4 is an open question for the user.
 
 ---
 
-### [ ] W1 — Back/Next footer on every step
+### [x] W1 — Back/Next footer on every step
 
 - New component `src/components/StepFooter.tsx`, rendered by `App.tsx` below
   the active step: a secondary **Back** button and a primary **Next** button.
@@ -31,6 +31,16 @@ M4 is an open question for the user.
 > Write tests first: `nextStep`/`prevStep` over every step and sub-step,
 > including the gated cases (no text → no Next from Ingest; no mappings → no
 > Restore).
+
+**Done 2026-09-26 (v0.4.7).**
+- `src/lib/wizard.ts` holds the order (`nextPosition` / `prevPosition`), the
+  gate (`canEnter`) and `REVIEW_SUB_STEPS`, tested in `wizard.test.ts`.
+- `StepNav` now takes `gate` instead of `canReview`/`canRestore`.
+- `ReviewStep`'s sub-step is lifted into `App`.
+- Back from Restore lands on the last Review sub-step (Statistics).
+- Restore's own internal "Restore →" flow (`ReversalPanel`) is untouched; the
+  footer only shows Back there.
+- The Review sub-step isn't persisted: a reload re-enters Review at Rules.
 
 ### Verification
 

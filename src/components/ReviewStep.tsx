@@ -1,7 +1,7 @@
-import { useState } from 'react';
 import type { CustomDictionaryRule, MappingItem } from '../core/types';
 import { MappingList, SanitizedTextPanel, StatisticsPanel } from './MappingPanels';
 import { RulesEditor } from './RulesEditor';
+import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
 
 interface ReviewStepProps {
   anonymizedText: string;
@@ -11,16 +11,10 @@ interface ReviewStepProps {
   onSplit: (id: string) => void;
   onMerge: (ids: string[]) => void;
   onRulesChange: (rules: CustomDictionaryRule[]) => void;
+  // Lifted into App (W1) so the Back/Next footer can walk the sub-steps.
+  subStep: ReviewSubStep;
+  onSubStepChange: (subStep: ReviewSubStep) => void;
 }
-
-type ReviewSubStep = 'rules' | 'placeholders' | 'sanitized' | 'statistics';
-
-const SUB_STEPS: { id: ReviewSubStep; label: string }[] = [
-  { id: 'rules', label: '2.1 Rules' },
-  { id: 'placeholders', label: '2.2 Placeholders' },
-  { id: 'sanitized', label: '2.3 Sanitized text' },
-  { id: 'statistics', label: '2.4 Statistics' },
-];
 
 export const ReviewStep = ({
   anonymizedText,
@@ -30,18 +24,19 @@ export const ReviewStep = ({
   onSplit,
   onMerge,
   onRulesChange,
+  subStep,
+  onSubStepChange,
 }: ReviewStepProps) => {
-  const [subStep, setSubStep] = useState<ReviewSubStep>('rules');
 
   return (
     <div className="review-step">
       <nav className="review-sub-nav">
-        {SUB_STEPS.map((s) => (
+        {REVIEW_SUB_STEPS.map((s) => (
           <button
             key={s.id}
             type="button"
             className={s.id === subStep ? 'review-sub-nav-button review-sub-nav-active' : 'review-sub-nav-button'}
-            onClick={() => setSubStep(s.id)}
+            onClick={() => onSubStepChange(s.id)}
           >
             {s.label}
           </button>

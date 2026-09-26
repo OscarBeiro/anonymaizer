@@ -4,6 +4,7 @@ import { IngestStep } from './components/IngestStep';
 import { NerToggle } from './components/NerToggle';
 import { ReversalPanel } from './components/ReversalPanel';
 import { ReviewStep } from './components/ReviewStep';
+import { StepFooter } from './components/StepFooter';
 import { StepNav } from './components/StepNav';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { applyEnabledMappings } from './core/apply';
@@ -11,6 +12,7 @@ import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession 
 import './lib/parsers';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
+import type { ReviewSubStep, WizardGate, WizardPosition } from './lib/wizard';
 import {
   loadDictionaryRules,
   loadSession,
@@ -36,6 +38,7 @@ function App() {
   const [session, setSession] = useState<MappingSession>(() => loadSession() ?? emptySession());
   const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
   const [step, setStep] = useState<WizardStep>(() => loadStep());
+  const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('rules');
   // Non-blocking parser warnings for the document currently imported
   // (dropped images, an unreadable sheet). Deliberately not persisted with
   // the session — they describe one import action, not the mapping.
@@ -216,6 +219,16 @@ function App() {
     ]);
   };
 
+  const gate: WizardGate = {
+    hasText: session.rawMarkdown.length > 0,
+    hasMappings: session.mappings.length > 0,
+  };
+  const position: WizardPosition = step === 'review' ? { step, subStep: reviewSubStep } : { step };
+  const navigate = (to: WizardPosition): void => {
+    setStep(to.step);
+    if (to.subStep) setReviewSubStep(to.subStep);
+  };
+
   return (
     <div className="app">
       <aside className="app-sidebar">
@@ -227,12 +240,7 @@ function App() {
           <p>Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
         </header>
 
-        <StepNav
-          step={step}
-          canReview={session.rawMarkdown.length > 0}
-          canRestore={session.mappings.length > 0}
-          onSelect={setStep}
-        />
+        <StepNav step={step} gate={gate} onSelect={setStep} />
       </aside>
 
       <main className="app-main">
@@ -262,11 +270,15 @@ function App() {
               onSplit={handleSplit}
               onMerge={handleMerge}
               onRulesChange={updateRules}
+              subStep={reviewSubStep}
+              onSubStepChange={setReviewSubStep}
             />
           </>
         )}
 
         {step === 'restore' && <ReversalPanel mappings={session.mappings} />}
+
+        <StepFooter position={position} gate={gate} onNavigate={navigate} />
       </main>
     </div>
   );

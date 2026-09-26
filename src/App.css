@@ -391,3 +391,47 @@
   padding: 6px 10px;
   cursor: pointer;
 }
+
+/* W1: Back/Next footer under every step */
+.step-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.step-footer-next-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.step-footer-back,
+.step-footer-next {
+  font-size: 0.9rem;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.step-footer-back {
+  background: none;
+  border: 1px solid var(--border);
+  color: inherit;
+}
+
+.step-footer-next {
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+}
+
+.step-footer-next:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}

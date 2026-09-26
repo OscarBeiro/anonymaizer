@@ -1,9 +1,9 @@
 import type { WizardStep } from '../lib/session';
+import { canEnter, type WizardGate } from '../lib/wizard';
 
 interface StepNavProps {
   step: WizardStep;
-  canReview: boolean;
-  canRestore: boolean;
+  gate: WizardGate;
   onSelect: (step: WizardStep) => void;
 }
 
@@ -13,9 +13,7 @@ const STEPS: { id: WizardStep; label: string }[] = [
   { id: 'restore', label: '3. Restore' },
 ];
 
-export const StepNav = ({ step, canReview, canRestore, onSelect }: StepNavProps) => {
-  const isDisabled = (id: WizardStep): boolean =>
-    (id === 'review' && !canReview) || (id === 'restore' && !canRestore);
+export const StepNav = ({ step, gate, onSelect }: StepNavProps) => {
 
   return (
     <nav className="step-nav">
@@ -24,7 +22,7 @@ export const StepNav = ({ step, canReview, canRestore, onSelect }: StepNavProps)
           key={s.id}
           type="button"
           className={s.id === step ? 'step-nav-button step-nav-active' : 'step-nav-button'}
-          disabled={isDisabled(s.id)}
+          disabled={!canEnter(s.id, gate)}
           onClick={() => onSelect(s.id)}
         >
           {s.label}
