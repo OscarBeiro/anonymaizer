@@ -73,7 +73,7 @@ the saved file shows what the screen showed.
 - `src/components/SaveAsControl.tsx` (format select + "Save as…"), on 2.3 beside
   the panel's copy button and on 3.2 under the restored text. Default: `.txt`.
 
-### [ ] P10 — `.xlsx` export for tabular sources
+### [x] P10 — `.xlsx` export for tabular sources
 
 The M3 `.xlsx` *importer* (`src/lib/parsers/xlsx.ts`, P8f) hand-rolls its
 reading on `jszip` rather than pulling in SheetJS. Export is the inverse and
@@ -104,6 +104,23 @@ document can easily contain `&` or `<`.
 > Round-trip test: feed the generated zip back through the M3 `.xlsx` importer
 > and assert the cells come out as they went in. That test is the real
 > specification of "valid enough" and is worth more than any fixture comparison.
+
+**Done 2026-09-26 (v0.5.1).**
+- `src/core/export/xlsxExport.ts`: `parseMarkdownTables` (new — `markdownTable.ts`
+  only had the emitting half), `canExportXlsx`, `buildXlsxExport` returning the
+  XML parts by path. Tested in `xlsxExport.test.ts`.
+- The gate is enforced in core by `buildXlsxExport` throwing, not by
+  `buildExport` (that one stays text-only; `.xlsx` is binary after zipping).
+- One sheet per table, named after the `## ` heading above it (what the
+  importers write); names sanitized for Excel (forbidden chars, 31 chars,
+  case-insensitive unique). No table → throws, shown beside the button.
+- Every cell is an inline string, including numbers: guessing a type back
+  would turn an ID like `007` into `7`.
+- `src/lib/xlsxZip.ts` zips with a lazy `import('jszip')` — a static import
+  pulled jszip into the main chunk and tripped the 500 kB warning.
+- Round trip (`src/lib/parsers/xlsxRoundTrip.test.ts`, DOM env): export → M3
+  importer gives back the identical Markdown, escapes and pipes included.
+- Not checked in Excel/LibreOffice by hand yet.
 
 ### [ ] P11 — Pre-detection category toggles, persisted
 

@@ -289,6 +289,11 @@
   align-items: center;
 }
 
+.save-as-error {
+  font-size: 0.85rem;
+  color: #dc2626;
+}
+
 .save-as select {
   font: inherit;
   font-size: 0.85rem;
