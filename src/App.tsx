@@ -7,9 +7,12 @@ import { ReviewStep } from './components/ReviewStep';
 import { StepFooter } from './components/StepFooter';
 import { SidebarStats } from './components/SidebarStats';
 import { StepNav } from './components/StepNav';
+import { ThemeToggle } from './components/ThemeToggle';
 import { SettingsMenu, type SettingsSection } from './components/SettingsMenu';
 import { CategoryToggles } from './components/CategoryToggles';
 import { RulesEditor } from './components/RulesEditor';
+import DOMPurify from 'dompurify';
+import { markdownToHtml, markdownToPlainText, type RestoreFormat } from './core/markdownRender';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
@@ -38,6 +41,8 @@ import {
   loadSession,
   loadStep,
   loadTheme,
+  loadRestoreFormat,
+  saveRestoreFormat,
   newSessionId,
   saveAppMode,
   saveCategorySettings,
@@ -99,6 +104,8 @@ function App() {
   useEffect(() => saveOutputMode(outputMode), [outputMode]);
   const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
   useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
+  const [restoreFormat, setRestoreFormat] = useState<RestoreFormat>(() => loadRestoreFormat());
+  useEffect(() => saveRestoreFormat(restoreFormat), [restoreFormat]);
   const [theme, setTheme] = useState<ThemePreference>(() => loadTheme());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection | undefined>();
@@ -120,6 +127,17 @@ function App() {
   const sanitizedText = outputMode === 'realistic' ? realisticText : session.anonymizedMarkdown;
   useEffect(() => () => nerClientRef.current?.terminate(), []);
 
+  // A new document replaces everything tied to the previous one: its mappings,
+  // file metadata, session id (so realistic output reseeds) and AI response.
+  // Custom rules and settings belong to the user and are kept.
+  const resetForNewDocument = (): void => {
+    setSession(emptySession());
+    setAiResponse('');
+    setImportWarnings([]);
+    setReviewSubStep('placeholders');
+    setRestoreSubStep('response');
+  };
+
   const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
     const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings);
     setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
@@ -131,10 +149,11 @@ function App() {
     fileName: string,
     warnings: string[],
   ) => {
+    resetForNewDocument();
     setImportWarnings(warnings);
     const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings);
-    setSession((prev) => ({
-      ...prev,
+    setSession(() => ({
+      ...emptySession(),
       rawMarkdown,
       mappings,
       anonymizedMarkdown: anonymizedText,
@@ -150,7 +169,7 @@ function App() {
     const handoff = takeHandoff();
     if (!handoff) return;
     if (handoff.kind === 'text') {
-      handlePasteChange(handoff.text);
+      handleNewDocumentText(handoff.text);
       setStep('review');
       return;
     }
@@ -193,6 +212,13 @@ function App() {
     } else {
       runAnonymize(rawMarkdown, dictionaryRules);
     }
+  };
+
+  // A paste that replaces the document (see PastePanel) or text from the
+  // landing: start clean, then detect as usual.
+  const handleNewDocumentText = (rawMarkdown: string) => {
+    resetForNewDocument();
+    handlePasteChange(rawMarkdown);
   };
 
   const handleNerToggle = (checked: boolean) => {
@@ -376,11 +402,28 @@ function App() {
     setViewMode(defaultMode);
   };
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
+  // The AI reply is Markdown; HTML is sanitized here, once, because both the
+  // preview (innerHTML) and the clipboard's text/html flavour use it.
+  const restoredHtml = useMemo(
+    () => (restored && restoreFormat === 'html' ? DOMPurify.sanitize(markdownToHtml(restored)) : ''),
+    [restored, restoreFormat],
+  );
+  const restoredPlain = useMemo(
+    () => (restored && restoreFormat !== 'markdown' ? markdownToPlainText(restored) : ''),
+    [restored, restoreFormat],
+  );
+  const restoredView =
+    restoreFormat === 'html' ? restoredHtml : restoreFormat === 'plain' ? restoredPlain : restored;
   const copyAction: CopyAction | undefined =
     position.subStep === 'sanitized'
       ? { label: 'Copy sanitized text', text: sanitizedText, doneMessage: 'Copied — your text is ready to send to the AI.' }
       : position.subStep === 'restored'
-        ? { label: 'Copy restored text', text: restored, doneMessage: 'Copied — your restored text is on the clipboard.' }
+        ? {
+            label: 'Copy restored text',
+            text: restoreFormat === 'markdown' ? restored : restoredPlain,
+            html: restoreFormat === 'html' ? restoredHtml : undefined,
+            doneMessage: 'Copied — your restored text is on the clipboard.',
+          }
         : undefined;
 
   return (
@@ -413,6 +456,7 @@ function App() {
               Quick view
             </button>
           )}
+          <ThemeToggle theme={theme} onChange={setTheme} />
           <button type="button" className="settings-button" aria-haspopup="dialog" onClick={() => openSettings()}>
             ⚙ Settings
           </button>
@@ -439,6 +483,7 @@ function App() {
               rawMarkdown={session.rawMarkdown}
               warnings={importWarnings}
               onChange={handlePasteChange}
+              onNewDocument={handleNewDocumentText}
               onCreateRule={handleCreateRule}
               onFileImport={handleFileImport}
               defaultMode={defaultMode}
@@ -484,6 +529,9 @@ function App() {
               session={session}
               aiResponse={aiResponse}
               restored={restored}
+              restoredView={restoredView}
+              restoreFormat={restoreFormat}
+              onRestoreFormatChange={setRestoreFormat}
               onAiResponseChange={setAiResponse}
               subStep={restoreSubStep}
               onSubStepChange={setRestoreSubStep}

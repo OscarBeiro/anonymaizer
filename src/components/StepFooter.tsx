@@ -6,6 +6,8 @@ import { labelOf, nextPosition, prevPosition, type WizardGate, type WizardPositi
 export interface CopyAction {
   label: string;
   text: string;
+  /** When set, copied as rich text (text/html) with `text` as the plain fallback. */
+  html?: string;
   doneMessage: string;
 }
 
@@ -39,8 +41,17 @@ export const StepFooter = ({ position, gate, onNavigate, copyAction, onStartOver
 
   const copy = (): void => {
     if (!copyAction) return;
-    const { text } = copyAction;
-    navigator.clipboard.writeText(text).then(
+    const { text, html } = copyAction;
+    const write =
+      html && typeof ClipboardItem !== 'undefined'
+        ? navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html': new Blob([html], { type: 'text/html' }),
+              'text/plain': new Blob([text], { type: 'text/plain' }),
+            }),
+          ])
+        : navigator.clipboard.writeText(text);
+    write.then(
       () => setCopiedText(text),
       () => setCopiedText(null),
     );

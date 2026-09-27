@@ -55,6 +55,9 @@ scans. Do these before M6. The structural work is M7.
 mode: drop a document, get the result, with a Fine-tune button into today's
 wizard (Advanced); plus a tidy-up of the settings menu. Do it after `05`, before
 M6.
+[`07-landing-restore-formats.md`](07-landing-restore-formats.md) — `U1`–`U4`,
+landing content and an About page, restore as plain/Markdown/HTML, the
+new-document reset and a header theme toggle (done); `U5`–`U7` follow-ups.
 
 **The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
 "the §6 Spanish test bench case", read that section from `docs/spec.md`.

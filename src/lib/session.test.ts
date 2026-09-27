@@ -3,6 +3,8 @@ import {
   clearLocalData,
   LOCAL_KEY_PREFIX,
   loadAppMode,
+  loadRestoreFormat,
+  saveRestoreFormat,
   parseAppMode,
   saveAppMode,
   loadTheme,
@@ -73,6 +75,21 @@ describe('app mode', () => {
     localStorage.setItem('anonymaizer.appMode', 'expert');
     expect(loadAppMode()).toBe('standard');
     expect(parseAppMode('"advanced"')).toBe('standard');
+  });
+});
+
+describe('restore format', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('defaults to markdown, round-trips, and rejects junk', () => {
+    expect(loadRestoreFormat()).toBe('markdown');
+    for (const f of ['plain', 'html', 'markdown'] as const) {
+      saveRestoreFormat(f);
+      expect(loadRestoreFormat()).toBe(f);
+    }
+    localStorage.setItem('anonymaizer.restoreFormat', 'pdf');
+    expect(loadRestoreFormat()).toBe('markdown');
   });
 });
 

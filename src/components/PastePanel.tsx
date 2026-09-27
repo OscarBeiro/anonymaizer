@@ -4,25 +4,35 @@ import { convertHtmlToMarkdown } from '../lib/htmlToMarkdown';
 interface PastePanelProps {
   rawMarkdown: string;
   onChange: (markdown: string) => void;
+  onNewDocument: (markdown: string) => void;
   onCreateRule: (selectedText: string) => void;
 }
 
-export const PastePanel = ({ rawMarkdown, onChange, onCreateRule }: PastePanelProps) => {
+export const PastePanel = ({ rawMarkdown, onChange, onNewDocument, onCreateRule }: PastePanelProps) => {
   const [selection, setSelection] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // A paste into an empty box, or over the whole text, is a new document and
+  // discards the previous one. A paste into part of an existing document asks:
+  // replacing is the usual intent, inserting stays possible for small edits.
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const el = e.currentTarget;
     const html = e.clipboardData.getData('text/html');
-    if (html) {
-      e.preventDefault();
-      onChange(convertHtmlToMarkdown(html));
+    const pasted = html ? convertHtmlToMarkdown(html) : e.clipboardData.getData('text/plain');
+    const replacesAll = !el.value.trim() || (el.selectionStart === 0 && el.selectionEnd === el.value.length);
+    const replace =
+      replacesAll ||
+      window.confirm(
+        'Replace the current document with the pasted text?\n\n' +
+          'OK starts a new document: the current text, its placeholders and the AI response are cleared.\n' +
+          'Cancel inserts the pasted text into the current document instead.',
+      );
+    e.preventDefault();
+    if (replace) {
+      onNewDocument(pasted);
       return;
     }
-    // Plain text: let the browser's default paste behavior run, then read
-    // the resulting value on the next tick.
-    requestAnimationFrame(() => {
-      if (textareaRef.current) onChange(textareaRef.current.value);
-    });
+    onChange(el.value.slice(0, el.selectionStart) + pasted + el.value.slice(el.selectionEnd));
   };
 
   const handleSelect = () => {

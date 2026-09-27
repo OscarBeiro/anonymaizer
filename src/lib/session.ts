@@ -1,3 +1,4 @@
+import type { RestoreFormat } from '../core/markdownRender';
 import { parseCategorySettings, type CategorySettings } from '../core/categories';
 import { normalizeMoneyRange, type MoneyRange } from '../core/pseudonymize';
 import type { CustomDictionaryRule, MappingSession } from '../core/types';
@@ -7,6 +8,7 @@ const RULES_KEY = 'anonymaizer.dictionaryRules';
 const STEP_KEY = 'anonymaizer.step';
 const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
+const RESTORE_FORMAT_KEY = 'anonymaizer.restoreFormat';
 const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
 const APP_MODE_KEY = 'anonymaizer.appMode';
 // Read verbatim by the inline pre-paint script in index.html — rename both or neither.
@@ -33,6 +35,17 @@ export const loadOutputMode = (): OutputMode =>
 
 export const saveOutputMode = (mode: OutputMode): void => {
   localStorage.setItem(OUTPUT_MODE_KEY, mode);
+};
+
+// How step 3.2 shows and copies the restored text. Markdown is the default:
+// it is what the AI sent, unchanged.
+export const loadRestoreFormat = (): RestoreFormat => {
+  const v = localStorage.getItem(RESTORE_FORMAT_KEY);
+  return v === 'plain' || v === 'html' ? v : 'markdown';
+};
+
+export const saveRestoreFormat = (format: RestoreFormat): void => {
+  localStorage.setItem(RESTORE_FORMAT_KEY, format);
 };
 
 // S1: Standard is drop -> result with a Fine-tune button; Advanced is the full
