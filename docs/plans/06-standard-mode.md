@@ -19,7 +19,15 @@ About (version, legal links, "Clear all local data").
 
 ---
 
-### [ ] S1 — Mode model and persistence
+### [x] S1 — Mode model and persistence
+
+**Done 2026-09-27 (v0.16.0).** Two states in `App.tsx`: `defaultMode`
+(persisted, set by the ingest buttons and Settings) and `viewMode` (what is on
+screen). Fine-tune switches only the view, so one fine-tune does not make
+Advanced the default. Advanced shows a "Quick view" header button to go back.
+Standard always shows the placeholder rendering, so its output stays
+restorable. S4 adds a "Delete downloaded AI model" button to Data & privacy;
+the contextual one in the NER toggle stays.
 
 - `type AppMode = 'standard' | 'advanced'` in `src/lib/session.ts`, stored
   under an `anonymaizer.` key so "Clear all local data" wipes it too. Default:
@@ -29,7 +37,7 @@ About (version, legal links, "Clear all local data").
 - Tests: the persistence round-trip, the default for a first visit, and a
   corrupt value falling back to `standard`.
 
-### [ ] S2 — Ingest offers Quick and Detailed
+### [x] S2 — Ingest offers Quick and Detailed
 
 - `IngestStep.tsx`: after a document is dropped or pasted, show two buttons:
   **Quick** (Standard) and **Detailed** (Advanced). The last choice becomes the
@@ -37,7 +45,7 @@ About (version, legal links, "Clear all local data").
 - Quick runs `runAnonymize` (plus NER if it's on) and shows the result view.
   Detailed goes into the wizard as it does today.
 
-### [ ] S3 — Standard result view + Fine-tune
+### [x] S3 — Standard result view + Fine-tune
 
 - New `src/components/QuickResult.tsx`: the anonymized text, Copy, Download
   (reuse `SaveAsControl`/`download.ts`), **Fine-tune**, and **New document**.
@@ -47,7 +55,7 @@ About (version, legal links, "Clear all local data").
 - Restore stays reachable from Standard through a small "Restore AI output"
   link, since reversal is half of the tool's purpose.
 
-### [ ] S4 — Settings menu tidy-up
+### [x] S4 — Settings menu tidy-up
 
 - Add **Default mode** (Standard / Advanced) under a new **General** section,
   with Language and Theme.
@@ -58,7 +66,7 @@ About (version, legal links, "Clear all local data").
   The existing `openSettings(section)` deep links keep working (update the
   `SettingsSection` union).
 
-### [ ] S5 — TICGAL branding: light theme colours + © footer
+### [x] S5 — TICGAL branding: light theme colours + © footer
 
 Added 2026-09-27. The light theme uses TICGAL's colours. The main blue is
 **Azul `#658BC5`** (RGB 101, 139, 197).

@@ -65,3 +65,6 @@ export const labelOf = (pos: WizardPosition): string => {
   if (sub) return sub.label.replace(/^[\d.]+\s*/, '');
   return { ingest: 'Ingest', review: 'Review', restore: 'Restore' }[pos.step];
 };
+
+// S1: Fine-tune opens the Advanced review on the same session, at the placeholders.
+export const FINE_TUNE_POSITION: WizardPosition = { step: 'review', subStep: 'placeholders' };

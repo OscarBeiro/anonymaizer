@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearLocalData,
   LOCAL_KEY_PREFIX,
+  loadAppMode,
+  parseAppMode,
+  saveAppMode,
   loadTheme,
   parseTheme,
   saveCategorySettings,
@@ -51,6 +54,28 @@ describe('theme preference', () => {
   });
 });
 
+describe('app mode', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('defaults to standard on a first visit', () => {
+    expect(loadAppMode()).toBe('standard');
+  });
+
+  it('round-trips both modes', () => {
+    for (const m of ['advanced', 'standard'] as const) {
+      saveAppMode(m);
+      expect(loadAppMode()).toBe(m);
+    }
+  });
+
+  it('falls back to standard on a corrupt value', () => {
+    localStorage.setItem('anonymaizer.appMode', 'expert');
+    expect(loadAppMode()).toBe('standard');
+    expect(parseAppMode('"advanced"')).toBe('standard');
+  });
+});
+
 describe('clearLocalData', () => {
   beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
   afterEach(() => vi.unstubAllGlobals());
@@ -71,6 +96,7 @@ describe('clearLocalData', () => {
     saveOutputMode('realistic');
     saveMoneyRange({ min: 5, max: 10 });
     saveTheme('dark');
+    saveAppMode('advanced');
     localStorage.setItem('anonymaizer.someFutureKey', '1');
     localStorage.setItem('other-app', 'keep');
 

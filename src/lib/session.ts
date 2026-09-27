@@ -8,6 +8,7 @@ const STEP_KEY = 'anonymaizer.step';
 const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
 const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
+const APP_MODE_KEY = 'anonymaizer.appMode';
 // Read verbatim by the inline pre-paint script in index.html — rename both or neither.
 export const THEME_KEY = 'anonymaizer.theme';
 
@@ -32,6 +33,18 @@ export const loadOutputMode = (): OutputMode =>
 
 export const saveOutputMode = (mode: OutputMode): void => {
   localStorage.setItem(OUTPUT_MODE_KEY, mode);
+};
+
+// S1: Standard is drop -> result with a Fine-tune button; Advanced is the full
+// wizard. A missing or unknown value is Standard, the default for new visitors.
+export type AppMode = 'standard' | 'advanced';
+
+export const parseAppMode = (raw: string | null): AppMode => (raw === 'advanced' ? 'advanced' : 'standard');
+
+export const loadAppMode = (): AppMode => parseAppMode(localStorage.getItem(APP_MODE_KEY));
+
+export const saveAppMode = (mode: AppMode): void => {
+  localStorage.setItem(APP_MODE_KEY, mode);
 };
 
 // P17: `system` follows prefers-color-scheme; light/dark override it.

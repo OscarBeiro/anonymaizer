@@ -26,9 +26,11 @@ import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
-import type { RestoreSubStep, ReviewSubStep, WizardGate, WizardPosition } from './lib/wizard';
+import { FINE_TUNE_POSITION, type RestoreSubStep, type ReviewSubStep, type WizardGate, type WizardPosition } from './lib/wizard';
+import { QuickResult } from './components/QuickResult';
 import {
   clearLocalData,
+  loadAppMode,
   loadCategorySettings,
   loadDictionaryRules,
   loadMoneyRange,
@@ -37,6 +39,7 @@ import {
   loadStep,
   loadTheme,
   newSessionId,
+  saveAppMode,
   saveCategorySettings,
   saveDictionaryRules,
   saveMoneyRange,
@@ -44,6 +47,7 @@ import {
   saveSession,
   saveStep,
   saveTheme,
+  type AppMode,
   type ThemePreference,
   type OutputMode,
   type WizardStep,
@@ -69,6 +73,12 @@ function App() {
   const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('placeholders');
   const [restoreSubStep, setRestoreSubStep] = useState<RestoreSubStep>('response');
   const [aiResponse, setAiResponse] = useState('');
+  // S1: defaultMode is the remembered choice (Quick/Detailed, Settings);
+  // viewMode is what is on screen now — Fine-tune switches only the view.
+  const [defaultMode, setDefaultMode] = useState<AppMode>(() => loadAppMode());
+  useEffect(() => saveAppMode(defaultMode), [defaultMode]);
+  const [viewMode, setViewMode] = useState<AppMode>(() => (step === 'restore' ? 'advanced' : defaultMode));
+  const standard = viewMode === 'standard';
   // Non-blocking parser warnings for the document currently imported
   // (dropped images, an unreadable sheet). Deliberately not persisted with
   // the session — they describe one import action, not the mapping.
@@ -320,6 +330,16 @@ function App() {
     if (to.step === 'review' && to.subStep) setReviewSubStep(to.subStep as ReviewSubStep);
     if (to.step === 'restore' && to.subStep) setRestoreSubStep(to.subStep as RestoreSubStep);
   };
+  const runInMode = (mode: AppMode): void => {
+    setDefaultMode(mode);
+    setViewMode(mode);
+    navigate({ step: 'review', subStep: 'placeholders' });
+  };
+  const fineTune = (): void => {
+    setViewMode('advanced');
+    navigate(FINE_TUNE_POSITION);
+  };
+
   // The end of the round trip. It clears the document, its mappings and the AI
   // response; custom rules and the cached NER model are kept, since they belong
   // to the user, not to one document. Asks first: the mappings are the only
@@ -353,6 +373,7 @@ function App() {
     setReviewSubStep('placeholders');
     setRestoreSubStep('response');
     setStep('ingest');
+    setViewMode(defaultMode);
   };
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
   const copyAction: CopyAction | undefined =
@@ -380,6 +401,18 @@ function App() {
         </div>
         {/* P18: the settings menu button mounts here. */}
         <div className="app-header-slot">
+          {!standard && step !== 'ingest' && gate.hasText && (
+            <button
+              type="button"
+              className="settings-button"
+              onClick={() => {
+                setViewMode('standard');
+                navigate({ step: 'review' });
+              }}
+            >
+              Quick view
+            </button>
+          )}
           <button type="button" className="settings-button" aria-haspopup="dialog" onClick={() => openSettings()}>
             ⚙ Settings
           </button>
@@ -387,16 +420,18 @@ function App() {
       </header>
 
       <div className="app">
-        <aside className="app-sidebar">
-          <StepNav step={step} gate={gate} onSelect={setStep} />
-          <SidebarStats
-            session={session}
-            onOpen={() => {
-              setStep('review');
-              setReviewSubStep('placeholders');
-            }}
-          />
-        </aside>
+        {!standard && (
+          <aside className="app-sidebar">
+            <StepNav step={step} gate={gate} onSelect={setStep} />
+            <SidebarStats
+              session={session}
+              onOpen={() => {
+                setStep('review');
+                setReviewSubStep('placeholders');
+              }}
+            />
+          </aside>
+        )}
 
         <main className="app-main">
           {step === 'ingest' && (
@@ -406,10 +441,24 @@ function App() {
               onChange={handlePasteChange}
               onCreateRule={handleCreateRule}
               onFileImport={handleFileImport}
+              defaultMode={defaultMode}
+              onRun={runInMode}
             />
           )}
 
-          {step === 'review' && (
+          {standard && step === 'review' && (
+            <QuickResult
+              session={session}
+              onFineTune={fineTune}
+              onRestore={() => {
+                setViewMode('advanced');
+                navigate({ step: 'restore', subStep: 'response' });
+              }}
+              onNewDocument={startOver}
+            />
+          )}
+
+          {!standard && step === 'review' && (
             <>
               <ReviewStep
                 session={session}
@@ -441,15 +490,17 @@ function App() {
             />
           )}
 
-          <StepFooter
-            // Remount per position, so coming back to a copy tab asks to copy again.
-            key={`${position.step}:${position.subStep ?? ''}`}
-            position={position}
-            gate={gate}
-            onNavigate={navigate}
-            copyAction={copyAction}
-            onStartOver={startOver}
-          />
+          {!standard && (
+            <StepFooter
+              // Remount per position, so coming back to a copy tab asks to copy again.
+              key={`${position.step}:${position.subStep ?? ''}`}
+              position={position}
+              gate={gate}
+              onNavigate={navigate}
+              copyAction={copyAction}
+              onStartOver={startOver}
+            />
+          )}
         </main>
       </div>
 
@@ -459,6 +510,8 @@ function App() {
         onClose={() => setSettingsOpen(false)}
         theme={theme}
         onThemeChange={setTheme}
+        defaultMode={defaultMode}
+        onDefaultModeChange={setDefaultMode}
         detection={
           <>
             <CategoryToggles
@@ -479,6 +532,7 @@ function App() {
         dictionary={<RulesEditor rules={dictionaryRules} onChange={updateRules} />}
         legalLinks={<SiteLinks />}
         onClearLocalData={clearAllLocalData}
+        onDeleteModel={handleDeleteModel}
       />
 
       <footer className="app-footer">

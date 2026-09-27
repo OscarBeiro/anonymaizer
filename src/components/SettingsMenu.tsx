@@ -1,9 +1,15 @@
 import { type ReactNode, useEffect, useRef } from 'react';
-import type { ThemePreference } from '../lib/session';
+import type { AppMode, ThemePreference } from '../lib/session';
 import { Copyright } from './Copyright';
 import { ThemeControl } from './ThemeControl';
 
-export type SettingsSection = 'language' | 'theme' | 'detection' | 'dictionary' | 'about';
+// S4: General · Detection · Dictionary · Data & privacy · About.
+export type SettingsSection = 'general' | 'detection' | 'dictionary' | 'privacy' | 'about';
+
+const MODE_OPTIONS: { value: AppMode; label: string }[] = [
+  { value: 'standard', label: 'Quick' },
+  { value: 'advanced', label: 'Detailed' },
+];
 
 interface SettingsMenuProps {
   open: boolean;
@@ -12,10 +18,13 @@ interface SettingsMenuProps {
   onClose: () => void;
   theme: ThemePreference;
   onThemeChange: (theme: ThemePreference) => void;
+  defaultMode: AppMode;
+  onDefaultModeChange: (mode: AppMode) => void;
   detection: ReactNode;
   dictionary: ReactNode;
   legalLinks?: ReactNode;
   onClearLocalData: () => void;
+  onDeleteModel: () => void;
 }
 
 /**
@@ -31,10 +40,13 @@ export function SettingsMenu({
   onClose,
   theme,
   onThemeChange,
+  defaultMode,
+  onDefaultModeChange,
   detection,
   dictionary,
   legalLinks,
   onClearLocalData,
+  onDeleteModel,
 }: SettingsMenuProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
@@ -76,18 +88,37 @@ export function SettingsMenu({
           </button>
         </header>
 
-        <section id="settings-language" className="settings-section">
-          <h3>Language</h3>
-          {/* M4b P14/P15 (the t() layer and locales) are deferred; this slot
-              gets the locale selector plus "follow browser" when they land. */}
+        <section id="settings-general" className="settings-section">
+          <h3>General</h3>
+          <h4>Default mode</h4>
+          <div className="segmented" role="radiogroup" aria-label="Default mode">
+            {MODE_OPTIONS.map((o) => (
+              <label key={o.value} className={defaultMode === o.value ? 'segmented-option is-active' : 'segmented-option'}>
+                <input
+                  type="radio"
+                  name="default-mode"
+                  value={o.value}
+                  checked={defaultMode === o.value}
+                  onChange={() => onDefaultModeChange(o.value)}
+                />
+                {o.label}
+              </label>
+            ))}
+          </div>
+          <p className="settings-hint">
+            Quick anonymizes a document in one step; Detailed lets you review every item. Fine-tune is always
+            available from the quick result.
+          </p>
+
+          <h4>Language</h4>
+          {/* M6 P14 (the t() layer and locales) is pending; this slot gets the
+              locale selector plus "follow browser" when it lands. */}
           <select disabled aria-label="Language" value="en">
             <option value="en">English</option>
           </select>
           <p className="settings-hint">More languages are on the way.</p>
-        </section>
 
-        <section id="settings-theme" className="settings-section">
-          <h3>Theme</h3>
+          <h4>Theme</h4>
           <ThemeControl theme={theme} onChange={onThemeChange} />
         </section>
 
@@ -101,6 +132,21 @@ export function SettingsMenu({
           {dictionary}
         </section>
 
+        <section id="settings-privacy" className="settings-section">
+          <h3>Data &amp; privacy</h3>
+          <p className="settings-hint">Everything stays in this browser. Nothing is uploaded.</p>
+          <button type="button" className="danger-button" onClick={onDeleteModel}>
+            Delete downloaded AI model
+          </button>
+          <p className="settings-hint">Frees the ~104 MB model cache. It is downloaded again if you turn AI detection back on.</p>
+          <button type="button" className="danger-button" onClick={onClearLocalData}>
+            Clear all local data
+          </button>
+          <p className="settings-hint">
+            Removes the saved session, rules and settings from this browser, and the downloaded AI model.
+          </p>
+        </section>
+
         <section id="settings-about" className="settings-section">
           <h3>About</h3>
           <p>AnonymAIzer v{__APP_VERSION__}. Runs entirely in your browser — no text is uploaded.</p>
@@ -108,12 +154,6 @@ export function SettingsMenu({
             <Copyright />
           </p>
           {legalLinks && <nav className="settings-links" aria-label="Legal">{legalLinks}</nav>}
-          <button type="button" className="danger-button" onClick={onClearLocalData}>
-            Clear all local data
-          </button>
-          <p className="settings-hint">
-            Removes the saved session, rules and settings from this browser, and the downloaded AI model.
-          </p>
         </section>
       </div>
     </dialog>
