@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { runAllDetectors, runDeterministicDetectors } from './detectors';
+import { applyEnabledMappings } from './apply';
+import { CLINICAL_REPORT_FIXTURE } from './__fixtures__/clinicalReport';
 import { runDetectionPipeline } from './pipeline';
 
 describe('runDetectionPipeline', () => {
@@ -95,5 +97,18 @@ describe('runDetectionPipeline', () => {
     expect(anonymizedText).toBe(
       '[[NAME_001]] firmó el acta. Más tarde, [[NAME_001]] lo confirmó.',
     );
+  });
+
+  // Toggles and the Realistic rendering rebuild the text from the mappings by
+  // literal search; they must reproduce the span-based result exactly. The
+  // clinical fixture's tutor ("Anxo Nogueira Vidal, DNI") is detected with a
+  // normalised span.text, which used to leave the real name in both.
+  it('rebuilding from the mappings matches the span-based text', () => {
+    const { mappings, anonymizedText } = runDetectionPipeline(
+      CLINICAL_REPORT_FIXTURE,
+      runAllDetectors(CLINICAL_REPORT_FIXTURE),
+    );
+    expect(applyEnabledMappings(CLINICAL_REPORT_FIXTURE, mappings)).toBe(anonymizedText);
+    expect(anonymizedText).not.toContain('Anxo');
   });
 });

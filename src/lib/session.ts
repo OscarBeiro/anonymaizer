@@ -37,8 +37,8 @@ export const saveOutputMode = (mode: OutputMode): void => {
   localStorage.setItem(OUTPUT_MODE_KEY, mode);
 };
 
-// How step 3.2 shows and copies the restored text. Markdown is the default:
-// it is what the AI sent, unchanged.
+// How step 3.2 shows and copies the restored text. Markdown (rendered) is the
+// default: it is what the AI sent.
 export const loadRestoreFormat = (): RestoreFormat => {
   const v = localStorage.getItem(RESTORE_FORMAT_KEY);
   return v === 'plain' || v === 'html' ? v : 'markdown';

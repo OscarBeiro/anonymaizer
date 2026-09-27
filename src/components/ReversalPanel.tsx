@@ -6,15 +6,19 @@ import { SaveAsControl } from './SaveAsControl';
 
 const FORMATS: { value: RestoreFormat; label: string; hint: string }[] = [
   { value: 'plain', label: 'Plain text', hint: 'Formatting marks removed — for email bodies, forms and plain editors.' },
-  { value: 'markdown', label: 'Markdown', hint: 'Exactly what the AI sent, with the real values back in.' },
-  { value: 'html', label: 'HTML', hint: 'Formatted. Copy pastes headings, lists and tables into Word, Docs or email.' },
+  {
+    value: 'markdown',
+    label: 'Markdown',
+    hint: 'Shown formatted. Copy pastes formatted into Word, Docs or email, and as Markdown into plain editors.',
+  },
+  { value: 'html', label: 'HTML', hint: 'The HTML source, to paste into a web page, a CMS or a template.' },
 ];
 
 interface ReversalPanelProps {
   session: MappingSession;
   aiResponse: string;
   restored: string;
-  /** The restored text in the chosen format; for 'html', already sanitized. */
+  /** The restored text in the chosen format: plain text, sanitized HTML (markdown view) or HTML source. */
   restoredView: string;
   restoreFormat: RestoreFormat;
   onRestoreFormatChange: (format: RestoreFormat) => void;
@@ -85,7 +89,7 @@ export const ReversalPanel = ({
           ))}
         </div>
         <p className="panel-hint">{FORMATS.find((f) => f.value === restoreFormat)?.hint}</p>
-        {restoreFormat === 'html' ? (
+        {restoreFormat === 'markdown' ? (
           // Sanitized with DOMPurify in App before it gets here.
           <div className="panel-textarea restored-html" dangerouslySetInnerHTML={{ __html: restoredView }} />
         ) : (

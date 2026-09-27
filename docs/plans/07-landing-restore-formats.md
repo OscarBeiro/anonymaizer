@@ -1,8 +1,8 @@
 # 07 — Landing content, About page, restore formats
 
 Planned and done 2026-09-27 (v0.17.0), from one session of user feedback on
-the hosted build. `U1`–`U4` are done; `U5`–`U7` are the follow-ups found on the
-way, not started.
+the hosted build. `U1`–`U4` and `U8`–`U9` are done; `U5`–`U7` and `U10` are the
+follow-ups found on the way, not started.
 
 ---
 
@@ -86,6 +86,40 @@ Add `src/core/data/en/` pools, chosen by document language once M6's
 The medical and CV use cases list date of birth as data at risk, but there
 is no DATE category. Either add one (off by default?) or suggest a custom
 rule in the landing copy.
+
+### [x] U8 — Realistic output leaked real names
+
+**Done 2026-09-27 (v0.17.0).** Reported: switching Output to Realistic and
+back gave a mix of fake names and placeholders. The Placeholders view is the
+span-based text from detection; Realistic (and every toggle) rebuilds from
+the mappings with `applyEnabledMappings`, by literal search. Two causes:
+
+- A detector can normalise `span.text` (the clinical fixture's "Anxo Nogueira
+  Vidal, DNI" is stored as "DNI Anxo Nogueira Vidal"), so no variant matched
+  the document and the real name survived. `runDetectionPipeline` now adds
+  each span's surface text (`text.slice(start, end)`) to its mapping's
+  variants.
+- `applyEnabledMappings` ran one replace per variant, so a fake containing a
+  shorter original ("Raúl López" / "López") was rewritten again. Now one
+  pass over a single alternation, longest first.
+
+Tests: `pipeline.test.ts` asserts the rebuild equals the span-based text on
+the clinical fixture; `apply.test.ts` asserts replaced output is never
+re-scanned.
+
+### [x] U9 — Markdown view renders
+
+**Done 2026-09-27 (v0.17.0).** Reported: the Markdown restore view showed
+source. Now Plain text = flattened; **Markdown = rendered** (copy writes
+`text/html` plus the Markdown source as `text/plain`); **HTML = the
+sanitized HTML source** in a textarea.
+
+### [ ] U10 — NAME span swallows ", DNI"
+
+Found in U8: "Tutor legal: Anxo Nogueira Vidal, DNI 12345678Z" yields a
+NAME span "Anxo Nogueira Vidal, DNI" — the D2 comma form treats "DNI" as a
+given name. Stop a comma-form NAME at ID keywords (DNI, NIE, NIF, CIF…).
+Belongs with the D-blocks in `03-detection-backlog.md` if preferred.
 
 **Not in this plan:** the language selector the user asked for needs P14
 (i18n layer) first; see `m6-language-packs.md`.

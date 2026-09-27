@@ -402,26 +402,27 @@ function App() {
     setViewMode(defaultMode);
   };
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
-  // The AI reply is Markdown; HTML is sanitized here, once, because both the
-  // preview (innerHTML) and the clipboard's text/html flavour use it.
+  // The AI reply is Markdown. The Markdown view renders it (sanitized here,
+  // once: both innerHTML and the clipboard's text/html use it); the HTML view
+  // shows the same sanitized HTML as source.
   const restoredHtml = useMemo(
-    () => (restored && restoreFormat === 'html' ? DOMPurify.sanitize(markdownToHtml(restored)) : ''),
+    () => (restored && restoreFormat !== 'plain' ? DOMPurify.sanitize(markdownToHtml(restored)) : ''),
     [restored, restoreFormat],
   );
   const restoredPlain = useMemo(
-    () => (restored && restoreFormat !== 'markdown' ? markdownToPlainText(restored) : ''),
+    () => (restored && restoreFormat === 'plain' ? markdownToPlainText(restored) : ''),
     [restored, restoreFormat],
   );
-  const restoredView =
-    restoreFormat === 'html' ? restoredHtml : restoreFormat === 'plain' ? restoredPlain : restored;
+  const restoredView = restoreFormat === 'plain' ? restoredPlain : restoredHtml;
   const copyAction: CopyAction | undefined =
     position.subStep === 'sanitized'
       ? { label: 'Copy sanitized text', text: sanitizedText, doneMessage: 'Copied — your text is ready to send to the AI.' }
       : position.subStep === 'restored'
         ? {
             label: 'Copy restored text',
-            text: restoreFormat === 'markdown' ? restored : restoredPlain,
-            html: restoreFormat === 'html' ? restoredHtml : undefined,
+            text: restoreFormat === 'plain' ? restoredPlain : restoreFormat === 'html' ? restoredHtml : restored,
+            // Markdown: rich text for Word/Docs/email, the Markdown source for plain editors.
+            html: restoreFormat === 'markdown' ? restoredHtml : undefined,
             doneMessage: 'Copied — your restored text is on the clipboard.',
           }
         : undefined;
