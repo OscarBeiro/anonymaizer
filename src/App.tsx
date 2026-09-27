@@ -21,6 +21,7 @@ import { parseDocument } from './core/parsers';
 import { takeHandoff } from './lib/handoff';
 import { linkProps } from './lib/router';
 import { SiteLinks } from './landing/SiteLinks';
+import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
@@ -484,6 +485,7 @@ function App() {
         <span>Runs entirely in your browser — no text is uploaded.</span>
         <nav className="app-footer-links" aria-label="Legal">
           <SiteLinks />
+          <Copyright />
         </nav>
       </footer>
     </div>

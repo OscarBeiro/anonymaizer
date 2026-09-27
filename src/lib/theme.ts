@@ -3,7 +3,7 @@ import type { ThemePreference } from './session';
 // P17: the UI half of the theme. The pre-paint half is the inline script in
 // index.html, which must stay in step with this function.
 // Matches --color-surface in src/styles/tokens.css.
-const THEME_COLOR = { light: '#ffffff', dark: '#16171d' } as const;
+const THEME_COLOR = { light: '#f5f8fc', dark: '#16171d' } as const;
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 

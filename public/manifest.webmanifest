@@ -4,8 +4,8 @@
   "description": "Client-side text anonymization & reversal tool. Zero backend, zero egress.",
   "start_url": "/app",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#f5f8fc",
+  "theme_color": "#658bc5",
   "icons": [
     {
       "src": "favicon.svg",

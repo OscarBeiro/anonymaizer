@@ -9,25 +9,28 @@
 /* color-scheme drives native controls and scrollbars. */
 :root {
   color-scheme: light;
-  /* Colour — surfaces and text */
-  --color-surface: #fff;
-  --color-surface-raised: #f7f6f9;
-  --color-surface-sunken: #f4f3ec;
-  --color-text: #6b6375;
-  --color-text-strong: #08060d;
-  --color-text-muted: #6f6878;
-  --color-border: #e5e4e7;
-  --color-border-strong: #c9c6cf;
+  /* Colour — surfaces and text. S5: TICGAL palette, neutrals with a slight blue tint. */
+  --color-surface: #f5f8fc;
+  --color-surface-raised: #fff;
+  --color-surface-sunken: #eaf0f8;
+  --color-text: #4b5563;
+  --color-text-strong: #111827;
+  --color-text-muted: #5b6472;
+  --color-border: #dbe3ee;
+  --color-border-strong: #b7c5da;
 
-  /* Colour — accent */
-  --color-accent: #aa3bff;
-  --color-accent-hover: #9424ec;
-  --color-accent-active: #7d17cc;
-  --color-accent-subtle: rgba(170, 59, 255, 0.1);
-  --color-accent-border: rgba(170, 59, 255, 0.5);
+  /* Colour — accent. TICGAL Azul #658BC5 is only 3.5:1 on white, under AA for
+     text, so it is --color-brand (tints, borders, focus, decoration) and the
+     text/button accent is a darker shade of the same hue (5.5:1 on surface). */
+  --color-brand: #658bc5;
+  --color-accent: #3e64a3;
+  --color-accent-hover: #355791;
+  --color-accent-active: #2c4a7c;
+  --color-accent-subtle: rgba(101, 139, 197, 0.14);
+  --color-accent-border: rgba(101, 139, 197, 0.55);
   --color-on-accent: #fff;
-  /* Placeholder <mark> text: plain accent is ~4.3:1 on its subtle tint, under AA. */
-  --color-mark-text: #7d17cc;
+  /* Placeholder <mark> text on the subtle tint. */
+  --color-mark-text: #2c4a7c;
 
   /* Colour — semantic */
   --color-success: #1a7f37;
@@ -82,11 +85,12 @@
     --color-border: #2e303a;
     --color-border-strong: #454856;
 
-    --color-accent: #c084fc;
-    --color-accent-hover: #cf9dfd;
-    --color-accent-active: #dcb6fe;
-    --color-accent-subtle: rgba(192, 132, 252, 0.15);
-    --color-accent-border: rgba(192, 132, 252, 0.5);
+    --color-brand: #658bc5;
+    --color-accent: #8fb0e0;
+    --color-accent-hover: #a9c3e8;
+    --color-accent-active: #c3d5f0;
+    --color-accent-subtle: rgba(143, 176, 224, 0.15);
+    --color-accent-border: rgba(143, 176, 224, 0.5);
     --color-on-accent: #16171d;
 
     --color-success: #4ade80;
@@ -98,7 +102,7 @@
 
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
     --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
-    --color-mark-text: #dcb6fe;
+    --color-mark-text: #c3d5f0;
   }
 }
 
@@ -113,11 +117,12 @@
   --color-border: #2e303a;
   --color-border-strong: #454856;
 
-  --color-accent: #c084fc;
-  --color-accent-hover: #cf9dfd;
-  --color-accent-active: #dcb6fe;
-  --color-accent-subtle: rgba(192, 132, 252, 0.15);
-  --color-accent-border: rgba(192, 132, 252, 0.5);
+  --color-brand: #658bc5;
+  --color-accent: #8fb0e0;
+  --color-accent-hover: #a9c3e8;
+  --color-accent-active: #c3d5f0;
+  --color-accent-subtle: rgba(143, 176, 224, 0.15);
+  --color-accent-border: rgba(143, 176, 224, 0.5);
   --color-on-accent: #16171d;
 
   --color-success: #4ade80;
@@ -129,5 +134,5 @@
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
-  --color-mark-text: #dcb6fe;
+  --color-mark-text: #c3d5f0;
 }

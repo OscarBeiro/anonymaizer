@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef } from 'react';
 import type { ThemePreference } from '../lib/session';
+import { Copyright } from './Copyright';
 import { ThemeControl } from './ThemeControl';
 
 export type SettingsSection = 'language' | 'theme' | 'detection' | 'dictionary' | 'about';
@@ -103,6 +104,9 @@ export function SettingsMenu({
         <section id="settings-about" className="settings-section">
           <h3>About</h3>
           <p>AnonymAIzer v{__APP_VERSION__}. Runs entirely in your browser — no text is uploaded.</p>
+          <p>
+            <Copyright />
+          </p>
           {legalLinks && <nav className="settings-links" aria-label="Legal">{legalLinks}</nav>}
           <button type="button" className="danger-button" onClick={onClearLocalData}>
             Clear all local data
