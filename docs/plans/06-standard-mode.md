@@ -100,7 +100,22 @@ Added 2026-09-27. The light theme uses TICGAL's colours. The main blue is
 - **Quick summary in the Standard result.** S3 shipped with none, as
   requested. The candidate is one line above the text, e.g. "12 items masked —
   5 NAME · 3 DNI · 2 EMAIL" (`countByCategory` in `src/core/stats.ts`), maybe
-  plus a warning when nothing was detected. Decide after testing the UX by hand.
+  plus a warning when nothing was detected.
+- **Let the user check the detections at a glance.** The purpose is to spot
+  missed, wrong or partial detections without opening Fine-tune. The
+  placeholder view alone can't show a miss, because unmasked text looks like
+  ordinary text. Options:
+  - an "Original / Anonymized" toggle, where the original shows each detected
+    span highlighted in its category colour, with the placeholder on hover. A
+    name left unhighlighted is then an obvious miss, and a highlight that
+    covers "Juan García" but not "Pérez" is an obvious partial match;
+  - summary chips per category that jump to and flash their spans;
+  - from any highlight or selection: "not personal data" (disable that
+    mapping) and "mask this" (the existing `handleCreateRule`), so small fixes
+    don't need the full review.
+  The spans are already available: every `MappingItem` has `variants`, and
+  `applyEnabledMappings` knows the positions. Decide after testing the UX by
+  hand.
 
 ## Verification
 
