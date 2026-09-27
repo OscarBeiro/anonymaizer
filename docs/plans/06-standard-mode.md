@@ -95,6 +95,13 @@ Added 2026-09-27. The light theme uses TICGAL's colours. The main blue is
 - Tests: a small contrast test over the token values (accent vs surface ≥ 4.5,
   on-accent vs accent ≥ 4.5) so a future palette edit can't regress AA.
 
+## Open — decide after UX review
+
+- **Quick summary in the Standard result.** S3 shipped with none, as
+  requested. The candidate is one line above the text, e.g. "12 items masked —
+  5 NAME · 3 DNI · 2 EMAIL" (`countByCategory` in `src/core/stats.ts`), maybe
+  plus a warning when nothing was detected. Decide after testing the UX by hand.
+
 ## Verification
 
 - `npm test` (the new `wizard`/`session` tests), `npm run lint`.
