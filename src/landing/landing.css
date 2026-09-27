@@ -324,3 +324,181 @@
   color: var(--color-mark-text);
   font-weight: var(--weight-medium);
 }
+
+/* Landing enhancements and the About page. */
+.landing-eyebrow {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-mark-text);
+}
+
+.landing-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  list-style: none;
+  padding: 0;
+  margin: var(--space-4) 0 0;
+}
+
+.landing-badges li {
+  padding: var(--space-1) var(--space-3);
+  border-radius: 999px;
+  background: var(--color-accent-subtle);
+  color: var(--color-mark-text);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+}
+
+.landing-cards {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-4) 0 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: var(--space-4);
+}
+
+.landing-cards li {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+}
+
+.landing-cards h3 {
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-2);
+}
+
+.landing-cards p {
+  margin: 0;
+}
+
+.landing-labs .landing-secondary {
+  margin-top: var(--space-2);
+}
+
+.about-hero {
+  grid-template-columns: 1fr;
+  max-width: 760px;
+}
+
+.about-motto {
+  font-size: var(--text-xl);
+  font-weight: var(--weight-bold);
+  color: var(--color-text-strong);
+}
+
+.about-timeline {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-left: 2px solid var(--color-border);
+}
+
+.about-timeline li {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-2) 0 var(--space-2) var(--space-4);
+}
+
+.about-year {
+  flex: 0 0 3.5em;
+  font-weight: var(--weight-bold);
+  color: var(--color-mark-text);
+}
+
+.landing-cases li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.landing-cases .landing-case-question {
+  font-style: italic;
+  color: var(--color-text-strong);
+}
+
+.landing-cards .landing-audience-who {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+/* Six cards read as two even rows of three; four (About's values) as 2 × 2. */
+.landing-cards.landing-cards-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.landing-cards.about-values {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+@media (max-width: 900px) {
+  .landing-cards.landing-cards-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .landing-cards.landing-cards-3,
+  .landing-cards.about-values {
+    grid-template-columns: 1fr;
+  }
+}
+
+.landing-modes {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-4);
+}
+
+.landing-mode {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+}
+
+.landing-mode h3 {
+  font-size: var(--text-lg);
+  margin: 0 0 var(--space-2);
+}
+
+.landing-mode p {
+  margin: 0 0 var(--space-2);
+}
+
+.landing-mode-sample {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+@media (max-width: 760px) {
+  .landing-modes {
+    grid-template-columns: 1fr;
+  }
+}
+
+.landing-section .landing-subhead {
+  font-size: var(--text-xl);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+/* App.css (and .settings-button) is not loaded on the landing. */
+.landing-nav .theme-toggle {
+  font: inherit;
+  min-width: 2.25em;
+  line-height: 1;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text-strong);
+  cursor: pointer;
+}

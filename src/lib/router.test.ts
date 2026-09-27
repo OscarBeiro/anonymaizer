@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { matchRoute } from './router';
 
 describe('matchRoute', () => {
-  it('maps the five paths', () => {
+  it('maps every path', () => {
     expect(matchRoute('/')).toBe('landing');
     expect(matchRoute('/app')).toBe('app');
+    expect(matchRoute('/about')).toBe('about');
     expect(matchRoute('/privacy')).toBe('privacy');
     expect(matchRoute('/cookies')).toBe('cookies');
     expect(matchRoute('/terms')).toBe('terms');

@@ -12,11 +12,13 @@ const App = lazy(() => import('./App'));
 // Guarded by the build constant so the portable build drops the landing and
 // legal pages entirely — a static import would keep their CSS and side effects.
 const Landing = __PORTABLE__ ? null! : lazy(() => import('./landing/Landing'));
+const About = __PORTABLE__ ? null! : lazy(() => import('./landing/About'));
 const LegalPage = __PORTABLE__ ? null! : lazy(() => import('./landing/LegalPage'));
 
 const TITLES: Record<Route, string> = {
   landing: 'AnonymAIzer — anonymize text before sending it to an AI',
   app: 'AnonymAIzer',
+  about: 'About — AnonymAIzer, a TICGAL Labs project',
   privacy: 'Privacy policy — AnonymAIzer',
   cookies: 'Cookie policy — AnonymAIzer',
   terms: 'Terms of use — AnonymAIzer',
@@ -40,7 +42,7 @@ function HostedRoot() {
   return (
     <>
       <Suspense fallback={<Loading />}>
-        {route === 'app' ? <App /> : route === 'landing' ? <Landing /> : <LegalPage page={route} />}
+        {route === 'app' ? <App /> : route === 'landing' ? <Landing /> : route === 'about' ? <About /> : <LegalPage page={route} />}
       </Suspense>
       {banner}
       <UpdatePrompt />
