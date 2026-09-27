@@ -126,6 +126,9 @@ The seeded PRNG is a few lines (mulberry32 or similar); no dependency, and
 
 ### [ ] P14 — Extract strings + i18n layer
 
+**Moved to M6 (2026-09-27)** — scheduled as the first block of
+[`m6-language-packs.md`](m6-language-packs.md); the prompt below still applies.
+
 **Deferred (2026-09-27).** Postponed for later by decision; P15 stays blocked on it.
 
 **Decided — plain language codes, not region-qualified.** Locale files are `en`,

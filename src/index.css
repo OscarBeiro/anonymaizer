@@ -3,7 +3,6 @@
 :root {
   font: 18px/145% var(--font-sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
   color: var(--color-text);
   background: var(--color-surface);
   font-synthesis: none;
@@ -119,4 +118,126 @@ textarea {
 input[type='checkbox'],
 input[type='radio'] {
   accent-color: var(--color-accent);
+}
+
+/* The product mark — shared by the wizard header and the landing (P19). */
+.app-mark {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  font-weight: var(--weight-bold);
+  font-size: var(--text-lg);
+  text-decoration: none;
+}
+
+/* P21: consent banner — shared by the landing and the wizard. Reject and
+   Accept share one style on purpose (AEPD: equally prominent). */
+.consent-banner {
+  position: fixed;
+  z-index: 50;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: var(--space-4);
+  max-width: 560px;
+  margin-left: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-md);
+}
+
+.consent-banner h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  color: var(--color-text-strong);
+}
+
+.consent-banner p {
+  margin: 0 0 var(--space-3);
+}
+
+.consent-banner a {
+  color: var(--color-accent);
+}
+
+.consent-option {
+  display: flex;
+  gap: var(--space-2);
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+
+.consent-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.consent-button {
+  flex: 1;
+  min-width: 110px;
+  font: inherit;
+  font-weight: var(--weight-medium);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  cursor: pointer;
+}
+
+.consent-link {
+  font: inherit;
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: var(--space-2);
+}
+
+/* P21b: "new version available" toast. */
+.update-prompt {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  top: var(--space-4);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border: 1px solid var(--color-accent-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-text-strong);
+  box-shadow: var(--shadow-2);
+  font-size: var(--text-md);
+}
+
+.update-prompt button {
+  font: inherit;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  cursor: pointer;
+}
+
+.update-prompt .update-prompt-dismiss {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  font-size: var(--text-lg);
+  padding: 0 var(--space-1);
 }

@@ -11,9 +11,12 @@ done and its tests pass.
 ## Hard rules
 
 1. **All logic runs client-side.** There is no backend and there never will be.
-2. **No network calls at runtime.** Not for telemetry, fonts, analytics or model
-   downloads (the M2 NER model is the one planned exception, and it must be
-   opt-in and cached locally).
+2. **No network calls at runtime from the anonymization tool itself.** The two
+   exceptions are the opt-in M2 NER model download (cached locally) and, on the
+   public hosted deployment only, consent-gated analytics. Any
+   locally-installed copy — the portable build, a `file://` page, localhost, or
+   any self-hosted origin — makes no network call of any kind, ever. (Amended
+   by M5 `P21`; both gates live in `src/lib/analytics.ts#isPublicDeployment()`.)
 3. **No dependency may make a network request.** Check this before adding one.
 4. **`src/core/` is pure TypeScript.** No React imports, no DOM APIs, no
    `window`/`document`/`fetch`. This rule is what makes the later Capacitor

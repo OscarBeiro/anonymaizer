@@ -7,6 +7,7 @@ interface CategoryTogglesProps {
   rules: CustomDictionaryRule[];
   mappings: MappingItem[];
   onChange: (settings: CategorySettings) => void;
+  defaultOpen?: boolean;
 }
 
 const LABELS: Record<string, string> = {
@@ -15,13 +16,13 @@ const LABELS: Record<string, string> = {
 
 // P11: collapsible, closed by default — a user who never changes the
 // defaults gains no click; one who does finds it above the table it governs.
-export const CategoryToggles = ({ settings, rules, mappings, onChange }: CategoryTogglesProps) => {
+export const CategoryToggles = ({ settings, rules, mappings, onChange, defaultOpen = false }: CategoryTogglesProps) => {
   const counts = new Map(countByCategory(mappings).map((c) => [c.category, c.count]));
   const categories = toggleableCategories(rules);
   const offCount = categories.filter((c) => !isCategoryOn(settings, c)).length;
 
   return (
-    <details className="category-toggles">
+    <details className="category-toggles" open={defaultOpen}>
       <summary>
         Categories{offCount > 0 && <span className="category-toggles-off"> · {offCount} off</span>}
       </summary>

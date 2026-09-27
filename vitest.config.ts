@@ -17,6 +17,12 @@ import { defineConfig } from 'vitest/config'
 // correctly. It failed silently, which is the worst way for a test
 // environment to be wrong: the .eml parser looked broken when it was not.
 export default defineConfig({
+  // The app's build-time constants (vite.config.ts), as a local build sets them.
+  define: {
+    __APP_VERSION__: JSON.stringify('test'),
+    __PORTABLE__: 'false',
+    __ANALYTICS_ENABLED__: 'false',
+  },
   test: {
     projects: [
       {

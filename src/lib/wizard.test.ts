@@ -14,7 +14,6 @@ describe('wizard step order', () => {
     }
     expect(seen).toEqual([
       { step: 'ingest' },
-      { step: 'review', subStep: 'rules' },
       { step: 'review', subStep: 'placeholders' },
       { step: 'review', subStep: 'sanitized' },
       { step: 'review', subStep: 'statistics' },
@@ -26,13 +25,13 @@ describe('wizard step order', () => {
   it('walks back to Ingest, entering a step at its last sub-step', () => {
     expect(prevPosition({ step: 'restore', subStep: 'restored' })).toEqual({ step: 'restore', subStep: 'response' });
     expect(prevPosition({ step: 'restore', subStep: 'response' })).toEqual({ step: 'review', subStep: 'statistics' });
-    expect(prevPosition({ step: 'review', subStep: 'placeholders' })).toEqual({ step: 'review', subStep: 'rules' });
-    expect(prevPosition({ step: 'review', subStep: 'rules' })).toEqual({ step: 'ingest' });
+    expect(prevPosition({ step: 'review', subStep: 'sanitized' })).toEqual({ step: 'review', subStep: 'placeholders' });
+    expect(prevPosition({ step: 'review', subStep: 'placeholders' })).toEqual({ step: 'ingest' });
     expect(prevPosition({ step: 'ingest' })).toBeNull();
   });
 
   it('treats a step without a sub-step as its first one', () => {
-    expect(nextPosition({ step: 'review' }, open)).toEqual({ step: 'review', subStep: 'placeholders' });
+    expect(nextPosition({ step: 'review' }, open)).toEqual({ step: 'review', subStep: 'sanitized' });
     expect(nextPosition({ step: 'restore' }, open)).toEqual({ step: 'restore', subStep: 'restored' });
   });
 
@@ -42,7 +41,7 @@ describe('wizard step order', () => {
 
   it('blocks Next into Restore without mappings, but not between Review sub-steps', () => {
     const gate = { hasText: true, hasMappings: false, hasAiResponse: false };
-    expect(nextPosition({ step: 'review', subStep: 'rules' }, gate)).toEqual({ step: 'review', subStep: 'placeholders' });
+    expect(nextPosition({ step: 'review', subStep: 'placeholders' }, gate)).toEqual({ step: 'review', subStep: 'sanitized' });
     expect(nextPosition({ step: 'review', subStep: 'statistics' }, gate)).toBeNull();
   });
 

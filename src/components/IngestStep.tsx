@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { parseDocument, supportedExtensions } from '../core/parsers';
 import type { DocumentFormat } from '../core/types';
+import type { AppMode } from '../lib/session';
 import { PastePanel } from './PastePanel';
 
 interface IngestStepProps {
@@ -9,9 +10,20 @@ interface IngestStepProps {
   onChange: (markdown: string) => void;
   onCreateRule: (selectedText: string) => void;
   onFileImport: (markdown: string, format: DocumentFormat, fileName: string, warnings: string[]) => void;
+  /** S2: the remembered mode gets the primary button. */
+  defaultMode: AppMode;
+  onRun: (mode: AppMode) => void;
 }
 
-export const IngestStep = ({ rawMarkdown, warnings, onChange, onCreateRule, onFileImport }: IngestStepProps) => {
+export const IngestStep = ({
+  rawMarkdown,
+  warnings,
+  onChange,
+  onCreateRule,
+  onFileImport,
+  defaultMode,
+  onRun,
+}: IngestStepProps) => {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +86,21 @@ export const IngestStep = ({ rawMarkdown, warnings, onChange, onCreateRule, onFi
             e.target.value = '';
           }}
         />
+      </div>
+
+      <div className="mode-choice" role="group" aria-label="How to anonymize">
+        {!rawMarkdown && <span className="empty-hint">Paste or drop a document first</span>}
+        {(['standard', 'advanced'] as const).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            className={mode === defaultMode ? 'step-footer-next' : 'step-footer-back'}
+            disabled={!rawMarkdown}
+            onClick={() => onRun(mode)}
+          >
+            {mode === 'standard' ? 'Quick — anonymize now' : 'Detailed — review each item'}
+          </button>
+        ))}
       </div>
     </div>
   );

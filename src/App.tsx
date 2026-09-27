@@ -7,31 +7,48 @@ import { ReviewStep } from './components/ReviewStep';
 import { StepFooter } from './components/StepFooter';
 import { SidebarStats } from './components/SidebarStats';
 import { StepNav } from './components/StepNav';
+import { SettingsMenu, type SettingsSection } from './components/SettingsMenu';
+import { CategoryToggles } from './components/CategoryToggles';
+import { RulesEditor } from './components/RulesEditor';
+import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
-import { toggleableCategories, type CategorySettings } from './core/categories';
+import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
 import { renderPseudonymized, type MoneyRange } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
+import { parseDocument } from './core/parsers';
+import { takeHandoff } from './lib/handoff';
+import { linkProps } from './lib/router';
+import { SiteLinks } from './landing/SiteLinks';
+import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
-import type { RestoreSubStep, ReviewSubStep, WizardGate, WizardPosition } from './lib/wizard';
+import { FINE_TUNE_POSITION, type RestoreSubStep, type ReviewSubStep, type WizardGate, type WizardPosition } from './lib/wizard';
+import { QuickResult } from './components/QuickResult';
 import {
+  clearLocalData,
+  loadAppMode,
   loadCategorySettings,
   loadDictionaryRules,
   loadMoneyRange,
   loadOutputMode,
   loadSession,
   loadStep,
+  loadTheme,
   newSessionId,
+  saveAppMode,
   saveCategorySettings,
   saveDictionaryRules,
   saveMoneyRange,
   saveOutputMode,
   saveSession,
   saveStep,
+  saveTheme,
+  type AppMode,
+  type ThemePreference,
   type OutputMode,
   type WizardStep,
 } from './lib/session';
@@ -53,9 +70,15 @@ function App() {
     loadCategorySettings(toggleableCategories(loadDictionaryRules())),
   );
   const [step, setStep] = useState<WizardStep>(() => loadStep());
-  const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('rules');
+  const [reviewSubStep, setReviewSubStep] = useState<ReviewSubStep>('placeholders');
   const [restoreSubStep, setRestoreSubStep] = useState<RestoreSubStep>('response');
   const [aiResponse, setAiResponse] = useState('');
+  // S1: defaultMode is the remembered choice (Quick/Detailed, Settings);
+  // viewMode is what is on screen now — Fine-tune switches only the view.
+  const [defaultMode, setDefaultMode] = useState<AppMode>(() => loadAppMode());
+  useEffect(() => saveAppMode(defaultMode), [defaultMode]);
+  const [viewMode, setViewMode] = useState<AppMode>(() => (step === 'restore' ? 'advanced' : defaultMode));
+  const standard = viewMode === 'standard';
   // Non-blocking parser warnings for the document currently imported
   // (dropped images, an unreadable sheet). Deliberately not persisted with
   // the session — they describe one import action, not the mapping.
@@ -76,6 +99,18 @@ function App() {
   useEffect(() => saveOutputMode(outputMode), [outputMode]);
   const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
   useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
+  const [theme, setTheme] = useState<ThemePreference>(() => loadTheme());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSection, setSettingsSection] = useState<SettingsSection | undefined>();
+  const openSettings = (section?: SettingsSection) => {
+    setSettingsSection(section);
+    setSettingsOpen(true);
+  };
+  useEffect(() => {
+    saveTheme(theme);
+    applyTheme(theme);
+    return watchSystemTheme(() => applyTheme(theme));
+  }, [theme]);
   // P13: the realistic rendering is derived, never stored — the session and
   // its placeholder text stay the source of truth for step 3.
   const realisticText = useMemo(
@@ -108,6 +143,31 @@ function App() {
       originalFormat: format,
     }));
   };
+
+  // P19: text or a file handed over by the landing's call to action. It
+  // replaces the current document, like a paste or an import would.
+  useEffect(() => {
+    const handoff = takeHandoff();
+    if (!handoff) return;
+    if (handoff.kind === 'text') {
+      handlePasteChange(handoff.text);
+      setStep('review');
+      return;
+    }
+    void handoff.file
+      .arrayBuffer()
+      .then((bytes) => parseDocument(handoff.file.name, bytes))
+      .then((parsed) => {
+        handleFileImport(parsed.markdown, parsed.format, handoff.file.name, parsed.warnings ?? []);
+        setStep('review');
+      })
+      .catch((e: unknown) => {
+        setStep('ingest');
+        setImportWarnings([`Could not read ${handoff.file.name}: ${e instanceof Error ? e.message : 'unknown error'}`]);
+      });
+    // Mount only: a handoff is consumed once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const runNerScan = async (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
     nerClientRef.current ??= new NerClient();
@@ -270,10 +330,35 @@ function App() {
     if (to.step === 'review' && to.subStep) setReviewSubStep(to.subStep as ReviewSubStep);
     if (to.step === 'restore' && to.subStep) setRestoreSubStep(to.subStep as RestoreSubStep);
   };
+  const runInMode = (mode: AppMode): void => {
+    setDefaultMode(mode);
+    setViewMode(mode);
+    navigate({ step: 'review', subStep: 'placeholders' });
+  };
+  const fineTune = (): void => {
+    setViewMode('advanced');
+    navigate(FINE_TUNE_POSITION);
+  };
+
   // The end of the round trip. It clears the document, its mappings and the AI
   // response; custom rules and the cached NER model are kept, since they belong
   // to the user, not to one document. Asks first: the mappings are the only
   // way to restore an AI response, and they're gone once this runs.
+  // P18: wipe every anonymaizer.* key and the NER model cache, then reload.
+  // No state changes in between, so no save effect writes a key back.
+  const clearAllLocalData = (): void => {
+    const ok = window.confirm(
+      'Clear all local data?\n\n' +
+        'This removes the current document, its placeholders, your custom rules, your settings ' +
+        'and the downloaded AI model from this browser. It cannot be undone.',
+    );
+    if (!ok) return;
+    nerClientRef.current?.terminate();
+    nerClientRef.current = null;
+    clearLocalData();
+    void deleteModelCache().finally(() => window.location.reload());
+  };
+
   const startOver = (): void => {
     const ok = window.confirm(
       'Start again with a new document?\n\n' +
@@ -285,9 +370,10 @@ function App() {
     setSession(emptySession());
     setAiResponse('');
     setImportWarnings([]);
-    setReviewSubStep('rules');
+    setReviewSubStep('placeholders');
     setRestoreSubStep('response');
     setStep('ingest');
+    setViewMode(defaultMode);
   };
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
   const copyAction: CopyAction | undefined =
@@ -300,7 +386,12 @@ function App() {
   return (
     <div className="app-shell">
       <header className="app-header">
-        <span className="app-mark" aria-hidden="true">A</span>
+        {/* The portable build has no landing to go back to. */}
+        {__PORTABLE__ ? (
+          <span className="app-mark" aria-hidden="true">A</span>
+        ) : (
+          <a className="app-mark" aria-label="AnonymAIzer home" {...linkProps('/')}>A</a>
+        )}
         <div className="app-title">
           <h1>
             AnonymAIzer
@@ -309,20 +400,38 @@ function App() {
           <p className="app-tagline">Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
         </div>
         {/* P18: the settings menu button mounts here. */}
-        <div className="app-header-slot" />
+        <div className="app-header-slot">
+          {!standard && step !== 'ingest' && gate.hasText && (
+            <button
+              type="button"
+              className="settings-button"
+              onClick={() => {
+                setViewMode('standard');
+                navigate({ step: 'review' });
+              }}
+            >
+              Quick view
+            </button>
+          )}
+          <button type="button" className="settings-button" aria-haspopup="dialog" onClick={() => openSettings()}>
+            ⚙ Settings
+          </button>
+        </div>
       </header>
 
       <div className="app">
-        <aside className="app-sidebar">
-          <StepNav step={step} gate={gate} onSelect={setStep} />
-          <SidebarStats
-            session={session}
-            onOpen={() => {
-              setStep('review');
-              setReviewSubStep('placeholders');
-            }}
-          />
-        </aside>
+        {!standard && (
+          <aside className="app-sidebar">
+            <StepNav step={step} gate={gate} onSelect={setStep} />
+            <SidebarStats
+              session={session}
+              onOpen={() => {
+                setStep('review');
+                setReviewSubStep('placeholders');
+              }}
+            />
+          </aside>
+        )}
 
         <main className="app-main">
           {step === 'ingest' && (
@@ -332,17 +441,25 @@ function App() {
               onChange={handlePasteChange}
               onCreateRule={handleCreateRule}
               onFileImport={handleFileImport}
+              defaultMode={defaultMode}
+              onRun={runInMode}
             />
           )}
 
-          {step === 'review' && (
+          {standard && step === 'review' && (
+            <QuickResult
+              session={session}
+              onFineTune={fineTune}
+              onRestore={() => {
+                setViewMode('advanced');
+                navigate({ step: 'restore', subStep: 'response' });
+              }}
+              onNewDocument={startOver}
+            />
+          )}
+
+          {!standard && step === 'review' && (
             <>
-              <NerToggle
-                enabled={nerEnabled}
-                status={nerStatus}
-                onToggle={handleNerToggle}
-                onDeleteModel={handleDeleteModel}
-              />
               <ReviewStep
                 session={session}
                 anonymizedText={sanitizedText}
@@ -351,13 +468,11 @@ function App() {
                 moneyRange={moneyRange}
                 onMoneyRangeChange={setMoneyRange}
                 mappings={session.mappings}
-                dictionaryRules={dictionaryRules}
                 onToggle={handleToggle}
                 onSplit={handleSplit}
                 onMerge={handleMerge}
-                onRulesChange={updateRules}
-                categorySettings={categorySettings}
-                onCategorySettingsChange={updateCategorySettings}
+                categoriesOff={toggleableCategories(dictionaryRules).filter((c) => !isCategoryOn(categorySettings, c)).length}
+                onOpenDetectionSettings={() => openSettings('detection')}
                 subStep={reviewSubStep}
                 onSubStepChange={setReviewSubStep}
               />
@@ -375,22 +490,57 @@ function App() {
             />
           )}
 
-          <StepFooter
-            // Remount per position, so coming back to a copy tab asks to copy again.
-            key={`${position.step}:${position.subStep ?? ''}`}
-            position={position}
-            gate={gate}
-            onNavigate={navigate}
-            copyAction={copyAction}
-            onStartOver={startOver}
-          />
+          {!standard && (
+            <StepFooter
+              // Remount per position, so coming back to a copy tab asks to copy again.
+              key={`${position.step}:${position.subStep ?? ''}`}
+              position={position}
+              gate={gate}
+              onNavigate={navigate}
+              copyAction={copyAction}
+              onStartOver={startOver}
+            />
+          )}
         </main>
       </div>
 
+      <SettingsMenu
+        open={settingsOpen}
+        section={settingsSection}
+        onClose={() => setSettingsOpen(false)}
+        theme={theme}
+        onThemeChange={setTheme}
+        defaultMode={defaultMode}
+        onDefaultModeChange={setDefaultMode}
+        detection={
+          <>
+            <CategoryToggles
+              settings={categorySettings}
+              rules={dictionaryRules}
+              mappings={session.mappings}
+              onChange={updateCategorySettings}
+              defaultOpen
+            />
+            <NerToggle
+              enabled={nerEnabled}
+              status={nerStatus}
+              onToggle={handleNerToggle}
+              onDeleteModel={handleDeleteModel}
+            />
+          </>
+        }
+        dictionary={<RulesEditor rules={dictionaryRules} onChange={updateRules} />}
+        legalLinks={<SiteLinks />}
+        onClearLocalData={clearAllLocalData}
+        onDeleteModel={handleDeleteModel}
+      />
+
       <footer className="app-footer">
         <span>Runs entirely in your browser — no text is uploaded.</span>
-        {/* P20: legal-notice, privacy and cookie links go here. */}
-        <nav className="app-footer-links" aria-label="Legal" />
+        <nav className="app-footer-links" aria-label="Legal">
+          <SiteLinks />
+          <Copyright />
+        </nav>
       </footer>
     </div>
   );
