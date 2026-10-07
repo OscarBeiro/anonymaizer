@@ -7,7 +7,7 @@ instead of being spread across the milestone files where they were noticed.
 
 Same rules as the milestone files: **one `D` block per session, in order**,
 tests first, tick the box when it is done and the suite passes. Read
-[`anonymaizer-plan.md`](anonymaizer-plan.md) first — §4a arbitration and the
+[`anonymaizer-plan.md`](../anonymaizer-plan.md) first — §4a arbitration and the
 precision-first stance decide most of the judgement calls below, and
 [`02-name-line-start.md`](02-name-line-start.md) is the worked precedent for
 changing a NAME heuristic without flooding the output with false positives.

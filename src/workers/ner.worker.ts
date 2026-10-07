@@ -13,7 +13,7 @@ import { aggregateBioTokens, computeTokenOffsets, type NerEntity, type RawNerTok
 import { createIndexedDbModelCache } from './nerModelCache';
 
 // Never look for a locally-bundled copy — the model is deliberately not part
-// of the single-file build (P7d decision log, docs/plans/m2-detection-ner.md).
+// of the single-file build (P7d decision log, docs/plans/done/m2-detection-ner.md).
 env.allowLocalModels = false;
 
 // IndexedDB-backed cache instead of the library's default Cache Storage API

@@ -9,7 +9,7 @@ export type LegalLang = 'es' | 'en';
 export type LegalPageId = 'privacy' | 'cookies' | 'terms';
 
 // Every placeholder the drafter must fill before launch. Mirrored in
-// docs/plans/m5-polish-beta.md (P20). The values live in src/site.ts.
+// docs/plans/done/m5-polish-beta.md (P20). The values live in src/site.ts.
 export const LEGAL_PLACEHOLDERS = [
   '{{LEGAL_NAME}}',
   '{{NIF}}',

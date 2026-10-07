@@ -14,12 +14,12 @@ session, because that is where the iteration happens.
 
 | Milestone | File | Status |
 | --- | --- | --- |
-| M1 — "Paste & Revert" PoC | [`m1-poc.md`](m1-poc.md) | done |
-| M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](m2-detection-ner.md) | done |
-| M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
-| M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | done |
-| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | done (P12–P13); P14–P15 moved to M6 |
-| M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | done (launch checklist in P20/P22) |
+| M1 — "Paste & Revert" PoC | [`m1-poc.md`](done/m1-poc.md) | done |
+| M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](done/m2-detection-ner.md) | done |
+| M3 — Document parsers | [`m3-parsers.md`](done/m3-parsers.md) | done |
+| M4a — Export & detection control | [`m4a-export-control.md`](done/m4a-export-control.md) | done |
+| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](done/m4b-pseudonym-i18n.md) | done (P12–P13); P14–P15 moved to M6 |
+| M5 — Polish & public beta | [`m5-polish-beta.md`](done/m5-polish-beta.md) | done (launch checklist in P20/P22) |
 | M6 — Languages: i18n and detection packs | [`m6-language-packs.md`](m6-language-packs.md) | planned (P14–P15, P23–P28) |
 | M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
 | M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
@@ -37,25 +37,26 @@ runtime" stops being absolute for the hosted build — and becomes *more*
 explicit for every local one. `P21` carries the exact replacement wording and
 changes `CLAUDE.md` itself — done 2026-09-27; `CLAUDE.md` now carries the amended rule.
 
-One-off task docs that are not milestones keep their own numbered files:
-[`01-wizard-layout-fixes.md`](01-wizard-layout-fixes.md),
-[`02-name-line-start.md`](02-name-line-start.md) (a detection leak found during
+Finished milestones (M1–M5) and the one-off task docs below are archived in
+[`done/`](done/). One-off task docs that are not milestones keep their own numbered files:
+[`01-wizard-layout-fixes.md`](done/01-wizard-layout-fixes.md),
+[`02-name-line-start.md`](done/02-name-line-start.md) (a detection leak found during
 M3 and fixed out of band — names at the start of a line were never masked) and
-**[`03-detection-backlog.md`](03-detection-backlog.md)** — four open detection
+**[`03-detection-backlog.md`](done/03-detection-backlog.md)** — four open detection
 bugs left after M3, `D1`–`D4`, one block per session like a milestone file.
 Three of the four were found by *using* the parsers, not by testing them.
 `D5`–`D6` (acronym and lone-initial false positives) were added 2026-09-26.
-[`04-wizard-next.md`](04-wizard-next.md) — `W1`, Back/Next buttons for the
+[`04-wizard-next.md`](done/04-wizard-next.md) — `W1`, Back/Next buttons for the
 wizard, and `W2`, compact live stats in the sidebar, both found in the same
 round of manual testing.
-[`05-large-documents.md`](05-large-documents.md) — `L1`–`L3`, cheap fixes so
+[`05-large-documents.md`](done/05-large-documents.md) — `L1`–`L3`, cheap fixes so
 a 1000-page document doesn't crash the session save or hit quadratic detector
 scans. Do these before M6. The structural work is M7.
-[`06-standard-mode.md`](06-standard-mode.md) — `S1`–`S4`, a Standard (quick)
+[`06-standard-mode.md`](done/06-standard-mode.md) — `S1`–`S4`, a Standard (quick)
 mode: drop a document, get the result, with a Fine-tune button into today's
 wizard (Advanced); plus a tidy-up of the settings menu. Do it after `05`, before
 M6.
-[`07-landing-restore-formats.md`](07-landing-restore-formats.md) — `U1`–`U4`,
+[`07-landing-restore-formats.md`](done/07-landing-restore-formats.md) — `U1`–`U4`,
 landing content and an About page, restore as plain/Markdown/HTML, the
 new-document reset and a header theme toggle (done); `U5`–`U7` follow-ups.
 

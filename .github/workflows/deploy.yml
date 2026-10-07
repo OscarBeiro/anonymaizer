@@ -30,11 +30,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
 name: deploy
 
+# PAUSED (2026-10-07): no deploy on push, tag or pull request until the
+# Cloudflare setup above is done and the launch checklist is signed off. To
+# resume, restore the push/tag/pull_request triggers listed in the header.
 on:
-  push:
-    branches: [main]
-    tags: ['v*']
-  pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: deploy-${{ github.ref }}
