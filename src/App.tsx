@@ -17,7 +17,7 @@ import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
-import { renderPseudonymized, type MoneyRange } from './core/pseudonymize';
+import { renderPseudonymized, type MoneyRange, type PseudonymLang } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
 import { parseDocument } from './core/parsers';
@@ -37,6 +37,7 @@ import {
   loadCategorySettings,
   loadDictionaryRules,
   loadMoneyRange,
+  loadPseudonymLang,
   loadOutputMode,
   loadSession,
   loadStep,
@@ -48,6 +49,7 @@ import {
   saveCategorySettings,
   saveDictionaryRules,
   saveMoneyRange,
+  savePseudonymLang,
   saveOutputMode,
   saveSession,
   saveStep,
@@ -104,6 +106,8 @@ function App() {
   useEffect(() => saveOutputMode(outputMode), [outputMode]);
   const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
   useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
+  const [pseudonymLang, setPseudonymLang] = useState<PseudonymLang>(() => loadPseudonymLang());
+  useEffect(() => savePseudonymLang(pseudonymLang), [pseudonymLang]);
   const [restoreFormat, setRestoreFormat] = useState<RestoreFormat>(() => loadRestoreFormat());
   useEffect(() => saveRestoreFormat(restoreFormat), [restoreFormat]);
   const [theme, setTheme] = useState<ThemePreference>(() => loadTheme());
@@ -121,8 +125,8 @@ function App() {
   // P13: the realistic rendering is derived, never stored — the session and
   // its placeholder text stay the source of truth for step 3.
   const realisticText = useMemo(
-    () => (outputMode === 'realistic' ? renderPseudonymized(session, moneyRange) : ''),
-    [outputMode, session, moneyRange],
+    () => (outputMode === 'realistic' ? renderPseudonymized(session, moneyRange, pseudonymLang) : ''),
+    [outputMode, session, moneyRange, pseudonymLang],
   );
   const sanitizedText = outputMode === 'realistic' ? realisticText : session.anonymizedMarkdown;
   useEffect(() => () => nerClientRef.current?.terminate(), []);
@@ -513,6 +517,8 @@ function App() {
                 onOutputModeChange={setOutputMode}
                 moneyRange={moneyRange}
                 onMoneyRangeChange={setMoneyRange}
+                pseudonymLang={pseudonymLang}
+                onPseudonymLangChange={setPseudonymLang}
                 mappings={session.mappings}
                 onToggle={handleToggle}
                 onSplit={handleSplit}

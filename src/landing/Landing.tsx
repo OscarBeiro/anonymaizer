@@ -87,7 +87,7 @@ const USE_CASES = [
   {
     title: 'A medical report',
     question: 'Would you paste your lab results or a diagnosis into a chatbot?',
-    risk: 'Health data is a special category under the GDPR. The report carries your name, date of birth, patient and ID numbers, your doctor and the hospital — once sent, you cannot take it back, and it may be stored, reviewed by people or used for training.',
+    risk: 'Health data is a special category under the GDPR. The report carries your name, date of birth (add a custom rule for it), patient and ID numbers, your doctor and the hospital — once sent, you cannot take it back, and it may be stored, reviewed by people or used for training.',
     fix: 'Ask the AI to explain the terms or draft questions for your doctor. It sees [[NAME_001]] and the medicine; you get the answer back with the real names.',
   },
   {
@@ -99,7 +99,7 @@ const USE_CASES = [
   {
     title: 'A CV',
     question: 'Would you share a candidate’s CV — or your own — to polish or screen it?',
-    risk: 'A CV is a full profile: name, phone, email, home address, sometimes an ID number and date of birth, plus every employer and date. For a recruiter, it is someone else’s personal data.',
+    risk: 'A CV is a full profile: name, phone, email, home address, sometimes an ID number and date of birth (add a custom rule for it), plus every employer and date. For a recruiter, it is someone else’s personal data.',
     fix: 'Improve the wording, tailor it to a job offer or compare candidates without exposing who they are, then restore the details in the final version.',
   },
 ];

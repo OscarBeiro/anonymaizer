@@ -620,8 +620,11 @@ const startsAttachedToPrevious = (text: string, index: number): boolean =>
 // \b, not a lookahead, would fail here exactly like it would in
 // COMPANY_SUFFIX_REGEX: a dotted suffix ends in ".", a non-word char, so
 // "L." followed by a space has no word/non-word transition for \b to catch.
+// U10: an ID keyword after the comma ("Anxo Nogueira Vidal, DNI 12345678Z")
+// is a label for the next field, not a given name.
+const ID_KEYWORDS = 'DNI|NIE|NIF|CIF|NUSS|IBAN';
 const COMMA_TRAILING_EXCLUSION_RE = new RegExp(
-  `^(?:${COMPANY_SUFFIXES.join('|')}|${LEADING_LABELS.join('|')}|${[...STRUCTURE_HEADS].join('|')})` +
+  `^(?:${COMPANY_SUFFIXES.join('|')}|${LEADING_LABELS.join('|')}|${[...STRUCTURE_HEADS].join('|')}|${ID_KEYWORDS})` +
     '(?=[\\s.,;:!?)]|$)',
   'iu',
 );

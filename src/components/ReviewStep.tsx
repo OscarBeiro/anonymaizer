@@ -2,7 +2,7 @@ import type { MappingItem, MappingSession } from '../core/types';
 import { MappingList, SanitizedTextPanel, StatisticsPanel } from './MappingPanels';
 import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
 import type { OutputMode } from '../lib/session';
-import type { MoneyRange } from '../core/pseudonymize';
+import type { MoneyRange, PseudonymLang } from '../core/pseudonymize';
 
 interface ReviewStepProps {
   session: MappingSession;
@@ -11,6 +11,8 @@ interface ReviewStepProps {
   onOutputModeChange: (mode: OutputMode) => void;
   moneyRange: MoneyRange;
   onMoneyRangeChange: (range: MoneyRange) => void;
+  pseudonymLang: PseudonymLang;
+  onPseudonymLangChange: (lang: PseudonymLang) => void;
   mappings: MappingItem[];
   onToggle: (id: string) => void;
   onSplit: (id: string) => void;
@@ -30,6 +32,8 @@ export const ReviewStep = ({
   onOutputModeChange,
   moneyRange,
   onMoneyRangeChange,
+  pseudonymLang,
+  onPseudonymLangChange,
   mappings,
   onToggle,
   onSplit,
@@ -75,6 +79,8 @@ export const ReviewStep = ({
           onOutputModeChange={onOutputModeChange}
           moneyRange={moneyRange}
           onMoneyRangeChange={onMoneyRangeChange}
+          pseudonymLang={pseudonymLang}
+          onPseudonymLangChange={onPseudonymLangChange}
         />
       )}
 

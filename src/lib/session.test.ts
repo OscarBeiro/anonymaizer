@@ -8,6 +8,8 @@ import {
   parseAppMode,
   saveAppMode,
   loadTheme,
+  loadPseudonymLang,
+  savePseudonymLang,
   parseTheme,
   saveCategorySettings,
   saveDictionaryRules,
@@ -122,5 +124,18 @@ describe('clearLocalData', () => {
     const left = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
     expect(left.filter((k) => k?.startsWith(LOCAL_KEY_PREFIX))).toEqual([]);
     expect(left).toEqual(['other-app']);
+  });
+});
+
+describe('pseudonym language (U6)', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('defaults to es, round-trips en, and falls back on garbage', () => {
+    expect(loadPseudonymLang()).toBe('es');
+    savePseudonymLang('en');
+    expect(loadPseudonymLang()).toBe('en');
+    localStorage.setItem('anonymaizer.pseudonymLang', 'klingon');
+    expect(loadPseudonymLang()).toBe('es');
   });
 });

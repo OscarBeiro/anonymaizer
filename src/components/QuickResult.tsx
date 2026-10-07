@@ -26,6 +26,10 @@ export const QuickResult = ({ session, onFineTune, onRestore, onNewDocument }: Q
     <section className="panel quick-result">
       <h2>Anonymized text</h2>
       <div className="panel-textarea sanitized-highlight"><HighlightedText text={text} /></div>
+      <p className="quick-result-hint">
+        Need realistic fake data (names, companies, amounts ± a range you choose) for test files? Use Fine-tune…, then
+        2.3 Sanitized text → Realistic. Realistic output cannot be restored.
+      </p>
       <div className="panel-actions quick-result-actions">
         <button type="button" className="step-footer-next" disabled={!text} onClick={() => void copy()}>
           {copied ? '✓ Copied' : 'Copy'}

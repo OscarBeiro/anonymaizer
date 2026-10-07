@@ -225,3 +225,21 @@ describe('normalizeMoneyRange', () => {
     expect(normalizeMoneyRange({ min: 40, max: 20 })).toEqual({ min: 20, max: 40 });
   });
 });
+
+describe('pseudonymFor — English pools (U6)', () => {
+  const en = { lang: 'en' as const };
+  it('draws NAME from the English pool, deterministically', async () => {
+    const { GIVEN_NAMES } = await import('./data/en/pseudonyms');
+    const fake = pseudonymFor(item('NAME', 'Laura Ferreiro'), 's', en);
+    expect(GIVEN_NAMES).toContain(fake.split(' ')[0]);
+    expect(pseudonymFor(item('NAME', 'Laura Ferreiro'), 's', en)).toBe(fake);
+    expect(fake).not.toBe(pseudonymFor(item('NAME', 'Laura Ferreiro'), 's'));
+  });
+  it('uses "Ltd" for a company with no legal suffix, and keeps an existing one', () => {
+    expect(pseudonymFor(item('COMPANY', 'Acme'), 's', en)).toMatch(/ Ltd$/);
+    expect(pseudonymFor(item('COMPANY', 'Acme Inc.'), 's', en)).toMatch(/ Inc\.$/);
+  });
+  it('defaults to Spanish', () => {
+    expect(pseudonymFor(item('COMPANY', 'Acme'), 's')).toMatch(/ S\.L\.$/);
+  });
+});

@@ -1,6 +1,6 @@
 import type { RestoreFormat } from '../core/markdownRender';
 import { parseCategorySettings, type CategorySettings } from '../core/categories';
-import { normalizeMoneyRange, type MoneyRange } from '../core/pseudonymize';
+import { normalizeMoneyRange, PSEUDONYM_LANGS, type MoneyRange, type PseudonymLang } from '../core/pseudonymize';
 import type { CustomDictionaryRule, MappingSession } from '../core/types';
 
 const SESSION_KEY = 'anonymaizer.session';
@@ -10,6 +10,7 @@ const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
 const RESTORE_FORMAT_KEY = 'anonymaizer.restoreFormat';
 const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
+const PSEUDONYM_LANG_KEY = 'anonymaizer.pseudonymLang';
 const APP_MODE_KEY = 'anonymaizer.appMode';
 // Read verbatim by the inline pre-paint script in index.html — rename both or neither.
 export const THEME_KEY = 'anonymaizer.theme';
@@ -82,6 +83,16 @@ export const loadMoneyRange = (): MoneyRange => {
 
 export const saveMoneyRange = (range: MoneyRange): void => {
   localStorage.setItem(MONEY_RANGE_KEY, JSON.stringify(normalizeMoneyRange(range)));
+};
+
+// U6: which language the Realistic fake names and companies come from.
+export const loadPseudonymLang = (): PseudonymLang => {
+  const stored = localStorage.getItem(PSEUDONYM_LANG_KEY);
+  return PSEUDONYM_LANGS.find((l) => l === stored) ?? 'es';
+};
+
+export const savePseudonymLang = (lang: PseudonymLang): void => {
+  localStorage.setItem(PSEUDONYM_LANG_KEY, lang);
 };
 
 export const loadSession = (): MappingSession | null => {

@@ -1,11 +1,6 @@
 import { applyEnabledMappings } from './apply';
-import {
-  COMPANY_LEADS,
-  COMPANY_TAILS,
-  DEFAULT_COMPANY_SUFFIX,
-  GIVEN_NAMES,
-  SURNAMES,
-} from './data/es/pseudonyms';
+import * as en from './data/en/pseudonyms';
+import * as es from './data/es/pseudonyms';
 import { inferMoneyConvention, type MoneyConvention } from './money';
 import { hashSeed, mulberry32, pick } from './random';
 import type { MappingItem, MappingSession } from './types';
@@ -33,7 +28,14 @@ export const normalizeMoneyRange = (range: Partial<MoneyRange> | null | undefine
   return min <= max ? { min, max } : { min: max, max: min };
 };
 
+/** Which bundled pool the fake names and companies come from (U6). */
+export type PseudonymLang = 'es' | 'en';
+export const PSEUDONYM_LANGS: readonly PseudonymLang[] = ['es', 'en'];
+const POOLS = { es, en };
+
 export interface PseudonymOptions {
+  /** Pool for NAME and COMPANY; 'es' when omitted. */
+  lang?: PseudonymLang;
   /** The document's grouping convention (P12), for amounts that can't settle it themselves. */
   convention?: MoneyConvention;
   /** Perturbation band for MONEY; DEFAULT_MONEY_RANGE when omitted. */
@@ -44,7 +46,7 @@ export interface PseudonymOptions {
 
 const isAllCaps = (s: string): boolean => /\p{L}/u.test(s) && s === s.toUpperCase();
 
-const fakeName = (original: string, rng: () => number): string => {
+const fakeName = (original: string, rng: () => number, { GIVEN_NAMES, SURNAMES } = es): string => {
   const tokens = original.trim().split(/\s+/).length;
   const parts = [pick(rng, GIVEN_NAMES)];
   if (tokens >= 2) parts.push(pick(rng, SURNAMES));
@@ -60,7 +62,11 @@ const fakeName = (original: string, rng: () => number): string => {
 const LEGAL_SUFFIX =
   /(,?\s+)(S\.L\.U\.|S\.A\.U\.|S\.Coop\.|S\.L\.|S\.A\.|SLU|SAU|SCP|SL|SA|Inc\.?|Ltd\.?|LLC|LLP|Corp\.?|PLC|GmbH|AG|BV|NV|SAS|SARL)$/;
 
-const fakeCompany = (original: string, rng: () => number): string => {
+const fakeCompany = (
+  original: string,
+  rng: () => number,
+  { COMPANY_LEADS, COMPANY_TAILS, DEFAULT_COMPANY_SUFFIX } = es,
+): string => {
   const suffix = LEGAL_SUFFIX.exec(original);
   const core = `${pick(rng, COMPANY_LEADS)} ${pick(rng, COMPANY_TAILS)}`;
   const name = suffix ? `${core}${suffix[1]}${suffix[2]}` : `${core} ${DEFAULT_COMPANY_SUFFIX}`;
@@ -151,9 +157,9 @@ export const pseudonymFor = (item: MappingItem, seed: string, options: Pseudonym
   const rng = mulberry32(hashSeed(seed, item.category, item.originalText, String(options.attempt ?? 0)));
   switch (item.category) {
     case 'NAME':
-      return fakeName(item.originalText, rng);
+      return fakeName(item.originalText, rng, POOLS[options.lang ?? 'es']);
     case 'COMPANY':
-      return fakeCompany(item.originalText, rng);
+      return fakeCompany(item.originalText, rng, POOLS[options.lang ?? 'es']);
     case 'MONEY':
       return perturbMoney(item.originalText, rng, options.convention ?? 'ES', normalizeMoneyRange(options.moneyRange)) ?? item.placeholder;
     default:
@@ -192,9 +198,14 @@ export const pseudonymMap = (
  * as the placeholder output (applyEnabledMappings) so the two cannot drift.
  * Seeded from the session id: reopening a document shows the same fakes.
  */
-export const renderPseudonymized = (session: MappingSession, moneyRange: MoneyRange = DEFAULT_MONEY_RANGE): string => {
+export const renderPseudonymized = (
+  session: MappingSession,
+  moneyRange: MoneyRange = DEFAULT_MONEY_RANGE,
+  lang: PseudonymLang = 'es',
+): string => {
   const fakes = pseudonymMap(session.mappings, session.sessionId, {
     moneyRange,
+    lang,
     convention: inferMoneyConvention(session.rawMarkdown),
   });
   return applyEnabledMappings(session.rawMarkdown, session.mappings, (m) => fakes.get(m.id) ?? m.placeholder);
