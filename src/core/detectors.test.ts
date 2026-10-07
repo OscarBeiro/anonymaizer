@@ -5,6 +5,7 @@ import {
   detectDni,
   detectEmails,
   detectIbans,
+  detectNames,
   detectNie,
   detectPhones,
 } from './detectors';
@@ -200,5 +201,19 @@ describe('detectCreditCards', () => {
   it('discards an invalid checksum, e.g. an order number', () => {
     const spans = detectCreditCards('pedido numero 4111111111111112 confirmado');
     expect(spans).toHaveLength(0);
+  });
+});
+
+describe('detectNames — comma form stops at ID keywords (U10)', () => {
+  it.each(['DNI', 'NIE', 'NIF', 'CIF'])('does not take "%s" as a given name', (kw) => {
+    const text = `Tutor legal: Anxo Nogueira Vidal, ${kw} 12345678Z`;
+    const names = detectNames(text).filter((s) => s.category === 'NAME');
+    expect(names.map((s) => text.slice(s.start, s.end))).toEqual(['Anxo Nogueira Vidal']);
+  });
+
+  it('still joins the surname-first form', () => {
+    const text = 'Ferreiro Iglesias, Laura trabaja aquí.';
+    const names = detectNames(text);
+    expect(text.slice(names[0].start, names[0].end)).toBe('Ferreiro Iglesias, Laura');
   });
 });

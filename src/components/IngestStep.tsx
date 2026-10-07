@@ -8,6 +8,8 @@ interface IngestStepProps {
   rawMarkdown: string;
   warnings: string[];
   onChange: (markdown: string) => void;
+  /** A paste that replaces the whole document: the previous one is discarded. */
+  onNewDocument: (markdown: string) => void;
   onCreateRule: (selectedText: string) => void;
   onFileImport: (markdown: string, format: DocumentFormat, fileName: string, warnings: string[]) => void;
   /** S2: the remembered mode gets the primary button. */
@@ -19,6 +21,7 @@ export const IngestStep = ({
   rawMarkdown,
   warnings,
   onChange,
+  onNewDocument,
   onCreateRule,
   onFileImport,
   defaultMode,
@@ -41,7 +44,7 @@ export const IngestStep = ({
 
   return (
     <div className="ingest-step">
-      <PastePanel rawMarkdown={rawMarkdown} onChange={onChange} onCreateRule={onCreateRule} />
+      <PastePanel rawMarkdown={rawMarkdown} onChange={onChange} onNewDocument={onNewDocument} onCreateRule={onCreateRule} />
 
       <div
         className={dragOver ? 'drop-zone drop-zone-active' : 'drop-zone'}

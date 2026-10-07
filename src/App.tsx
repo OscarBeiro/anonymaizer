@@ -2,19 +2,23 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { IngestStep } from './components/IngestStep';
 import { NerToggle } from './components/NerToggle';
+import { isLongForNer, nerLongDocumentMessage } from './lib/nerLimits';
 import { ReversalPanel } from './components/ReversalPanel';
 import { ReviewStep } from './components/ReviewStep';
 import { StepFooter } from './components/StepFooter';
 import { SidebarStats } from './components/SidebarStats';
 import { StepNav } from './components/StepNav';
+import { ThemeToggle } from './components/ThemeToggle';
 import { SettingsMenu, type SettingsSection } from './components/SettingsMenu';
 import { CategoryToggles } from './components/CategoryToggles';
 import { RulesEditor } from './components/RulesEditor';
+import DOMPurify from 'dompurify';
+import { markdownToHtml, markdownToPlainText, type RestoreFormat } from './core/markdownRender';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
-import { renderPseudonymized, type MoneyRange } from './core/pseudonymize';
+import { renderPseudonymized, type MoneyRange, type PseudonymLang } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
 import { parseDocument } from './core/parsers';
@@ -34,15 +38,19 @@ import {
   loadCategorySettings,
   loadDictionaryRules,
   loadMoneyRange,
+  loadPseudonymLang,
   loadOutputMode,
   loadSession,
   loadStep,
   loadTheme,
+  loadRestoreFormat,
+  saveRestoreFormat,
   newSessionId,
   saveAppMode,
   saveCategorySettings,
   saveDictionaryRules,
   saveMoneyRange,
+  savePseudonymLang,
   saveOutputMode,
   saveSession,
   saveStep,
@@ -91,7 +99,11 @@ function App() {
   const [nerEnabled, setNerEnabled] = useState(false);
   const [nerStatus, setNerStatus] = useState<NerStatus>({ state: 'idle' });
 
-  useEffect(() => saveSession(session), [session]);
+  // L1: false when the document is too large for localStorage; it then lives in memory only.
+  const [sessionSaved, setSessionSaved] = useState(true);
+  useEffect(() => {
+    setSessionSaved(saveSession(session));
+  }, [session]);
   useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules]);
   useEffect(() => saveCategorySettings(categorySettings), [categorySettings]);
   useEffect(() => saveStep(step), [step]);
@@ -99,6 +111,10 @@ function App() {
   useEffect(() => saveOutputMode(outputMode), [outputMode]);
   const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
   useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
+  const [pseudonymLang, setPseudonymLang] = useState<PseudonymLang>(() => loadPseudonymLang());
+  useEffect(() => savePseudonymLang(pseudonymLang), [pseudonymLang]);
+  const [restoreFormat, setRestoreFormat] = useState<RestoreFormat>(() => loadRestoreFormat());
+  useEffect(() => saveRestoreFormat(restoreFormat), [restoreFormat]);
   const [theme, setTheme] = useState<ThemePreference>(() => loadTheme());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSection | undefined>();
@@ -114,11 +130,22 @@ function App() {
   // P13: the realistic rendering is derived, never stored — the session and
   // its placeholder text stay the source of truth for step 3.
   const realisticText = useMemo(
-    () => (outputMode === 'realistic' ? renderPseudonymized(session, moneyRange) : ''),
-    [outputMode, session, moneyRange],
+    () => (outputMode === 'realistic' ? renderPseudonymized(session, moneyRange, pseudonymLang) : ''),
+    [outputMode, session, moneyRange, pseudonymLang],
   );
   const sanitizedText = outputMode === 'realistic' ? realisticText : session.anonymizedMarkdown;
   useEffect(() => () => nerClientRef.current?.terminate(), []);
+
+  // A new document replaces everything tied to the previous one: its mappings,
+  // file metadata, session id (so realistic output reseeds) and AI response.
+  // Custom rules and settings belong to the user and are kept.
+  const resetForNewDocument = (): void => {
+    setSession(emptySession());
+    setAiResponse('');
+    setImportWarnings([]);
+    setReviewSubStep('placeholders');
+    setRestoreSubStep('response');
+  };
 
   const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
     const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings);
@@ -131,10 +158,11 @@ function App() {
     fileName: string,
     warnings: string[],
   ) => {
+    resetForNewDocument();
     setImportWarnings(warnings);
     const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings);
-    setSession((prev) => ({
-      ...prev,
+    setSession(() => ({
+      ...emptySession(),
       rawMarkdown,
       mappings,
       anonymizedMarkdown: anonymizedText,
@@ -150,7 +178,7 @@ function App() {
     const handoff = takeHandoff();
     if (!handoff) return;
     if (handoff.kind === 'text') {
-      handlePasteChange(handoff.text);
+      handleNewDocumentText(handoff.text);
       setStep('review');
       return;
     }
@@ -195,7 +223,18 @@ function App() {
     }
   };
 
+  // A paste that replaces the document (see PastePanel) or text from the
+  // landing: start clean, then detect as usual.
+  const handleNewDocumentText = (rawMarkdown: string) => {
+    resetForNewDocument();
+    handlePasteChange(rawMarkdown);
+  };
+
   const handleNerToggle = (checked: boolean) => {
+    // L3: NER is slow on a book-length text; the user may still turn it on.
+    if (checked && isLongForNer(session.rawMarkdown) && !window.confirm(nerLongDocumentMessage(session.rawMarkdown.length))) {
+      return;
+    }
     setNerEnabled(checked);
     if (checked) {
       void runNerScan(session.rawMarkdown, dictionaryRules);
@@ -376,11 +415,29 @@ function App() {
     setViewMode(defaultMode);
   };
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
+  // The AI reply is Markdown. The Markdown view renders it (sanitized here,
+  // once: both innerHTML and the clipboard's text/html use it); the HTML view
+  // shows the same sanitized HTML as source.
+  const restoredHtml = useMemo(
+    () => (restored && restoreFormat !== 'plain' ? DOMPurify.sanitize(markdownToHtml(restored)) : ''),
+    [restored, restoreFormat],
+  );
+  const restoredPlain = useMemo(
+    () => (restored && restoreFormat === 'plain' ? markdownToPlainText(restored) : ''),
+    [restored, restoreFormat],
+  );
+  const restoredView = restoreFormat === 'plain' ? restoredPlain : restoredHtml;
   const copyAction: CopyAction | undefined =
     position.subStep === 'sanitized'
       ? { label: 'Copy sanitized text', text: sanitizedText, doneMessage: 'Copied — your text is ready to send to the AI.' }
       : position.subStep === 'restored'
-        ? { label: 'Copy restored text', text: restored, doneMessage: 'Copied — your restored text is on the clipboard.' }
+        ? {
+            label: 'Copy restored text',
+            text: restoreFormat === 'plain' ? restoredPlain : restoreFormat === 'html' ? restoredHtml : restored,
+            // Markdown: rich text for Word/Docs/email, the Markdown source for plain editors.
+            html: restoreFormat === 'markdown' ? restoredHtml : undefined,
+            doneMessage: 'Copied — your restored text is on the clipboard.',
+          }
         : undefined;
 
   return (
@@ -413,6 +470,7 @@ function App() {
               Quick view
             </button>
           )}
+          <ThemeToggle theme={theme} onChange={setTheme} />
           <button type="button" className="settings-button" aria-haspopup="dialog" onClick={() => openSettings()}>
             ⚙ Settings
           </button>
@@ -434,11 +492,19 @@ function App() {
         )}
 
         <main className="app-main">
+          {!sessionSaved && (
+            <p className="session-unsaved" role="alert">
+              This document is too large to survive a reload. Copy or save the result before closing or refreshing
+              this tab.
+            </p>
+          )}
+
           {step === 'ingest' && (
             <IngestStep
               rawMarkdown={session.rawMarkdown}
               warnings={importWarnings}
               onChange={handlePasteChange}
+              onNewDocument={handleNewDocumentText}
               onCreateRule={handleCreateRule}
               onFileImport={handleFileImport}
               defaultMode={defaultMode}
@@ -467,6 +533,8 @@ function App() {
                 onOutputModeChange={setOutputMode}
                 moneyRange={moneyRange}
                 onMoneyRangeChange={setMoneyRange}
+                pseudonymLang={pseudonymLang}
+                onPseudonymLangChange={setPseudonymLang}
                 mappings={session.mappings}
                 onToggle={handleToggle}
                 onSplit={handleSplit}
@@ -484,6 +552,9 @@ function App() {
               session={session}
               aiResponse={aiResponse}
               restored={restored}
+              restoredView={restoredView}
+              restoreFormat={restoreFormat}
+              onRestoreFormatChange={setRestoreFormat}
               onAiResponseChange={setAiResponse}
               subStep={restoreSubStep}
               onSubStepChange={setRestoreSubStep}
@@ -523,6 +594,7 @@ function App() {
             />
             <NerToggle
               enabled={nerEnabled}
+              longDocument={isLongForNer(session.rawMarkdown)}
               status={nerStatus}
               onToggle={handleNerToggle}
               onDeleteModel={handleDeleteModel}

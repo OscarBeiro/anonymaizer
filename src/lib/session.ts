@@ -1,5 +1,6 @@
+import type { RestoreFormat } from '../core/markdownRender';
 import { parseCategorySettings, type CategorySettings } from '../core/categories';
-import { normalizeMoneyRange, type MoneyRange } from '../core/pseudonymize';
+import { normalizeMoneyRange, PSEUDONYM_LANGS, type MoneyRange, type PseudonymLang } from '../core/pseudonymize';
 import type { CustomDictionaryRule, MappingSession } from '../core/types';
 
 const SESSION_KEY = 'anonymaizer.session';
@@ -7,8 +8,22 @@ const RULES_KEY = 'anonymaizer.dictionaryRules';
 const STEP_KEY = 'anonymaizer.step';
 const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
+const RESTORE_FORMAT_KEY = 'anonymaizer.restoreFormat';
 const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
+const PSEUDONYM_LANG_KEY = 'anonymaizer.pseudonymLang';
 const APP_MODE_KEY = 'anonymaizer.appMode';
+
+// L1: localStorage has a ~5 MB quota and a 1000-page PDF is 2-3 M characters,
+// so a write can throw QuotaExceededError (or be blocked outright). Every save
+// goes through here; the caller learns whether it stuck, and nothing throws.
+const write = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+};
 // Read verbatim by the inline pre-paint script in index.html — rename both or neither.
 export const THEME_KEY = 'anonymaizer.theme';
 
@@ -22,7 +37,7 @@ export const loadStep = (): WizardStep => {
 };
 
 export const saveStep = (step: WizardStep): void => {
-  localStorage.setItem(STEP_KEY, step);
+  write(STEP_KEY, step);
 };
 
 // P13: which rendering 2.3 shows, copies and exports. UI state like the step.
@@ -32,7 +47,18 @@ export const loadOutputMode = (): OutputMode =>
   localStorage.getItem(OUTPUT_MODE_KEY) === 'realistic' ? 'realistic' : 'placeholders';
 
 export const saveOutputMode = (mode: OutputMode): void => {
-  localStorage.setItem(OUTPUT_MODE_KEY, mode);
+  write(OUTPUT_MODE_KEY, mode);
+};
+
+// How step 3.2 shows and copies the restored text. Markdown (rendered) is the
+// default: it is what the AI sent.
+export const loadRestoreFormat = (): RestoreFormat => {
+  const v = localStorage.getItem(RESTORE_FORMAT_KEY);
+  return v === 'plain' || v === 'html' ? v : 'markdown';
+};
+
+export const saveRestoreFormat = (format: RestoreFormat): void => {
+  write(RESTORE_FORMAT_KEY, format);
 };
 
 // S1: Standard is drop -> result with a Fine-tune button; Advanced is the full
@@ -44,7 +70,7 @@ export const parseAppMode = (raw: string | null): AppMode => (raw === 'advanced'
 export const loadAppMode = (): AppMode => parseAppMode(localStorage.getItem(APP_MODE_KEY));
 
 export const saveAppMode = (mode: AppMode): void => {
-  localStorage.setItem(APP_MODE_KEY, mode);
+  write(APP_MODE_KEY, mode);
 };
 
 // P17: `system` follows prefers-color-scheme; light/dark override it.
@@ -56,7 +82,7 @@ export const parseTheme = (raw: string | null): ThemePreference =>
 export const loadTheme = (): ThemePreference => parseTheme(localStorage.getItem(THEME_KEY));
 
 export const saveTheme = (theme: ThemePreference): void => {
-  localStorage.setItem(THEME_KEY, theme);
+  write(THEME_KEY, theme);
 };
 
 export const loadMoneyRange = (): MoneyRange => {
@@ -68,7 +94,17 @@ export const loadMoneyRange = (): MoneyRange => {
 };
 
 export const saveMoneyRange = (range: MoneyRange): void => {
-  localStorage.setItem(MONEY_RANGE_KEY, JSON.stringify(normalizeMoneyRange(range)));
+  write(MONEY_RANGE_KEY, JSON.stringify(normalizeMoneyRange(range)));
+};
+
+// U6: which language the Realistic fake names and companies come from.
+export const loadPseudonymLang = (): PseudonymLang => {
+  const stored = localStorage.getItem(PSEUDONYM_LANG_KEY);
+  return PSEUDONYM_LANGS.find((l) => l === stored) ?? 'es';
+};
+
+export const savePseudonymLang = (lang: PseudonymLang): void => {
+  write(PSEUDONYM_LANG_KEY, lang);
 };
 
 export const loadSession = (): MappingSession | null => {
@@ -89,8 +125,19 @@ export const loadSession = (): MappingSession | null => {
   }
 };
 
-export const saveSession = (session: MappingSession): void => {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+/**
+ * Persists the session; false when it did not fit. A failed save also drops
+ * the stored copy, so a reload cannot restore an older document than the one
+ * on screen.
+ */
+export const saveSession = (session: MappingSession): boolean => {
+  if (write(SESSION_KEY, JSON.stringify(session))) return true;
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // nothing more to do
+  }
+  return false;
 };
 
 export const loadDictionaryRules = (): CustomDictionaryRule[] => {
@@ -103,7 +150,7 @@ export const loadDictionaryRules = (): CustomDictionaryRule[] => {
 };
 
 export const saveDictionaryRules = (rules: CustomDictionaryRule[]): void => {
-  localStorage.setItem(RULES_KEY, JSON.stringify(rules));
+  write(RULES_KEY, JSON.stringify(rules));
 };
 
 // P11: the user's general preference across documents, not part of the
@@ -117,7 +164,7 @@ export const loadCategorySettings = (known: readonly string[]): CategorySettings
 };
 
 export const saveCategorySettings = (settings: CategorySettings): void => {
-  localStorage.setItem(CATEGORY_SETTINGS_KEY, JSON.stringify(settings));
+  write(CATEGORY_SETTINGS_KEY, JSON.stringify(settings));
 };
 
 // P18: "clear all local data". Wipes every `anonymaizer.`-prefixed key — not

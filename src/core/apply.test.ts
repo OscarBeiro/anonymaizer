@@ -24,6 +24,17 @@ describe('applyEnabledMappings', () => {
     );
   });
 
+  // Realistic mode: a fake that contains another mapping's original must not
+  // be rewritten again. Sequential passes did exactly that.
+  it('never re-scans replaced output', () => {
+    const mappings = [
+      mapping({ placeholder: '[[NAME_001]]', originalText: 'Juan Pérez' }),
+      mapping({ placeholder: '[[NAME_002]]', originalText: 'López' }),
+    ];
+    const fake = (m: MappingItem) => (m.placeholder === '[[NAME_001]]' ? 'Raúl López' : 'Vidal');
+    expect(applyEnabledMappings('Juan Pérez y López.', mappings, fake)).toBe('Raúl López y Vidal.');
+  });
+
   it('leaves a disabled mapping untouched', () => {
     const mappings = [mapping({ placeholder: '[[COMPANY_001]]', originalText: 'TICGAL', category: 'COMPANY', enabled: false })];
     expect(applyEnabledMappings('TICGAL ships this quarter.', mappings)).toBe('TICGAL ships this quarter.');

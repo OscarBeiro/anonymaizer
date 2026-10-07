@@ -33,4 +33,4 @@ export const COMPANY_TAILS: readonly string[] = [
 ];
 
 // Appended when the original company name carries no legal suffix.
-export const DEFAULT_COMPANY_SUFFIX = 'S.L.';
+export const DEFAULT_COMPANY_SUFFIX: string = 'S.L.';

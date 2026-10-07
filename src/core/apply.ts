@@ -38,10 +38,17 @@ export const applyEnabledMappings = (
     })
     .sort((a, b) => b.variant.length - a.variant.length);
 
-  let result = rawText;
-  for (const { variant, placeholder } of replacements) {
-    const regex = new RegExp(`${edgeBefore(variant)}${escapeRegex(variant)}${edgeAfter(variant)}`, 'gu');
-    result = result.replace(regex, () => placeholder); // literal: "$1,200" is not a backreference
-  }
-  return result;
+  if (replacements.length === 0) return rawText;
+  // One pass over one alternation (longest first, so the leftmost match is
+  // also the longest there): replaced output is never scanned again. With
+  // sequential passes, a fake name containing a shorter original ("Raúl
+  // López" vs "López") was rewritten a second time.
+  const pattern = replacements
+    .map(({ variant }) => `(${edgeBefore(variant)}${escapeRegex(variant)}${edgeAfter(variant)})`)
+    .join('|');
+  return rawText.replace(new RegExp(pattern, 'gu'), (...args: unknown[]) => {
+    const groups = args.slice(1, replacements.length + 1);
+    const hit = groups.findIndex((g) => g !== undefined);
+    return replacements[hit].placeholder; // literal: "$1,200" is not a backreference
+  });
 };

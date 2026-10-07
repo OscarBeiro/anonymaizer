@@ -1,4 +1,4 @@
-# P22: Cloudflare Pages SPA fallback — /app, /privacy, /cookies and /terms
+# P22: Cloudflare Pages SPA fallback — /app, /about, /privacy, /cookies and /terms
 # survive a hard refresh. Real files (assets, sw.js, robots.txt…) are served
 # first; only unmatched paths get index.html.
 /* /index.html 200

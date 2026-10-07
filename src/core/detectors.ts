@@ -108,6 +108,9 @@ const NIE_REGEX = /\b[XYZxyz]\d{7}[A-Za-z]\b/g;
 // "documento nº …"). Contextual evidence that the thing is an identity
 // document even when its check letter says otherwise — it raises the
 // confidence of an INVALID_ID, it is not a gate (see below).
+// L2: how far back buildIdSpan looks for a label or a URL character.
+const LOOKBACK_CHARS = 40;
+
 const ID_LABEL_BEFORE_RE = new RegExp(
   `(?:D\\.?N\\.?I\\.?|N\\.?I\\.?E\\.?|N\\.?I\\.?F\\.?|documento|identidad)` +
     // Filler between the label and the number: "DNI nº", "el DNI es".
@@ -160,7 +163,9 @@ const buildIdSpan = (
     return { ...base, category: validCategory, confidence: 1, rung: RUNG.VALIDATED_REGEX };
   }
 
-  const before = text.slice(0, m.index);
+  // L2: a bounded look-back; both patterns are anchored at the end of `before`
+  // and only ever look a few tokens back, so the full prefix was O(n) per match.
+  const before = text.slice(Math.max(0, m.index - LOOKBACK_CHARS), m.index);
   if (URLISH_BEFORE_RE.test(before)) return null;
 
   return {
@@ -620,8 +625,11 @@ const startsAttachedToPrevious = (text: string, index: number): boolean =>
 // \b, not a lookahead, would fail here exactly like it would in
 // COMPANY_SUFFIX_REGEX: a dotted suffix ends in ".", a non-word char, so
 // "L." followed by a space has no word/non-word transition for \b to catch.
+// U10: an ID keyword after the comma ("Anxo Nogueira Vidal, DNI 12345678Z")
+// is a label for the next field, not a given name.
+const ID_KEYWORDS = 'DNI|NIE|NIF|CIF|NUSS|IBAN';
 const COMMA_TRAILING_EXCLUSION_RE = new RegExp(
-  `^(?:${COMPANY_SUFFIXES.join('|')}|${LEADING_LABELS.join('|')}|${[...STRUCTURE_HEADS].join('|')})` +
+  `^(?:${COMPANY_SUFFIXES.join('|')}|${LEADING_LABELS.join('|')}|${[...STRUCTURE_HEADS].join('|')}|${ID_KEYWORDS})` +
     '(?=[\\s.,;:!?)]|$)',
   'iu',
 );

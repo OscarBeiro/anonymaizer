@@ -7,6 +7,8 @@ export const SITE_ORIGIN: string = import.meta.env.VITE_SITE_ORIGIN;
 export const REPO_URL = 'https://github.com/OscarBeiro/anonymaizer';
 // S5: the copyright line shown in every footer and in Settings → About.
 export const COPYRIGHT = { label: '© TICGAL 2026', url: 'https://tic.gal' } as const;
+// The Labs programme AnonymAIzer belongs to (landing, About page).
+export const LABS_URL = 'https://tic.gal/labs/';
 export const PORTABLE_DOWNLOAD_URL = `${REPO_URL}/releases/latest`;
 
 export const OPERATOR = {

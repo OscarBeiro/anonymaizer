@@ -66,3 +66,38 @@ describe('applySpans', () => {
     expect(result).toBe('[FOO] bar [BAZ]');
   });
 });
+
+describe('arbitrateSpans — same result as the exhaustive overlap scan (L2)', () => {
+  const bruteForce = (candidates: DetectedSpan[]): DetectedSpan[] => {
+    const sorted = [...candidates].sort((a, b) =>
+      a.rung !== b.rung ? a.rung - b.rung : b.end - b.start !== a.end - a.start ? b.end - b.start - (a.end - a.start) : a.start - b.start,
+    );
+    const accepted: DetectedSpan[] = [];
+    for (const c of sorted) {
+      if (accepted.some((s) => s.start < c.end && c.start < s.end)) continue;
+      accepted.push(c);
+    }
+    return accepted;
+  };
+
+  it('matches on pseudo-random overlapping spans', () => {
+    let seed = 12345;
+    const rand = (n: number) => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed % n;
+    };
+    const spans: DetectedSpan[] = Array.from({ length: 800 }, (_, i) => {
+      const start = rand(2000);
+      return {
+        start,
+        end: start + 1 + rand(40),
+        category: 'NAME',
+        text: `t${i}`,
+        confidence: 1,
+        source: 'regex',
+        rung: rand(5),
+      } as DetectedSpan;
+    });
+    expect(arbitrateSpans(spans)).toEqual(bruteForce(spans));
+  });
+});

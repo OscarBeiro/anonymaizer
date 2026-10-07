@@ -1,12 +1,27 @@
+import type { RestoreFormat } from '../core/markdownRender';
 import type { MappingSession } from '../core/types';
 import type { RestoreSubStep } from '../lib/wizard';
 import { RESTORE_SUB_STEPS } from '../lib/wizard';
 import { SaveAsControl } from './SaveAsControl';
 
+const FORMATS: { value: RestoreFormat; label: string; hint: string }[] = [
+  { value: 'plain', label: 'Plain text', hint: 'Formatting marks removed — for email bodies, forms and plain editors.' },
+  {
+    value: 'markdown',
+    label: 'Markdown',
+    hint: 'Shown formatted. Copy pastes formatted into Word, Docs or email, and as Markdown into plain editors.',
+  },
+  { value: 'html', label: 'HTML', hint: 'The HTML source, to paste into a web page, a CMS or a template.' },
+];
+
 interface ReversalPanelProps {
   session: MappingSession;
   aiResponse: string;
   restored: string;
+  /** The restored text in the chosen format: plain text, sanitized HTML (markdown view) or HTML source. */
+  restoredView: string;
+  restoreFormat: RestoreFormat;
+  onRestoreFormatChange: (format: RestoreFormat) => void;
   onAiResponseChange: (text: string) => void;
   // Lifted into App so the Back/Next footer drives 3.1 -> 3.2 like Review's
   // sub-steps; the "Restore" and "Copy restored text" actions live there.
@@ -14,7 +29,17 @@ interface ReversalPanelProps {
   onSubStepChange: (subStep: RestoreSubStep) => void;
 }
 
-export const ReversalPanel = ({ session, aiResponse, restored, onAiResponseChange, subStep, onSubStepChange }: ReversalPanelProps) => (
+export const ReversalPanel = ({
+  session,
+  aiResponse,
+  restored,
+  restoredView,
+  restoreFormat,
+  onRestoreFormatChange,
+  onAiResponseChange,
+  subStep,
+  onSubStepChange,
+}: ReversalPanelProps) => (
   <div className="restore-step">
     <nav className="review-sub-nav">
       {RESTORE_SUB_STEPS.map((s) => (
@@ -49,7 +74,27 @@ export const ReversalPanel = ({ session, aiResponse, restored, onAiResponseChang
     {subStep === 'restored' && (
       <section className="panel">
         <h2>Restored text</h2>
-        <textarea className="panel-textarea" readOnly value={restored} placeholder="Restored text appears here…" />
+        <div className="segmented" role="radiogroup" aria-label="Show restored text as">
+          {FORMATS.map((f) => (
+            <label key={f.value} className={restoreFormat === f.value ? 'segmented-option is-active' : 'segmented-option'}>
+              <input
+                type="radio"
+                name="restore-format"
+                value={f.value}
+                checked={restoreFormat === f.value}
+                onChange={() => onRestoreFormatChange(f.value)}
+              />
+              {f.label}
+            </label>
+          ))}
+        </div>
+        <p className="panel-hint">{FORMATS.find((f) => f.value === restoreFormat)?.hint}</p>
+        {restoreFormat === 'markdown' ? (
+          // Sanitized with DOMPurify in App before it gets here.
+          <div className="panel-textarea restored-html" dangerouslySetInnerHTML={{ __html: restoredView }} />
+        ) : (
+          <textarea className="panel-textarea" readOnly value={restoredView} placeholder="Restored text appears here…" />
+        )}
         <div className="panel-actions">
           <SaveAsControl text={restored} session={session} side="restored" />
         </div>

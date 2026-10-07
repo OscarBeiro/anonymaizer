@@ -1,14 +1,15 @@
 import { useSyncExternalStore } from 'react';
 
-// P19: four routes do not need react-router. The History API plus one
+// P19: a handful of routes do not need react-router. The History API plus one
 // subscription covers it. Hosted build only; the portable build renders the
 // wizard directly (file:// has no server to rewrite paths — see main.tsx).
 
-export type Route = 'landing' | 'app' | 'privacy' | 'cookies' | 'terms';
+export type Route = 'landing' | 'app' | 'about' | 'privacy' | 'cookies' | 'terms';
 
 export const ROUTE_PATHS: Record<Route, string> = {
   landing: '/',
   app: '/app',
+  about: '/about',
   privacy: '/privacy',
   cookies: '/cookies',
   terms: '/terms',

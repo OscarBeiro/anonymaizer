@@ -45,7 +45,7 @@ const seoFiles = (origin: string): Plugin => ({
   name: 'anonymaizer-seo-files',
   apply: 'build',
   generateBundle() {
-    const paths = ['/', '/app', '/privacy', '/cookies', '/terms']
+    const paths = ['/', '/app', '/about', '/privacy', '/cookies', '/terms']
     this.emitFile({
       type: 'asset',
       fileName: 'robots.txt',
@@ -150,7 +150,7 @@ const headersFile = (withAnalytics: boolean): Plugin => {
         "form-action 'self'",
         "frame-ancestors 'none'",
       ].join('; ')
-      const noCache = ['/', '/index.html', '/app', '/privacy', '/cookies', '/terms', '/sw.js', '/manifest.webmanifest']
+      const noCache = ['/', '/index.html', '/app', '/about', '/privacy', '/cookies', '/terms', '/sw.js', '/manifest.webmanifest']
       writeFileSync(
         join(outDir, '_headers'),
         [

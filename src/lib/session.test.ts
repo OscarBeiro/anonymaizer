@@ -3,9 +3,13 @@ import {
   clearLocalData,
   LOCAL_KEY_PREFIX,
   loadAppMode,
+  loadRestoreFormat,
+  saveRestoreFormat,
   parseAppMode,
   saveAppMode,
   loadTheme,
+  loadPseudonymLang,
+  savePseudonymLang,
   parseTheme,
   saveCategorySettings,
   saveDictionaryRules,
@@ -76,6 +80,21 @@ describe('app mode', () => {
   });
 });
 
+describe('restore format', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('defaults to markdown, round-trips, and rejects junk', () => {
+    expect(loadRestoreFormat()).toBe('markdown');
+    for (const f of ['plain', 'html', 'markdown'] as const) {
+      saveRestoreFormat(f);
+      expect(loadRestoreFormat()).toBe(f);
+    }
+    localStorage.setItem('anonymaizer.restoreFormat', 'pdf');
+    expect(loadRestoreFormat()).toBe('markdown');
+  });
+});
+
 describe('clearLocalData', () => {
   beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
   afterEach(() => vi.unstubAllGlobals());
@@ -105,5 +124,69 @@ describe('clearLocalData', () => {
     const left = Array.from({ length: localStorage.length }, (_, i) => localStorage.key(i));
     expect(left.filter((k) => k?.startsWith(LOCAL_KEY_PREFIX))).toEqual([]);
     expect(left).toEqual(['other-app']);
+  });
+});
+
+describe('pseudonym language (U6)', () => {
+  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('defaults to es, round-trips en, and falls back on garbage', () => {
+    expect(loadPseudonymLang()).toBe('es');
+    savePseudonymLang('en');
+    expect(loadPseudonymLang()).toBe('en');
+    localStorage.setItem('anonymaizer.pseudonymLang', 'klingon');
+    expect(loadPseudonymLang()).toBe('es');
+  });
+});
+
+describe('storage quota (L1)', () => {
+  const session = {
+    sessionId: 's',
+    createdAt: '',
+    inputType: 'PASTE' as const,
+    originalFormat: 'raw_text' as const,
+    mappings: [],
+    rawMarkdown: 'x',
+    anonymizedMarkdown: 'x',
+  };
+  const quotaStorage = () => {
+    const base = memoryStorage();
+    return {
+      ...base,
+      setItem: () => {
+        throw new DOMException('full', 'QuotaExceededError');
+      },
+    };
+  };
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('saveSession reports false and does not throw when the quota is exceeded', () => {
+    vi.stubGlobal('localStorage', quotaStorage());
+    expect(saveSession(session)).toBe(false);
+  });
+
+  it('a failed save drops the stale stored copy', () => {
+    const store = memoryStorage();
+    store.setItem('anonymaizer.session', '{"old":true}');
+    vi.stubGlobal('localStorage', { ...store, setItem: () => { throw new Error('full'); } });
+    expect(saveSession(session)).toBe(false);
+    expect(store.getItem('anonymaizer.session')).toBeNull();
+  });
+
+  it('the small settings savers do not throw either', () => {
+    vi.stubGlobal('localStorage', quotaStorage());
+    expect(() => {
+      saveStep('review');
+      saveOutputMode('realistic');
+      saveDictionaryRules([]);
+      saveCategorySettings({});
+      saveTheme('dark');
+    }).not.toThrow();
+  });
+
+  it('saveSession reports true on success', () => {
+    vi.stubGlobal('localStorage', memoryStorage());
+    expect(saveSession(session)).toBe(true);
   });
 });

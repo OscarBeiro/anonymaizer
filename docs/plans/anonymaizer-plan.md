@@ -18,9 +18,9 @@ session, because that is where the iteration happens.
 | M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](m2-detection-ner.md) | done |
 | M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
 | M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | done |
-| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | in progress (P12–P13 done; P14 moved to M6; P15 deferred) |
+| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | done (P12–P13); P14–P15 moved to M6 |
 | M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | done (launch checklist in P20/P22) |
-| M6 — Languages: i18n and detection packs | [`m6-language-packs.md`](m6-language-packs.md) | planned (P14, P23–P28) |
+| M6 — Languages: i18n and detection packs | [`m6-language-packs.md`](m6-language-packs.md) | planned (P14–P15, P23–P28) |
 | M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
 | M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
 
@@ -55,6 +55,9 @@ scans. Do these before M6. The structural work is M7.
 mode: drop a document, get the result, with a Fine-tune button into today's
 wizard (Advanced); plus a tidy-up of the settings menu. Do it after `05`, before
 M6.
+[`07-landing-restore-formats.md`](07-landing-restore-formats.md) — `U1`–`U4`,
+landing content and an About page, restore as plain/Markdown/HTML, the
+new-document reset and a header theme toggle (done); `U5`–`U7` follow-ups.
 
 **The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
 "the §6 Spanish test bench case", read that section from `docs/spec.md`.

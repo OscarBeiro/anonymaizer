@@ -10,9 +10,8 @@ FR NIR, UK NINO…) are missed.
 
 This milestone replaces the backlog item "Per-language/country NAME_STOPWORDS
 packs" in [`anonymaizer-plan.md`](anonymaizer-plan.md). It also takes `P14`
-from M4b: the setup step needs `t()`, and the UI locale and the packs share one
-language-code resolver. `P15` (Localazy) stays in M4b and can run any time
-after `P14`.
+and `P15` from M4b: the setup step needs `t()`, and the UI locale and the packs
+share one language-code resolver. `P15` (Localazy) runs any time after `P14`.
 
 ## Design decisions
 
@@ -41,9 +40,69 @@ after `P14`.
 
 ### [ ] P14 — Extract strings + i18n layer
 
-Moved from [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) unchanged. The
-prompt and decisions live there. Extra constraint: export the locale resolver
-from a pure module so `P24`–`P26` reuse it rather than duplicating it.
+Moved here from M4b (2026-09-27; the full text moved with it on 2026-10-07).
+Extra constraint: export the locale resolver from a pure module so `P24`–`P26`
+reuse it rather than duplicating it.
+
+**Decided — plain language codes, not region-qualified.** Locale files are `en`,
+`es`, `gl`, `pt`, not `en_GB`/`gl_ES`. Region variants double the translation
+work for near-identical text, and `gl` has no second region to disambiguate
+against. Add a region code only where the content genuinely diverges — `pt_BR`
+vs `pt_PT` is the one likely split, and it can be added later as a new file with
+no restructuring. This costs nothing to defer.
+
+That makes the resolver the load-bearing part: browsers report `gl-ES`,
+`en-GB`, `es-AR`, so lookup falls back exact locale → base language → `en`. It
+must handle both filename shapes from day one, because the day `pt_BR` lands the
+directory holds a mix.
+
+Layout:
+
+```
+src/locales/en.json     # source of truth, hand-edited
+src/locales/<lang>.json # written by Localazy, committed via PR
+src/i18n.ts             # t(), language detection, persisted to localStorage
+```
+
+Keys grouped by component (`review.title`, `rules.addRule`) — maps straight onto
+Localazy's JSON format and keeps the file navigable.
+
+> Add `src/i18n.ts` exposing `t(key, params?)` over `src/locales/en.json`, loading
+> locale files with `import.meta.glob('./locales/*.json', { eager: true })` — no
+> new dependency, no network. Language comes from a persisted user choice falling
+> back to `navigator.language`, resolved exact locale → base language → `en`
+> (`gl-ES` → `gl.json`), with a picker in the UI. Locale files are named by plain
+> language code; the resolver must also accept region-qualified filenames such as
+> `pt_BR.json`. Move every hardcoded user-facing string in `src/App.tsx` and
+> `src/components/` into `en.json` — including everything M4a and P12/P13 added.
+> Audit `src/core/` for user-facing text and convert it to codes the UI
+> translates; core stays pure (hard rule 4) and gets no i18n import. Add tests
+> for the fallback chain (`gl-ES` → `gl`, unknown language → `en`,
+> region-qualified file preferred over its base when both exist) and that
+> `en.json` has no duplicate or unused keys.
+
+### [ ] P15 — Localazy sync through GitHub Actions
+
+Moved here from M4b (2026-10-07). Runs any time after `P14`.
+
+**Decided:** the official Localazy GitHub Actions with repository secrets — not
+the CLI in a hand-rolled step, not a local developer sync.
+
+> Add `localazy.json` at the repo root: upload `src/locales/en.json` as source
+> (`type: json`, `lang: en`), download to `src/locales/${lang}.json` —
+> `${lang}` deliberately, not `${locale}`, per the P14 decision. Add
+> `.github/workflows/localazy-upload.yml` — on push to `main` touching
+> `src/locales/en.json`, run `localazy/upload@v1` with `LOCALAZY_WRITE_KEY`. Add
+> `.github/workflows/localazy-download.yml` — `workflow_dispatch` + schedule, run
+> `localazy/download@v1` with `LOCALAZY_READ_KEY`, then open a PR with
+> `peter-evans/create-pull-request` so translations pass `npm run build` and
+> `npm test` before landing. Add a test asserting every `src/locales/*.json` has
+> the same key set as `en.json`, so a half-translated language cannot ship blank
+> UI.
+
+Both keys are GitHub Actions secrets (`LOCALAZY_WRITE_KEY`, `LOCALAZY_READ_KEY`),
+taken from the Localazy project's Integrations page after `localazy init`.
+P15 depends on P14 — there is nothing to upload until `en.json` exists.
 
 ### [ ] P23 — Pack scaffold, no behaviour change
 
