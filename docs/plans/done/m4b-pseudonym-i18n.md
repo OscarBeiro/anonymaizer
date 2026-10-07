@@ -126,12 +126,12 @@ The seeded PRNG is a few lines (mulberry32 or similar); no dependency, and
 
 ### P14 — Extract strings + i18n layer — moved to M6
 
-Moved to [`m6-language-packs.md`](m6-language-packs.md), with its decisions and
+Moved to [`m6-language-packs.md`](../m6-language-packs.md), with its decisions and
 prompt (2026-10-07).
 
 ### P15 — Localazy sync through GitHub Actions — moved to M6
 
-Moved to [`m6-language-packs.md`](m6-language-packs.md) beside `P14`, which it
+Moved to [`m6-language-packs.md`](../m6-language-packs.md) beside `P14`, which it
 depends on (2026-10-07).
 
 ---

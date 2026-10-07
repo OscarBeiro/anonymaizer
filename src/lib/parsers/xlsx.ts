@@ -14,7 +14,7 @@ import { toMarkdownTable } from './markdownTable';
 // alternative: `exceljs` is 2 moderate advisories (via `uuid`) and 22 MB
 // installed. An .xlsx is a zip of XML and jszip is already here for .odt, so
 // the reader is ~120 lines we can actually audit. Recorded in
-// docs/plans/m3-parsers.md, P8f.
+// docs/plans/done/m3-parsers.md, P8f.
 //
 // What this deliberately does *not* do: styles beyond "is this a date", merged
 // cells, charts, pivot tables, defined names. None of them carry text a

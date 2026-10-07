@@ -7,7 +7,7 @@ import { join } from 'node:path'
 import pkg from './package.json' with { type: 'json' }
 
 // Two production builds, because one output cannot keep both promises
-// (measured in P8a/P8b — see docs/plans/m3-parsers.md):
+// (measured in P8a/P8b — see docs/plans/done/m3-parsers.md):
 //
 //   npm run build           → dist/, an ordinary code-split Vite build. The
 //                             M3 document parsers load on demand, so a

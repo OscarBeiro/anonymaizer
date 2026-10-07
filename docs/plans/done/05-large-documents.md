@@ -3,7 +3,7 @@
 Found on 2026-09-27 while asking whether a 1000-page PDF would work. Parsing
 is fine: `src/lib/parsers/pdf.ts` reads one page at a time and frees each one.
 What comes after parsing breaks. The structural fixes (worker, chunking,
-IndexedDB, windowed rendering) are in [`m7-scale.md`](m7-scale.md). These
+IndexedDB, windowed rendering) are in [`m7-scale.md`](../m7-scale.md). These
 blocks are the cheap fixes, done before M6.
 
 ---

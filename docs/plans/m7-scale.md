@@ -1,7 +1,7 @@
 # Milestone 7 — Large-document scale
 
 Planned 2026-09-27. A 1000-page document must parse, detect, be reviewed and
-survive a reload without freezing the tab. [`05-large-documents.md`](05-large-documents.md)
+survive a reload without freezing the tab. [`05-large-documents.md`](done/05-large-documents.md)
 removes the crashes. This milestone removes the ceilings. It is also the
 foundation for batch processing in [`m8-batch.md`](m8-batch.md).
 
