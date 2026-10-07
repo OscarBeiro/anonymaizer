@@ -55,6 +55,8 @@ scans. Do these before M6. The structural work is M7.
 mode: drop a document, get the result, with a Fine-tune button into today's
 wizard (Advanced); plus a tidy-up of the settings menu. Do it after `05`, before
 M6.
+[`08-ner-model-candidates.md`](08-ner-model-candidates.md) — research notes
+on a multilingual replacement for `bert-base-NER`; `N1` is an untested spike.
 
 **The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
 "the §6 Spanish test bench case", read that section from `docs/spec.md`.
