@@ -3,7 +3,7 @@ import '../lib/parsers';
 import { supportedExtensions } from '../core/parsers';
 import { setHandoff } from '../lib/handoff';
 import { linkProps, navigate } from '../lib/router';
-import { LABS_URL, PORTABLE_DOWNLOAD_URL, REPO_URL } from '../site';
+import { LABS_URL, PORTABLE_DOWNLOAD_URL } from '../site';
 import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
 import './landing.css';
@@ -277,9 +277,6 @@ export default function Landing() {
             <li>
               <strong>Nothing is uploaded.</strong> Documents are parsed in the browser. Your current session is kept in
               this browser's local storage so a reload loses nothing, and you can wipe it from Settings.
-            </li>
-            <li>
-              <strong>Open source.</strong> You can read exactly what it does <a href={REPO_URL}>on GitHub</a>.
             </li>
           </ul>
           <p className="landing-exceptions-title">Two exceptions, stated precisely:</p>
