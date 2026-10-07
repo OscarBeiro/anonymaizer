@@ -102,7 +102,21 @@ variable swap rather than a rewrite of every rule.
 > `npm run build:portable` both still produce a working page — the portable
 > build inlines CSS and is the one that notices a new stylesheet import.
 
-### [ ] P17 — Light/dark theme, the "two modes"
+### [x] P17 — Light/dark theme, the "two modes"
+
+**Done 2026-09-27 (v0.9.0).** `tokens.css` carries the dark block twice
+(`@media … :root:not([data-theme='light'])` and `:root[data-theme='dark']`),
+identical by convention — plain CSS cannot OR a media query with a selector.
+`anonymaizer.theme` via `loadTheme`/`saveTheme`/`parseTheme` in `session.ts`;
+`src/lib/theme.ts#applyTheme` sets the attribute and `<meta name="theme-color">`
+and re-runs on OS changes; the pre-paint inline script in `index.html` mirrors
+it. Placeholder `<mark>`s get `--color-mark-text` (accent-active in light,
+~6:1; the plain accent was under AA on its tint). The manifest cannot switch
+per theme — `theme_color`/`background_color` are static JSON — so it now uses
+the light surface; the live `<meta>` overrides it in the browser. A temporary
+`ThemeControl` sits in the header slot until P18's menu.
+**Note for P22:** the inline script needs a CSP hash (`'sha256-…'`), not
+`'unsafe-inline'`.
 
 > Three states, not two: `light`, `dark`, `system`. `system` is the default and
 > follows `prefers-color-scheme`; an explicit choice overrides it and persists.
@@ -123,7 +137,22 @@ variable swap rather than a rewrite of every rule.
 > contrast — a `<mark>` tuned for a white page is unreadable on a dark one.
 > Aim for WCAG AA on body text in both themes.
 
-### [ ] P18 — The menu: language, theme, settings
+### [x] P18 — The menu: language, theme, settings
+
+**Done 2026-09-27 (v0.10.0).** `SettingsMenu.tsx` is a right-edge slide-over
+`<dialog>` opened with `showModal()` (page inert, Escape closes, backdrop click
+closes, focus returned explicitly), from a "⚙ Settings" header button. Sections:
+Language (M4b deferred — a disabled English-only selector marks the slot),
+Theme (`ThemeControl`, moved out of the header), Detection (`CategoryToggles`,
+open by default here, plus `NerToggle`), Dictionary (`RulesEditor`), About
+(version, a `legalLinks` slot for P20, "Clear all local data"). The rules
+editor leaving the step flow removed the old 2.1 Rules sub-step, so Review is
+now 2.1 Placeholders / 2.2 Sanitized text / 2.3 Statistics (`wizard.ts` and its
+tests updated). 2.1 keeps a "N categories off · Detection settings and custom
+rules" link that opens the menu at Detection. `clearLocalData()` in
+`session.ts` removes every `anonymaizer.`-prefixed key, not a fixed list; App
+then clears the NER cache and reloads. Test: `session.test.ts` asserts no
+prefixed key survives and unrelated keys do.
 
 Settings have been accumulating with nowhere to live — NER opt-in
 (`NerToggle.tsx`), the dictionary rules editor (`RulesEditor.tsx`), M4a's
@@ -153,7 +182,28 @@ menu with theme + the existing settings and leave a marked slot for language.
 > a test that "clear all local data" leaves no `anonymaizer.`-prefixed key
 > behind, since that is a promise the privacy policy will make in writing.
 
-### [ ] P19 — Landing page and the routing split
+### [x] P19 — Landing page and the routing split
+
+**Done 2026-09-27 (v0.11.0).** Hand-rolled router in `src/lib/router.ts`
+(`matchRoute` is unit-tested; unknown paths fall back to the landing).
+`src/Root.tsx` picks `PortableRoot` (wizard only) or `HostedRoot` on the
+`__PORTABLE__` define; the wizard, landing and legal pages are all
+`React.lazy`, and the landing/legal lazies are guarded by the constant so the
+portable output contains none of it (verified by grep). `base` is `'/'` hosted,
+`'./'` portable, commented in `vite.config.ts` — the hosted build must now sit
+at a domain root. The landing's paste box / file picker / drop zone hands the
+document over in memory (`src/lib/handoff.ts`, never localStorage) and the
+wizard opens at Review with it loaded. `sw.js` (cache `v3`): **every**
+navigation is network-first with a cache fallback, not only the landing and
+legal routes — `/app` is the same `index.html`, and keeping it cache-first is
+exactly P21b's stale-release bug; hashed assets stay cache-first. SEO: meta,
+canonical (updated per route), OG/Twitter tags, a self-rendered
+`public/og-image.png`; `robots.txt`/`sitemap.xml` are generated at build time
+from `VITE_SITE_ORIGIN` in `.env` (**`https://anonymaizer.pages.dev` is a
+placeholder — set the real domain before launch**). Manifest `start_url` is
+now `/app`. **Not done:** `lang` switching with the M4b locale — M4b P14/P15
+are deferred, so there is only `en`; wire `document.documentElement.lang` when
+the `t()` layer lands.
 
 Reference point is saferlayer — as a reference for *structure and register*,
 not something to copy. What a page like that gets right is that the tool is
@@ -193,7 +243,31 @@ that merely navigates.
 > Keep the landing in `src/landing/`, treated like the rest of the React UI.
 > `src/core/` is untouched by this entire milestone (hard rule 4).
 
-### [ ] P20 — Legal: privacy, cookies, terms
+### [x] P20 — Legal: privacy, cookies, terms
+
+**Done 2026-09-27 (v0.12.0) — drafts, not for publication until reviewed.**
+Texts in `src/legal/{privacy,cookies,terms}.tsx`, Spanish and English, one
+layout (`src/landing/LegalPage.tsx`: `?lang=` or browser language, sets
+`<html lang>`). "Last updated" is `LEGAL_LAST_UPDATED` in `src/legal/meta.ts`,
+next to `CONSENT_POLICY_VERSION` for P21. Operator facts come from
+`src/site.ts`. The cookie page's "Change cookie settings" button fires
+`requestConsentBanner()` (`src/lib/consentBus.ts`) for P21's banner. Links:
+landing/legal footer, wizard footer and the menu's About (`SiteLinks`; the
+portable build links to the public copies). `meta.test.ts` fails if a
+placeholder is used but missing from `LEGAL_PLACEHOLDERS`.
+
+**Placeholders to fill before launch** (values in `src/site.ts`, or in the
+legal texts where marked):
+`{{LEGAL_NAME}}`, `{{NIF}}`, `{{ADDRESS}}`, `{{CONTACT_EMAIL}}`,
+`{{REGISTRY_DATA}}` (Registro Mercantil data, or remove if a natural person),
+`{{DPO_CONTACT_OR_NONE}}`, `{{JURISDICTION}}`, `{{GA4_MEASUREMENT_ID}}`,
+`{{METRICOOL_COOKIES}}` and `{{METRICOOL_COOKIE_DURATION}}` (**check in a
+browser with the Metricool tag loaded — not verified here**),
+`{{METRICOOL_RETENTION}}`, `{{CLOUDFLARE_LOG_RETENTION}}`, `{{LICENSE}}` (the
+repo has no LICENSE file yet), `{{TRADEMARK_STATUS}}`.
+Also confirm: GA4 data retention set to 2 months in the GA4 admin (the policy
+says so); the NER download hosts named (Hugging Face, jsDelivr) still match
+`src/workers/ner.worker.ts`.
 
 Drafts for review. The pages are real pages in the app (`P19`'s routes), in
 Spanish and English, sharing one layout component.
@@ -242,7 +316,32 @@ responsibility, not the tool's.
 > "last updated" date driven by a constant, not hand-typed.
 > Add the footer links in `P16`'s shell and the "About" links in `P18`'s menu.
 
-### [ ] P21 — Consent banner and analytics, public deployment only
+### [x] P21 — Consent banner and analytics, public deployment only
+
+**Done 2026-09-27 (v0.13.0).** CLAUDE.md hard rule 2 amended with the wording
+below. Gates: `__ANALYTICS_ENABLED__` (vite define; true only for
+`ANONYMAIZER_ANALYTICS=1` and never portable) and
+`isPublicDeploymentAt()` — https + hostname of `VITE_SITE_ORIGIN` exactly —
+both in `src/lib/analytics.ts`, predicate unit-tested against file://,
+localhost, http, a LAN IP, a lookalike, a subdomain/preview and a self-hosted
+host. All host-contacting code is in `src/lib/analyticsLoader.ts`, imported
+only behind the define: verified a plain `npm run build` and the portable build
+contain no `googletagmanager`/`metricool.com`, and a flagged build does. IDs
+come from `VITE_GA4_ID` / `VITE_METRICOOL_HASH` at build time (the loader skips
+a service whose ID is unset). Consent: `src/lib/consent.ts`
+(`anonymaizer.consent` in localStorage with timestamp and
+`CONSENT_POLICY_VERSION`; tested) and `src/landing/ConsentBanner.tsx` —
+Reject/Accept share one style, "Choose" shows an unticked Analytics box, no
+close button; the cookie page reopens it; reject-after-accept deletes `_ga*`
+cookies and reloads. GA4 via Consent Mode v2 (all denied, then
+`analytics_storage` granted), no Google signals/ad personalisation, page_view
+sent manually with the route path only. Verified end to end in Chromium
+against a flagged build served as `https://anonymaizer.test`: no external
+request before a choice or after Reject; both hosts after Accept.
+**For P22:** CSP must allow `www.googletagmanager.com` (script),
+`*.google-analytics.com` / `*.analytics.google.com` (connect, img),
+`tracker.metricool.com` (script, connect, img) — **check Metricool's actual
+beacon hosts in a browser**, they were not observable here.
 
 This is the session that amends hard rule 2, and it should read as narrowly as
 the amendment is.
@@ -282,7 +381,25 @@ the amendment is.
 > A strict CSP in `P22`'s `_headers` is what makes this enforceable rather than
 > merely intended; the two sessions have to agree on the allowed hosts.
 
-### [ ] P21b — Service worker must not pin users to an old build
+### [x] P21b — Service worker must not pin users to an old build
+
+**Done 2026-09-27 (v0.14.0).** Navigations network-first since P19. `CACHE_NAME`
+is stamped at build time by the `swVersion` plugin in `vite.config.ts`
+(`anonymaizer-<version>-<hash of emitted file names>`); `activate` drops older
+caches. No `skipWaiting()` on install: `src/lib/swUpdate.ts` detects a waiting
+worker (also re-checked when the tab becomes visible) and `UpdatePrompt.tsx`
+shows "New version available — Reload", which posts `SKIP_WAITING` and reloads
+on `controllerchange`. Registration skipped in the portable build.
+**Found and fixed on the way:** P19's lazy wizard broke offline `/app` for an
+installed PWA that had never opened the wizard online. The same plugin now
+injects a precache list (entry + App/Landing/LegalPage chunks, their static
+imports and CSS; parsers and NER stay fetch-on-use).
+Tested in Chromium (persistent profile, static server, symlink swapped between
+two builds): v*N* loads and is controlled → swap to v*N+1*, reload once → the
+prompt shows → Reload → new version, only the new cache remains → offline
+reload and offline `/app` both load. Note: because navigations are
+network-first, the reload before the prompt already shows the new page; the
+prompt then only activates the new worker (and its cache).
 
 Found 2026-09-26 (v0.4.5). `public/sw.js` is cache-first for every same-origin
 GET, and nothing ever invalidates it: `CACHE_NAME` is a hand-set constant
@@ -311,7 +428,34 @@ v0.4.5 fixed that half by registering the worker in production only
 > prompt, and after accepting it the new badge shows. Offline, the last cached
 > release still loads.
 
-### [ ] P22 — Automated Cloudflare Pages deploy
+### [x] P22 — Automated Cloudflare Pages deploy
+
+**Done 2026-09-27 (v0.15.0) — written and checked locally; never run on
+GitHub.** `.github/workflows/deploy.yml`: lint, test, build; push to `main`
+is the only build with `ANONYMAIZER_ANALYTICS=1` (IDs from repo *variables*
+`VITE_GA4_ID`/`VITE_METRICOOL_HASH`); PRs build without it, are checked with
+`scripts/check-no-analytics.sh` (POSIX find/grep; fails on a grep error rather
+than passing), and get a preview deploy + PR comment unless from a fork (no
+secrets). The portable build is checked on every run; on a `v*` tag it is
+attached to the release as `anonymaizer-portable-<tag>.html`. One-time manual
+steps (Pages project via Direct Upload, token scope, secrets, custom domain and
+DNS, `VITE_SITE_ORIGIN`) are in the workflow's header comment.
+`public/_redirects` holds the SPA fallback; no `_routes.json` (that file is for
+Pages Functions, which this project has none of). `_headers` is **generated**
+by the `headersFile` plugin in `vite.config.ts`: the CSP carries the sha256 of
+index.html's inline theme script (no `'unsafe-inline'` for scripts), allows
+the NER hosts (`huggingface.co`, `*.huggingface.co`, `*.hf.co`,
+`cdn.jsdelivr.net`, plus `'wasm-unsafe-eval'`), and the P21 analytics hosts
+only in a flagged build; plus Referrer-Policy, nosniff, X-Frame-Options,
+Permissions-Policy, HSTS, immutable `/assets/*`, and `no-cache` for
+`index.html`, every route path, `sw.js` and the manifest. Verified in Chromium
+with the generated CSP applied: pre-paint theme script, paste handoff, PDF
+import (pdf.js worker), settings, legal page — no violations.
+**Still to verify on the real deployment:** the NER model download under the
+CSP (the model hosts redirect; `*.hf.co` should cover the current CDN), and
+the Metricool beacon hosts once the tag runs. **Known limit:** the released
+portable "single file" still needs its sibling `ner.worker-*.js` for the
+opt-in NER (the P7d caveat); everything else works from the one file.
 
 > A GitHub Actions workflow (`.github/workflows/deploy.yml`) on push to `main`:
 > `npm ci`, `npm run lint`, `npm test`, `npm run build`, then publish `dist/`

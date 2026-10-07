@@ -18,8 +18,11 @@ session, because that is where the iteration happens.
 | M2 — Detection quality, then local NLP | [`m2-detection-ner.md`](m2-detection-ner.md) | done |
 | M3 — Document parsers | [`m3-parsers.md`](m3-parsers.md) | done |
 | M4a — Export & detection control | [`m4a-export-control.md`](m4a-export-control.md) | done |
-| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | in progress (P12–P13 done; P14–P15 deferred) |
-| M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | in progress (P16 done) |
+| M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](m4b-pseudonym-i18n.md) | in progress (P12–P13 done; P14 moved to M6; P15 deferred) |
+| M5 — Polish & public beta | [`m5-polish-beta.md`](m5-polish-beta.md) | done (launch checklist in P20/P22) |
+| M6 — Languages: i18n and detection packs | [`m6-language-packs.md`](m6-language-packs.md) | planned (P14, P23–P28) |
+| M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
+| M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
 
 M4 is split in two: **M4a** is dependency-free user-visible output and control
 (export, category toggles); **M4b** is the one-way realistic-output mode and the
@@ -32,7 +35,7 @@ and that numbering is superseded. M5 continues at `P16`–`P22`.
 consent-gated analytics on the hosted deployment, so "no network calls at
 runtime" stops being absolute for the hosted build — and becomes *more*
 explicit for every local one. `P21` carries the exact replacement wording and
-changes `CLAUDE.md` itself; until it runs, hard rule 2 stands as written.
+changes `CLAUDE.md` itself — done 2026-09-27; `CLAUDE.md` now carries the amended rule.
 
 One-off task docs that are not milestones keep their own numbered files:
 [`01-wizard-layout-fixes.md`](01-wizard-layout-fixes.md),
@@ -45,6 +48,13 @@ Three of the four were found by *using* the parsers, not by testing them.
 [`04-wizard-next.md`](04-wizard-next.md) — `W1`, Back/Next buttons for the
 wizard, and `W2`, compact live stats in the sidebar, both found in the same
 round of manual testing.
+[`05-large-documents.md`](05-large-documents.md) — `L1`–`L3`, cheap fixes so
+a 1000-page document doesn't crash the session save or hit quadratic detector
+scans. Do these before M6. The structural work is M7.
+[`06-standard-mode.md`](06-standard-mode.md) — `S1`–`S4`, a Standard (quick)
+mode: drop a document, get the result, with a Fine-tune button into today's
+wizard (Advanced); plus a tidy-up of the settings menu. Do it after `05`, before
+M6.
 
 **The spec lives at `docs/spec.md`.** Where a prompt says "§3 of the spec" or
 "the §6 Spanish test bench case", read that section from `docs/spec.md`.
@@ -91,6 +101,9 @@ Not in scope for M1. Recorded here so they aren't lost.
   Needs a decision on Unicode normalization (NFD strip-combining-marks vs. a
   manual map) before implementation.
 - **Per-language/country NAME_STOPWORDS packs, with a language setup step.**
+  *Planned as M6 ([`m6-language-packs.md`](m6-language-packs.md)), 2026-09-27:
+  the language is detected and the result pre-selects packs in the setup step;
+  the user confirms. Several packs can be active at once.*
   The stopword list (greetings, sign-offs, days/months) currently hardcodes
   ES + EN ad hoc, growing one word at a time as bugs surface (e.g. "Dear"
   had to be added after it swallowed a name into a bogus match). That

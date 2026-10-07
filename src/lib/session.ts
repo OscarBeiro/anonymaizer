@@ -8,6 +8,9 @@ const STEP_KEY = 'anonymaizer.step';
 const CATEGORY_SETTINGS_KEY = 'anonymaizer.categorySettings';
 const OUTPUT_MODE_KEY = 'anonymaizer.outputMode';
 const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
+const APP_MODE_KEY = 'anonymaizer.appMode';
+// Read verbatim by the inline pre-paint script in index.html — rename both or neither.
+export const THEME_KEY = 'anonymaizer.theme';
 
 // Wizard position is UI state, not part of the spec §3 MappingSession data
 // contract — kept under its own localStorage key.
@@ -30,6 +33,30 @@ export const loadOutputMode = (): OutputMode =>
 
 export const saveOutputMode = (mode: OutputMode): void => {
   localStorage.setItem(OUTPUT_MODE_KEY, mode);
+};
+
+// S1: Standard is drop -> result with a Fine-tune button; Advanced is the full
+// wizard. A missing or unknown value is Standard, the default for new visitors.
+export type AppMode = 'standard' | 'advanced';
+
+export const parseAppMode = (raw: string | null): AppMode => (raw === 'advanced' ? 'advanced' : 'standard');
+
+export const loadAppMode = (): AppMode => parseAppMode(localStorage.getItem(APP_MODE_KEY));
+
+export const saveAppMode = (mode: AppMode): void => {
+  localStorage.setItem(APP_MODE_KEY, mode);
+};
+
+// P17: `system` follows prefers-color-scheme; light/dark override it.
+export type ThemePreference = 'light' | 'dark' | 'system';
+
+export const parseTheme = (raw: string | null): ThemePreference =>
+  raw === 'light' || raw === 'dark' ? raw : 'system';
+
+export const loadTheme = (): ThemePreference => parseTheme(localStorage.getItem(THEME_KEY));
+
+export const saveTheme = (theme: ThemePreference): void => {
+  localStorage.setItem(THEME_KEY, theme);
 };
 
 export const loadMoneyRange = (): MoneyRange => {
@@ -91,6 +118,20 @@ export const loadCategorySettings = (known: readonly string[]): CategorySettings
 
 export const saveCategorySettings = (settings: CategorySettings): void => {
   localStorage.setItem(CATEGORY_SETTINGS_KEY, JSON.stringify(settings));
+};
+
+// P18: "clear all local data". Wipes every `anonymaizer.`-prefixed key — not
+// just the ones this file names — so a key added later cannot be missed. The
+// privacy policy (P20) promises this in writing; session.test.ts holds it to it.
+export const LOCAL_KEY_PREFIX = 'anonymaizer.';
+
+export const clearLocalData = (storage: Storage = localStorage): void => {
+  const keys: string[] = [];
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i);
+    if (key?.startsWith(LOCAL_KEY_PREFIX)) keys.push(key);
+  }
+  keys.forEach((key) => storage.removeItem(key));
 };
 
 export const newSessionId = (): string =>

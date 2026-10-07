@@ -1,4 +1,4 @@
-import { type ReactNode, useState } from 'react';
+import { useState } from 'react';
 import { countByCategory } from '../core/stats';
 import { PLACEHOLDER_PATTERN } from '../core/export/textExport';
 import type { MappingItem, MappingSession } from '../core/types';
@@ -6,16 +6,20 @@ import type { OutputMode } from '../lib/session';
 import { MAX_MONEY_PERCENT, type MoneyRange } from '../core/pseudonymize';
 import { SaveAsControl } from './SaveAsControl';
 
-const renderHighlighted = (text: string): ReactNode[] =>
-  text.split(PLACEHOLDER_PATTERN).map((segment, i) =>
-    i % 2 === 1 ? (
-      <mark className="sanitized-placeholder" key={i}>
-        {segment}
-      </mark>
-    ) : (
-      segment
-    ),
-  );
+// S3: a component rather than a helper so QuickResult can share it.
+export const HighlightedText = ({ text }: { text: string }) => (
+  <>
+    {text.split(PLACEHOLDER_PATTERN).map((segment, i) =>
+      i % 2 === 1 ? (
+        <mark className="sanitized-placeholder" key={i}>
+          {segment}
+        </mark>
+      ) : (
+        segment
+      ),
+    )}
+  </>
+);
 
 interface SanitizedTextPanelProps {
   anonymizedText: string;
@@ -79,7 +83,7 @@ export const SanitizedTextPanel = ({
         <span>%</span>
       </div>
     )}
-    <div className="panel-textarea sanitized-highlight">{renderHighlighted(anonymizedText)}</div>
+    <div className="panel-textarea sanitized-highlight"><HighlightedText text={anonymizedText} /></div>
     <div className="panel-actions">
       <button
         type="button"

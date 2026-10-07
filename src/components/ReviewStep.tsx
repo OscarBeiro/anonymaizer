@@ -1,8 +1,5 @@
-import type { CustomDictionaryRule, MappingItem, MappingSession } from '../core/types';
+import type { MappingItem, MappingSession } from '../core/types';
 import { MappingList, SanitizedTextPanel, StatisticsPanel } from './MappingPanels';
-import { RulesEditor } from './RulesEditor';
-import { CategoryToggles } from './CategoryToggles';
-import type { CategorySettings } from '../core/categories';
 import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
 import type { OutputMode } from '../lib/session';
 import type { MoneyRange } from '../core/pseudonymize';
@@ -15,13 +12,12 @@ interface ReviewStepProps {
   moneyRange: MoneyRange;
   onMoneyRangeChange: (range: MoneyRange) => void;
   mappings: MappingItem[];
-  dictionaryRules: CustomDictionaryRule[];
   onToggle: (id: string) => void;
   onSplit: (id: string) => void;
   onMerge: (ids: string[]) => void;
-  onRulesChange: (rules: CustomDictionaryRule[]) => void;
-  categorySettings: CategorySettings;
-  onCategorySettingsChange: (settings: CategorySettings) => void;
+  categoriesOff: number;
+  // P18: the toggles live in the settings menu; 2.1 keeps a way in.
+  onOpenDetectionSettings: () => void;
   // Lifted into App (W1) so the Back/Next footer can walk the sub-steps.
   subStep: ReviewSubStep;
   onSubStepChange: (subStep: ReviewSubStep) => void;
@@ -35,13 +31,11 @@ export const ReviewStep = ({
   moneyRange,
   onMoneyRangeChange,
   mappings,
-  dictionaryRules,
   onToggle,
   onSplit,
   onMerge,
-  onRulesChange,
-  categorySettings,
-  onCategorySettingsChange,
+  categoriesOff: offCount,
+  onOpenDetectionSettings,
   subStep,
   onSubStepChange,
 }: ReviewStepProps) => {
@@ -61,16 +55,14 @@ export const ReviewStep = ({
         ))}
       </nav>
 
-      {subStep === 'rules' && <RulesEditor rules={dictionaryRules} onChange={onRulesChange} />}
-
       {subStep === 'placeholders' && (
         <>
-          <CategoryToggles
-            settings={categorySettings}
-            rules={dictionaryRules}
-            mappings={mappings}
-            onChange={onCategorySettingsChange}
-          />
+          <p className="detection-settings-link">
+            {offCount > 0 && <>{offCount} {offCount === 1 ? 'category' : 'categories'} off · </>}
+            <button type="button" className="link-button" onClick={onOpenDetectionSettings}>
+              Detection settings and custom rules
+            </button>
+          </p>
           <MappingList mappings={mappings} onToggle={onToggle} onSplit={onSplit} onMerge={onMerge} />
         </>
       )}
