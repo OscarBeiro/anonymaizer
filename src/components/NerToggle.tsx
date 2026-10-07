@@ -2,6 +2,8 @@ import type { NerStatus } from '../lib/nerClient';
 
 interface NerToggleProps {
   enabled: boolean;
+  /** L3: the document is large enough that NER will be slow. */
+  longDocument?: boolean;
   status: NerStatus;
   onToggle: (enabled: boolean) => void;
   onDeleteModel: () => void;
@@ -35,7 +37,7 @@ const statusText = (status: NerStatus): string | null => {
  * for an instant re-enable later. Delete actually frees that cache and
  * forces a full re-download next time — the two must never be conflated.
  */
-export const NerToggle = ({ enabled, status, onToggle, onDeleteModel }: NerToggleProps) => {
+export const NerToggle = ({ enabled, longDocument, status, onToggle, onDeleteModel }: NerToggleProps) => {
   const loading = status.state === 'loading';
   const text = statusText(status);
   const modelDownloaded = status.state === 'ready';
@@ -50,6 +52,11 @@ export const NerToggle = ({ enabled, status, onToggle, onDeleteModel }: NerToggl
             <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
             {' '}Local AI detection (model already downloaded — re-enabling is instant)
           </label>
+        )}
+        {enabled && longDocument && (
+          <p className="ner-long-note" role="note">
+            Large document: AI detection runs on every edit and can take minutes. Turn it off to work faster.
+          </p>
         )}
         <div className="ner-model-actions">
           {enabled && (

@@ -18,9 +18,23 @@ export const arbitrateSpans = (candidates: DetectedSpan[]): DetectedSpan[] => {
     return a.start - b.start;
   });
 
+  // Accepted spans never overlap, so keeping them ordered by offset means a
+  // candidate can only collide with its two neighbours: a binary search
+  // instead of a scan over every accepted span (L2: 99k spans took 10 s).
   const accepted: DetectedSpan[] = [];
+  const byOffset: DetectedSpan[] = [];
   for (const candidate of sorted) {
-    if (accepted.some((s) => overlaps(s, candidate))) continue;
+    let lo = 0;
+    let hi = byOffset.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >>> 1;
+      if (byOffset[mid].start < candidate.start) lo = mid + 1;
+      else hi = mid;
+    }
+    const prev = byOffset[lo - 1];
+    const next = byOffset[lo];
+    if ((prev && overlaps(prev, candidate)) || (next && overlaps(next, candidate))) continue;
+    byOffset.splice(lo, 0, candidate);
     accepted.push(candidate);
   }
   return accepted;
@@ -85,18 +99,23 @@ export const buildMappings = (spans: DetectedSpan[]): MappingItem[] => {
 };
 
 /**
- * §4a step 5: substitute accepted spans right-to-left by offset so earlier
- * offsets stay valid as later ones are rewritten.
+ * §4a step 5: substitute accepted spans by offset, in a single pass.
  */
 export const applySpans = (
   text: string,
   spans: DetectedSpan[],
   placeholderFor: (span: DetectedSpan) => string,
 ): string => {
-  const rightToLeft = [...spans].sort((a, b) => b.start - a.start);
-  let result = text;
-  for (const span of rightToLeft) {
-    result = result.slice(0, span.start) + placeholderFor(span) + result.slice(span.end);
+  // One pass over the sorted spans into a parts array: repeated
+  // slice-and-concatenate was O(n x spans) on a book-length text (L2).
+  const leftToRight = [...spans].sort((a, b) => a.start - b.start);
+  const parts: string[] = [];
+  let cursor = 0;
+  for (const span of leftToRight) {
+    if (span.start < cursor) continue; // overlap: arbitration should have removed it
+    parts.push(text.slice(cursor, span.start), placeholderFor(span));
+    cursor = span.end;
   }
-  return result;
+  parts.push(text.slice(cursor));
+  return parts.join('');
 };

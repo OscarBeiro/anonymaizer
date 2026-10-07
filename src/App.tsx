@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { IngestStep } from './components/IngestStep';
 import { NerToggle } from './components/NerToggle';
+import { isLongForNer, nerLongDocumentMessage } from './lib/nerLimits';
 import { ReversalPanel } from './components/ReversalPanel';
 import { ReviewStep } from './components/ReviewStep';
 import { StepFooter } from './components/StepFooter';
@@ -98,7 +99,11 @@ function App() {
   const [nerEnabled, setNerEnabled] = useState(false);
   const [nerStatus, setNerStatus] = useState<NerStatus>({ state: 'idle' });
 
-  useEffect(() => saveSession(session), [session]);
+  // L1: false when the document is too large for localStorage; it then lives in memory only.
+  const [sessionSaved, setSessionSaved] = useState(true);
+  useEffect(() => {
+    setSessionSaved(saveSession(session));
+  }, [session]);
   useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules]);
   useEffect(() => saveCategorySettings(categorySettings), [categorySettings]);
   useEffect(() => saveStep(step), [step]);
@@ -226,6 +231,10 @@ function App() {
   };
 
   const handleNerToggle = (checked: boolean) => {
+    // L3: NER is slow on a book-length text; the user may still turn it on.
+    if (checked && isLongForNer(session.rawMarkdown) && !window.confirm(nerLongDocumentMessage(session.rawMarkdown.length))) {
+      return;
+    }
     setNerEnabled(checked);
     if (checked) {
       void runNerScan(session.rawMarkdown, dictionaryRules);
@@ -483,6 +492,13 @@ function App() {
         )}
 
         <main className="app-main">
+          {!sessionSaved && (
+            <p className="session-unsaved" role="alert">
+              This document is too large to survive a reload. Copy or save the result before closing or refreshing
+              this tab.
+            </p>
+          )}
+
           {step === 'ingest' && (
             <IngestStep
               rawMarkdown={session.rawMarkdown}
@@ -578,6 +594,7 @@ function App() {
             />
             <NerToggle
               enabled={nerEnabled}
+              longDocument={isLongForNer(session.rawMarkdown)}
               status={nerStatus}
               onToggle={handleNerToggle}
               onDeleteModel={handleDeleteModel}
