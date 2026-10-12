@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
-import { viteSingleFile } from 'vite-plugin-singlefile'
+import { portableBuild } from './scripts/portableBuild.ts'
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -178,12 +178,19 @@ const headersFile = (withAnalytics: boolean): Plugin => {
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    ...(portable ? [viteSingleFile()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN), swVersion(), headersFile(analytics)]),
+    ...(portable ? [portableBuild()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN), swVersion(), headersFile(analytics)]),
   ],
-  build: portable ? { outDir: 'dist-portable' } : {},
+  build: portable ? {
+    outDir: 'dist-portable',
+    assetsInlineLimit: () => true,
+    chunkSizeWarningLimit: 100000000,
+    cssCodeSplit: false,
+    assetsDir: '',
+    rolldownOptions: { output: { codeSplitting: false } },
+  } : {},
   // P19: the base differs per build, and getting it wrong ships a white page.
   // Portable: relative, so index.html resolves its siblings from a file://
-  // origin (viteSingleFile's recommended config sets this too) — and so the
+  // origin — and so the
   // portable build has no router at all (see src/Root.tsx), since file:// has
   // no server to rewrite /app or /privacy back to index.html.
   // Hosted: absolute, because the history router serves index.html at /app,
@@ -193,7 +200,7 @@ export default defineConfig(({ mode }) => ({
   base: portable ? './' : '/',
   resolve: {
     // onnxruntime-web 1.31's default browser entry embeds its ~54MB of
-    // .wasm runtimes via `new URL(...)`, which viteSingleFile happily
+    // .wasm runtimes via `new URL(...)`, which Vite happily
     // base64-inlines — that turned the NER worker into a 72MB file. This
     // export condition selects ort's external-wasm build instead, so the
     // runtime is fetched at NER opt-in time like it was under
