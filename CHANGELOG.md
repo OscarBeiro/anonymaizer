@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.4 — 2026-10-12
+
+- Add spacing between the dark-mode toggle and adjacent app header controls.
+
 ## 0.18.3 — 2026-10-12
 
 - Remove the unpatched `vite-plugin-singlefile` → `micromatch` → `braces`
