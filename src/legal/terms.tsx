@@ -1,3 +1,4 @@
+import { BrandName } from '../components/BrandName';
 import { OPERATOR as o, REPO_URL, SITE_ORIGIN } from '../site';
 import type { LegalLang } from './meta';
 
@@ -18,7 +19,7 @@ const En = () => (
 
     <h2>2. The service</h2>
     <p>
-      AnonymAIzer is a free tool that replaces personal and confidential data in text with placeholders, and
+      <BrandName /> is a free tool that replaces personal and confidential data in text with placeholders, and
       restores the original values in text you paste back. It runs entirely in your browser; the provider receives
       none of the content you process. Using the website means accepting these terms.
     </p>
@@ -63,7 +64,7 @@ const En = () => (
     <h2>6. Intellectual property and licence</h2>
     <p>
       The source code is published at <a href={REPO_URL}>{REPO_URL}</a> under the {'{{LICENSE}}'} licence, which
-      governs its use, copying and modification. The AnonymAIzer name and logo are {'{{TRADEMARK_STATUS}}'}. You keep
+      governs its use, copying and modification. The <BrandName /> name and logo are {'{{TRADEMARK_STATUS}}'}. You keep
       all rights to the content you process; the provider acquires none.
     </p>
 
@@ -95,7 +96,7 @@ const Es = () => (
 
     <h2>2. El servicio</h2>
     <p>
-      AnonymAIzer es una herramienta gratuita que sustituye datos personales y confidenciales de un texto por
+      <BrandName /> es una herramienta gratuita que sustituye datos personales y confidenciales de un texto por
       marcadores y restaura los valores originales en el texto que vuelvas a pegar. Funciona íntegramente en tu
       navegador; el titular no recibe nada del contenido que procesas. El uso del sitio supone la aceptación de
       estas condiciones.
@@ -141,7 +142,7 @@ const Es = () => (
     <h2>6. Propiedad intelectual y licencia</h2>
     <p>
       El código fuente se publica en <a href={REPO_URL}>{REPO_URL}</a> bajo la licencia {'{{LICENSE}}'}, que rige su
-      uso, copia y modificación. El nombre y el logotipo de AnonymAIzer son {'{{TRADEMARK_STATUS}}'}. Conservas todos
+      uso, copia y modificación. El nombre y el logotipo de <BrandName /> son {'{{TRADEMARK_STATUS}}'}. Conservas todos
       los derechos sobre el contenido que procesas; el titular no adquiere ninguno.
     </p>
 

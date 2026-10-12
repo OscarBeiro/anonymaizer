@@ -1,3 +1,4 @@
+import { BrandName } from '../components/BrandName';
 import { OPERATOR as o, SITE_ORIGIN } from '../site';
 import type { LegalLang } from './meta';
 
@@ -14,7 +15,7 @@ const En = () => (
     <h2>1. The short version</h2>
     <p>
       <strong>
-        AnonymAIzer has no backend. The text and documents you anonymize are processed only inside your browser and
+        <BrandName /> has no backend. The text and documents you anonymize are processed only inside your browser and
         are never sent to us or to anyone else.
       </strong>{' '}
       We cannot see, store or recover them. This policy therefore covers the few things that do involve personal
@@ -154,7 +155,7 @@ const Es = () => (
     <h2>1. En resumen</h2>
     <p>
       <strong>
-        AnonymAIzer no tiene servidor. Los textos y documentos que anonimizas se procesan únicamente en tu navegador y
+        <BrandName /> no tiene servidor. Los textos y documentos que anonimizas se procesan únicamente en tu navegador y
         nunca se envían a nosotros ni a nadie.
       </strong>{' '}
       No podemos verlos, guardarlos ni recuperarlos. Esta política cubre, por tanto, lo poco que sí implica datos

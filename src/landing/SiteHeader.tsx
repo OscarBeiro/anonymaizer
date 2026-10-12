@@ -1,3 +1,5 @@
+import { BrandName } from '../components/BrandName';
+import { BetaBadge } from '../components/BetaBadge';
 import { useEffect, useState } from 'react';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { loadTheme, saveTheme, type ThemePreference } from '../lib/session';
@@ -18,7 +20,7 @@ export function SiteHeader() {
   return (
     <header className="landing-nav">
       <a className="landing-brand" {...linkProps('/')}>
-        <span className="app-mark" aria-hidden="true">A</span> AnonymAIzer
+        <span className="app-mark" aria-hidden="true">A</span> <BrandName /> <BetaBadge />
       </a>
       <nav aria-label="Main">
         <a {...linkProps('/#how')}>How it works</a>

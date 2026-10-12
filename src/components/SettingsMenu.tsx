@@ -1,3 +1,4 @@
+import { BrandName } from './BrandName';
 import { type ReactNode, useEffect, useRef } from 'react';
 import type { AppMode, ThemePreference } from '../lib/session';
 import { Copyright } from './Copyright';
@@ -149,7 +150,7 @@ export function SettingsMenu({
 
         <section id="settings-about" className="settings-section">
           <h3>About</h3>
-          <p>AnonymAIzer v{__APP_VERSION__}. Runs entirely in your browser — no text is uploaded.</p>
+          <p><BrandName /> v{__APP_VERSION__}. Runs entirely in your browser — no text is uploaded.</p>
           <p>
             <Copyright />
           </p>
