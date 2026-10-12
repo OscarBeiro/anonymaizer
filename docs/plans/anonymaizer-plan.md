@@ -24,12 +24,20 @@ session, because that is where the iteration happens.
 | M6 model review — browser runtime and candidate selection | [`M06-01-Browser-local-model-review-plan.md`](M06-01-Browser-local-model-review-plan.md) | reviewed; implementation planned in P38–P40 |
 | M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
 | M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
+| M09 — Safe document round trip and integration foundations | [`M09-01-Safe-document-round-trip-plan.md`](M09-01-Safe-document-round-trip-plan.md) | planned (01–07 plus review follow-up phases 08–15) |
 
 **2026-10-12 review:** M6 P38 now covers inference correctness rather than a
 library upgrade. Its candidate selection is conditional on browser measurements;
 see the model review above. The complementary
 [M09 round-trip plan](M09-01-Safe-document-round-trip-plan.md) covers restoration,
 structured derivative exports and browser-first integration foundations.
+Its phases 08–15 add stable snapshots, context-aware restoration, shared output
+checks, resource limits, complete retention rules, encrypted-key compatibility,
+visit-only website analytics and browser release tests. Follow its execution order:
+urgent fixes precede language expansion, M7 shares worker/storage contracts, and
+M8 exports wait for the round-trip release gate. The online tool stays on the
+website; analytics is restricted to consent-gated visits and excludes sensitive
+content and tool actions. Local/self-hosted/portable copies have no analytics.
 
 M4 is split in two: **M4a** is dependency-free user-visible output and control
 (export, category toggles); **M4b** is the one-way realistic-output mode and the

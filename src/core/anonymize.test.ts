@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { anonymize, anonymizeWithNer } from './anonymize';
+import { applyEnabledMappings } from './apply';
 import type { NerEntity } from './ner';
 import type { CustomDictionaryRule } from './types';
 
@@ -10,6 +11,24 @@ const entityFor = (text: string, source: string, entityGroup: string, score: num
 };
 
 describe('anonymize', () => {
+  it('masks the reported dotted NIF despite its incorrect check letter', () => {
+    const text = 'Persona evaluada: [[NAME_001]] de identidad: 76.123.312-E ' +
+      'Puesto de trabajo: [[CUSTOM_001]]T3 \\[[[JOB_001]]\\] ' +
+      'Expediente de referencia: [[ID_CODE_001]] ' +
+      'Profesional que informa: [[NAME_002]], Psicóloga General Sanitaria, ' +
+      'colegiada [[ID_CODE_002]] Fecha de emisión: 16 de septiembre';
+
+    const { mappings, anonymizedText } = anonymize(text, []);
+    expect(mappings.find((m) => m.originalText === '76.123.312-E')).toMatchObject({
+      category: 'INVALID_ID',
+      placeholder: '[[INVALID_ID_001]]',
+      enabled: true,
+    });
+    expect(anonymizedText).toContain('de identidad: [[INVALID_ID_001]]');
+    expect(anonymizedText).not.toContain('76.123.312-E');
+    expect(applyEnabledMappings(text, mappings)).toBe(anonymizedText);
+  });
+
   it('a custom dictionary term overrides auto-matching', () => {
     const rules: CustomDictionaryRule[] = [
       { id: '1', termOrPattern: 'Project Alpha', replacementType: 'FIXED', isRegex: false },
