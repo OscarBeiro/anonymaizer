@@ -28,7 +28,6 @@ describe('reverseText', () => {
     ['[[NAME_001]]', 'Oscar Beiro'],
     ['[NAME_001]', 'Oscar Beiro'],
     ['[NAME_1]', 'Oscar Beiro'],
-    ['NAME_1', 'Oscar Beiro'],
     ['[NAME 1]', 'Oscar Beiro'],
     ['[Name_1]', 'Oscar Beiro'],
   ])('restores %s formatting variation', (variant, expected) => {
@@ -47,7 +46,7 @@ describe('reverseText', () => {
 
   it('replaces every underscore in a multi-underscore placeholder (PROJECT_NAME_001)', () => {
     const mappings = [mapping({ placeholder: '[[PROJECT_NAME_001]]', originalText: 'Odyssey', category: 'PROJECT_NAME' })];
-    const aiResponse = 'Ship date for PROJECT NAME 1 is Friday.';
+    const aiResponse = 'Ship date for [PROJECT NAME 1] is Friday.';
     expect(reverseText(aiResponse, mappings)).toBe('Ship date for Odyssey is Friday.');
   });
 
@@ -69,11 +68,10 @@ describe('reverseText', () => {
     );
   });
 
-  it('D4: a legacy session with a case-only category collision still restores deterministically', () => {
+  it('D4: a legacy case collision remains unresolved deterministically', () => {
     // ruleValidation now rejects new rules like this, but a session created
     // before that fix could already contain the pair. reverseText itself is
-    // unchanged: it processes mappings in array order, so the first match
-    // wins consistently across runs rather than varying at random.
+    // ambiguous: M9 leaves both values unresolved instead of guessing.
     const mappings = [
       mapping({ placeholder: '[[Custom_001]]', originalText: 'first', category: 'Custom' }),
       mapping({ placeholder: '[[CUSTOM_001]]', originalText: 'second', category: 'CUSTOM' }),
@@ -82,7 +80,7 @@ describe('reverseText', () => {
     const first = reverseText(aiResponse, mappings);
     const second = reverseText(aiResponse, mappings);
     expect(first).toBe(second);
-    expect(first).toBe('One: first. Two: first.');
+    expect(first).toBe(aiResponse);
   });
 
   it('escapes regex metacharacters in the category name', () => {

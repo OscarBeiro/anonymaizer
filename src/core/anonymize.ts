@@ -23,8 +23,9 @@ export const anonymize = (
   text: string,
   rules: CustomDictionaryRule[],
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
+  manualSpans: DetectedSpan[] = [],
 ): PipelineResult => {
-  const candidates = [...dictionarySpans(text, rules, settings), ...runAllDetectors(text, settings)];
+  const candidates = [...manualSpans, ...dictionarySpans(text, rules, settings), ...runAllDetectors(text, settings)];
   return runDetectionPipeline(text, candidates);
 };
 
@@ -40,8 +41,10 @@ export const anonymizeWithNer = (
   rules: CustomDictionaryRule[],
   nerEntities: NerEntity[],
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
+  manualSpans: DetectedSpan[] = [],
 ): PipelineResult => {
   const candidates = [
+    ...manualSpans,
     ...dictionarySpans(text, rules, settings),
     ...runAllDetectors(text, settings),
     ...mapNerEntitiesToSpans(nerEntities).filter((span) => isCategoryOn(settings, span.category)),

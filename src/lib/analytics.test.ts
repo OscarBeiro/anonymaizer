@@ -32,3 +32,11 @@ describe('isPublicDeploymentAt', () => {
     expect(isPublicDeploymentAt(at('https://x.test/'), true, '')).toBe(false);
   });
 });
+
+import { visitEvent } from './analytics';
+it('allowlists constant routes and rejects queries, fragments and document-derived routes', () => {
+  expect(visitEvent('/app')).toEqual({ version: 1, event: 'visit', route: '/app' });
+  expect(visitEvent('/app?file=private.pdf')).toBeNull();
+  expect(visitEvent('/app#private')).toBeNull();
+  expect(visitEvent('/private-document')).toBeNull();
+});

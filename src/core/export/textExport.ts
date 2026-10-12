@@ -1,3 +1,4 @@
+import { structuredDocument } from '../structuredDocument';
 import type { MappingSession } from '../types';
 
 export type TextExportKind = 'txt' | 'md' | 'html';
@@ -13,24 +14,17 @@ export interface ExportFile {
 // marks exactly what the screen marks.
 export const PLACEHOLDER_PATTERN = /(\[\[[A-Z][A-Z0-9_]*\]\])/g;
 
-export const exportFileStem = (session: MappingSession): string => {
-  if (session.inputType === 'FILE' && session.fileName) {
-    const dot = session.fileName.lastIndexOf('.');
-    return dot > 0 ? session.fileName.slice(0, dot) : session.fileName;
-  }
-  return `anonymaizer-${session.sessionId.slice(0, 8)}`;
+export const exportFileStem = (_session: MappingSession): string => {
+  return 'anonymaizer';
 };
 
 const escapeHtml = (s: string): string =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-const htmlBody = (text: string, highlight: boolean): string =>
-  highlight
-    ? text
-        .split(PLACEHOLDER_PATTERN)
-        .map((seg, i) => (i % 2 === 1 ? `<mark>${escapeHtml(seg)}</mark>` : escapeHtml(seg)))
-        .join('')
-    : escapeHtml(text);
+const htmlBody = (text: string, highlight: boolean): string => {
+  const html = structuredDocument(text).html;
+  return highlight ? html.replace(PLACEHOLDER_PATTERN, '<mark>$1</mark>') : html;
+};
 
 // Self-contained: inline style, no fonts, links or scripts (hard rules 2 and 3).
 const htmlDocument = (title: string, body: string): string => `<!doctype html>
@@ -50,7 +44,7 @@ mark { background: #ede9fe; color: #6d28d9; border-radius: 3px; padding: 0 2px; 
 </style>
 </head>
 <body>
-<pre>${body}</pre>
+${body}
 </body>
 </html>
 `;
@@ -71,6 +65,6 @@ export const buildExport = (
   const stem = `${exportFileStem(session)}-${side}`;
   // txt and md are the same bytes: no Markdown stripping, the text may
   // legitimately contain the characters a stripper would eat.
-  const content = kind === 'html' ? htmlDocument(stem, htmlBody(text, options.highlight ?? false)) : text;
+  const content = kind === 'html' ? htmlDocument(stem, htmlBody(text, options.highlight ?? false)) : kind === 'md' ? structuredDocument(text).markdown : text;
   return { fileName: `${stem}.${kind}`, mimeType: MIME[kind], content };
 };

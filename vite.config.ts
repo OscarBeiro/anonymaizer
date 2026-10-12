@@ -110,16 +110,7 @@ const swVersion = (): Plugin => {
 // 'unsafe-inline' for scripts — and so the analytics hosts are allowed only in
 // a build flagged for analytics (P21): a preview deploy's CSP forbids them.
 const NER_HOSTS = ['https://huggingface.co', 'https://*.huggingface.co', 'https://*.hf.co', 'https://cdn.jsdelivr.net']
-const ANALYTICS_HOSTS = {
-  script: ['https://www.googletagmanager.com', 'https://tracker.metricool.com'],
-  connect: [
-    'https://www.googletagmanager.com',
-    'https://*.google-analytics.com',
-    'https://*.analytics.google.com',
-    'https://tracker.metricool.com',
-  ],
-  img: ['https://www.googletagmanager.com', 'https://*.google-analytics.com', 'https://tracker.metricool.com'],
-}
+const ANALYTICS_HOSTS = { script: [] as string[], connect: [] as string[], img: [] as string[] }
 const headersFile = (withAnalytics: boolean): Plugin => {
   let outDir = 'dist'
   return {

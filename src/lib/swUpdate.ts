@@ -1,7 +1,7 @@
 // P21b: service-worker registration and the "new version available" signal.
 // A new worker installs in the background and waits; the UI offers a reload,
 // and only then is it told to take over. Reloading loses no work — the
-// session lives in localStorage.
+// remembered sessions may survive; ephemeral work requires key export first.
 
 type Listener = (available: boolean) => void;
 const listeners = new Set<Listener>();
@@ -20,6 +20,7 @@ export const onUpdateAvailable = (fn: Listener): (() => void) => {
 
 export const applyUpdate = (): void => {
   if (!waiting) return;
+  if (!window.confirm('Reload to apply the privacy update? Save a private restoration key first if this tab holds recoverable work. Ephemeral documents are lost on reload. Browser download handoff does not confirm a key was saved.')) return;
   navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true });
   waiting.postMessage('SKIP_WAITING');
 };

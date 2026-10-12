@@ -2,10 +2,7 @@ import { BrandText } from '../components/BrandName';
 import { requestConsentBanner } from '../lib/consentBus';
 import type { LegalLang } from './meta';
 
-// P20 — DRAFT FOR LEGAL REVIEW. Verify every row against the live tags before
-// publication (the AEPD expects the table to match what is actually set):
-// GA4's cookie names carry the measurement ID, and Metricool's set is
-// {{METRICOOL_COOKIES}} until checked in a browser with the tag loaded.
+// The table reflects current first-party consent storage; tracker scripts are removed.
 
 interface Row {
   name: string;
@@ -23,27 +20,7 @@ const ROWS: Row[] = [
     type: ['Technical, exempt from consent; local storage, not a cookie', 'Técnica, exenta de consentimiento; almacenamiento local, no es una cookie'],
     duration: ['Until you clear it; re-asked when this policy changes', 'Hasta que la borres; se vuelve a preguntar si cambia esta política'],
   },
-  {
-    name: '_ga',
-    provider: 'Google (Google Analytics 4)',
-    purpose: ['Distinguishes visitors with a random identifier', 'Distingue visitantes mediante un identificador aleatorio'],
-    type: ['Analytics, first-party, consent required', 'Analítica, propia, requiere consentimiento'],
-    duration: ['2 years', '2 años'],
-  },
-  {
-    name: '_ga_{{GA4_MEASUREMENT_ID}}',
-    provider: 'Google (Google Analytics 4)',
-    purpose: ['Keeps session state', 'Mantiene el estado de la sesión'],
-    type: ['Analytics, first-party, consent required', 'Analítica, propia, requiere consentimiento'],
-    duration: ['2 years', '2 años'],
-  },
-  {
-    name: '{{METRICOOL_COOKIES}}',
-    provider: 'Metricool Software S.L.',
-    purpose: ['Web traffic statistics', 'Estadísticas de tráfico web'],
-    type: ['Analytics, consent required', 'Analítica, requiere consentimiento'],
-    duration: ['{{METRICOOL_COOKIE_DURATION}}', '{{METRICOOL_COOKIE_DURATION}}'],
-  },
+
 ];
 
 const Table = ({ lang }: { lang: LegalLang }) => {
@@ -87,7 +64,7 @@ const En = () => (
   <>
     <h1>Cookie policy</h1>
     <p>
-      This site uses cookies only for analytics, and only after you accept them in the banner. Rejecting is as easy
+      This version loads no analytics scripts and sets no analytics cookies. Visit events are omitted until a compatible audited browser transport is selected. Rejecting is as easy
       as accepting, and the site and the tool work exactly the same either way. The anonymization tool itself uses
       no cookies. The offline (portable) version, and any copy not served from our public website, loads no
       analytics at all.
@@ -101,15 +78,13 @@ const En = () => (
     <h2>Cookies and similar storage we use</h2>
     <Table lang="en" />
     <p>
-      The app also keeps your session, rules and settings in local storage so a reload loses nothing. That data is
-      strictly necessary for the service you asked for, never leaves your device, and is described in the{' '}
+      Documents and new dictionary rules stay in memory by default. You may separately choose to retain a document or dictionary in plaintext browser storage. Non-sensitive settings and consent preferences may persist. These choices are described in the{' '}
       <a href="/privacy">privacy policy</a>.
     </p>
 
     <h2>Changing or withdrawing your consent</h2>
     <p>
-      You can change your choice at any time. Withdrawing stops analytics from loading and deletes the Google
-      Analytics cookies this site can reach.
+      You can change your choice at any time. Withdrawing consent prevents future visit events. This version sends no analytics events. Browser settings can remove cookies retained by older versions.
     </p>
     <ChangeChoice label="Change cookie settings" />
 
@@ -122,7 +97,7 @@ const En = () => (
       <li>Edge: Settings → Cookies and site permissions.</li>
     </ul>
     <p>
-      Google also offers an opt-out add-on for Google Analytics at tools.google.com/dlpage/gaoptout.
+      The portable, localhost and self-hosted builds perform no analytics.
     </p>
   </>
 );
@@ -131,7 +106,7 @@ const Es = () => (
   <>
     <h1>Política de cookies</h1>
     <p>
-      Este sitio usa cookies solo para analítica, y solo después de que las aceptes en el aviso. Rechazar es tan
+      Esta versión no carga scripts de analítica ni establece cookies de analítica. Los eventos de visita se omiten hasta elegir un transporte de navegador compatible y auditado. Rechazar es tan
       fácil como aceptar, y el sitio y la herramienta funcionan exactamente igual en ambos casos. La herramienta de
       anonimización no usa cookies. La versión sin conexión (portable), y cualquier copia que no se sirva desde
       nuestro sitio web público, no carga ninguna analítica.
@@ -145,15 +120,12 @@ const Es = () => (
     <h2>Cookies y almacenamiento similar que usamos</h2>
     <Table lang="es" />
     <p>
-      La aplicación guarda además tu sesión, reglas y ajustes en el almacenamiento local para que una recarga no
-      pierda nada. Esos datos son estrictamente necesarios para el servicio que solicitas, nunca salen de tu
-      dispositivo y se describen en la <a href="/privacy?lang=es">política de privacidad</a>.
+      Los documentos y las reglas nuevas permanecen en memoria por defecto. Puedes elegir por separado recordar documentos o reglas en el almacenamiento local, sin cifrar. Los ajustes no sensibles y el consentimiento pueden persistir. Estas opciones se describen en la <a href="/privacy?lang=es">política de privacidad</a>.
     </p>
 
     <h2>Cambiar o retirar tu consentimiento</h2>
     <p>
-      Puedes cambiar tu elección en cualquier momento. Al retirarlo, la analítica deja de cargarse y se borran las
-      cookies de Google Analytics a las que este sitio puede acceder.
+      Puedes cambiar tu elección en cualquier momento. Retirarla impide futuros eventos de visita. Esta versión no envía eventos. Puedes borrar cookies de versiones anteriores desde tu navegador.
     </p>
     <ChangeChoice label="Configurar cookies" />
 
@@ -165,7 +137,7 @@ const Es = () => (
       <li>Safari: Ajustes → Privacidad → Gestionar datos de sitios web.</li>
       <li>Edge: Configuración → Cookies y permisos del sitio.</li>
     </ul>
-    <p>Google ofrece además un complemento de inhabilitación de Google Analytics en tools.google.com/dlpage/gaoptout.</p>
+    <p>Las versiones portable, localhost y autoalojadas no realizan analítica.</p>
   </>
 );
 

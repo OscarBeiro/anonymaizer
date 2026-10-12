@@ -1,6 +1,6 @@
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
+import { GlobalWorkerOptions, getDocument, OPS } from 'pdfjs-dist';
 import type { TextItem } from 'pdfjs-dist/types/src/display/api';
-import type { ParsedDocument } from '../../core/parsers';
+import type { ParsedDocument, ParserControl } from '../../core/parsers';
 import { PDF_WORKER_SRC } from './pdfWorkerSrc';
 
 // .pdf via pdfjs-dist (M3/P8c). Main thread, not a Web Worker of our own —
@@ -180,10 +180,13 @@ const pageToParagraphs = (runs: Run[]): string[] => {
   ];
 };
 
-export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<ParsedDocument> => {
+export const parse = async (bytes: ArrayBuffer, fileName: string, control?: ParserControl): Promise<ParsedDocument> => {
   const warnings: string[] = [];
   let paragraphs: string[];
   let pageCount: number;
+  let emptyPages = 0;
+  let imagePages = 0;
+  let unreadablePages = 0;
 
   // Before pdfjs touches them: it transfers the buffer to its worker, which
   // detaches it here, and the scan then silently reads zero bytes.
@@ -198,17 +201,29 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
       // parameter. (pdfjs 6 no longer has `isEvalSupported` — it dropped eval.)
       useWorkerFetch: false,
     });
-    const doc = await task.promise;
+    const stopListening = control?.onCancel(() => { void task.destroy(); });
+    let doc;
+    try { doc = await task.promise; } catch (e) { stopListening?.(); await task.destroy(); throw e; }
 
     pageCount = doc.numPages;
     const pages: string[][] = [];
-    for (let i = 1; i <= pageCount; i += 1) {
-      const page = await doc.getPage(i);
-      const { items } = await page.getTextContent();
-      pages.push(pageToParagraphs(toRuns(items as TextItem[])));
-      page.cleanup();
-    }
-    await task.destroy();
+    if (pageCount > 1000) { await task.destroy(); throw new Error('PDF exceeds the 1000 page limit.'); }
+    try {
+      for (let i = 1; i <= pageCount; i += 1) {
+        if (control?.isCancelled()) throw new Error('Import cancelled.');
+        const page = await doc.getPage(i);
+        try {
+          const { items } = await page.getTextContent();
+          const content = pageToParagraphs(toRuns(items as TextItem[]));
+          if (!content.length) emptyPages++;
+          const operators = await page.getOperatorList();
+          if (operators.fnArray.some(op => [OPS.paintImageXObject, OPS.paintInlineImageXObject, OPS.paintImageMaskXObject].includes(op))) imagePages++;
+          pages.push(content);
+          if (pages.reduce((n, p) => n + p.join('').length, 0) > 2_000_000) throw new Error('PDF extracted text exceeds processing limit.');
+        } catch { unreadablePages++; warnings.push(`Page ${i} could not be fully read. Review the source page.`); }
+        finally { page.cleanup(); }
+      }
+    } finally { stopListening?.(); await task.destroy(); }
     paragraphs = pages.flat();
   } catch (cause) {
     throw new Error(`Could not read "${fileName}" — it does not look like a readable PDF.`, { cause });
@@ -222,6 +237,8 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
         'Reading text out of page images is not supported.',
     );
   }
+  if (emptyPages && markdown.trim()) warnings.push(`${emptyPages} pages contained no extractable text; scanned pages require local OCR, which is unavailable.`);
+  if (imagePages) warnings.push(`${imagePages} pages contain images. Embedded image text was not read, even where other text was extracted.`);
   if (pageCount > LONG_DOCUMENT_PAGES) {
     warnings.push(`This PDF has ${pageCount} pages, so extraction and detection will be slow.`);
   }
@@ -243,6 +260,7 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
   return {
     markdown,
     format: 'pdf',
+    coverage: { format: 'pdf', processedUnits: pageCount - unreadablePages, skippedUnits: emptyPages + unreadablePages, warnings, structuralWarnings: ['PDF layout is reflowed; reading order and table structure require review.'], status: !markdown.trim() ? 'empty' : 'review' },
     ...(warnings.length > 0 ? { warnings } : {}),
   };
 };

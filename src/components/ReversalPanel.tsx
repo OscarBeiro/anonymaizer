@@ -18,6 +18,7 @@ interface ReversalPanelProps {
   session: MappingSession;
   aiResponse: string;
   restored: string;
+  restoredMarkdown: string;
   /** The restored text in the chosen format: plain text, sanitized HTML (markdown view) or HTML source. */
   restoredView: string;
   restoreFormat: RestoreFormat;
@@ -33,6 +34,7 @@ export const ReversalPanel = ({
   session,
   aiResponse,
   restored,
+  restoredMarkdown,
   restoredView,
   restoreFormat,
   onRestoreFormatChange,
@@ -64,6 +66,7 @@ export const ReversalPanel = ({
         </p>
         <textarea
           className="panel-textarea"
+          aria-label="AI response"
           placeholder="Paste the AI's response here…"
           value={aiResponse}
           onChange={(e) => onAiResponseChange(e.target.value)}
@@ -96,7 +99,7 @@ export const ReversalPanel = ({
           <textarea className="panel-textarea" readOnly value={restoredView} placeholder="Restored text appears here…" />
         )}
         <div className="panel-actions">
-          <SaveAsControl text={restored} session={session} side="restored" />
+          <SaveAsControl text={restored} session={session} side="restored" structuredMarkdown={restoredMarkdown} />
         </div>
       </section>
     )}

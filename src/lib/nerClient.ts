@@ -1,51 +1,39 @@
 import type { NerEntity } from '../core/ner';
 import type { NerWorkerRequest, NerWorkerResponse } from '../workers/ner.worker';
-
-export type NerStatus =
-  | { state: 'idle' }
-  // Covers both the one-time ~104MB model download/init (progress events
-  // carry `detail`) and, on later calls once the worker already holds the
-  // model, plain inference — the worker gives us no separate signal for
-  // "loaded, now running", so this UI-facing type doesn't invent one.
-  | { state: 'loading'; detail?: string }
-  | { state: 'ready' }
-  | { state: 'error'; message: string };
-
-// Not src/core/ — this creates a real Worker, a DOM/browser API. It exists so
-// App.tsx never talks to postMessage/onmessage directly.
+export type NerStatus = { state: 'idle' } | { state: 'loading'; detail?: string } | { state: 'scanning' } | { state: 'cancelled' } | { state: 'ready' } | { state: 'error'; message: string };
 export class NerClient {
   private worker: Worker | null = null;
-
+  private pending = new Map<number, (error: Error) => void>();
+  private serial = 0;
   runNer(text: string, onStatus: (status: NerStatus) => void): Promise<NerEntity[]> {
+    if (this.pending.size) this.terminate();
+    if (text.length > 100000) return Promise.reject(new Error('NER is limited to 100,000 characters.'));
+    const requestId = ++this.serial;
     return new Promise((resolve, reject) => {
       this.worker ??= new Worker(new URL('../workers/ner.worker.ts', import.meta.url), { type: 'module' });
       const worker = this.worker;
-
-      onStatus({ state: 'loading' });
-
+      const cleanup = () => { clearTimeout(timer); worker.removeEventListener('message', handleMessage); worker.removeEventListener('error', handleError); this.pending.delete(requestId); };
+      const fail = (error: Error) => { cleanup(); onStatus(error.name === 'AbortError' ? { state: 'cancelled' } : { state: 'error', message: error.message }); reject(error); };
+      const timer = setTimeout(() => { this.terminate(new Error('NER timed out. Output is blocked until retried or disabled.')); }, 180000);
+      const handleError = () => this.terminate(new Error('NER worker failed.'));
       const handleMessage = (event: MessageEvent<NerWorkerResponse>) => {
         const msg = event.data;
-        if (msg.type === 'progress') {
-          onStatus({ state: 'loading', detail: msg.status });
-        } else if (msg.type === 'result') {
-          worker.removeEventListener('message', handleMessage);
-          onStatus({ state: 'ready' });
-          resolve(msg.entities);
-        } else if (msg.type === 'error') {
-          worker.removeEventListener('message', handleMessage);
-          onStatus({ state: 'error', message: msg.message });
-          reject(new Error(msg.message));
-        }
+        if (msg.requestId !== requestId) return;
+        if (msg.type === 'progress') onStatus({ state: 'loading', detail: msg.status });
+        else if (msg.type === 'scanning') onStatus({ state: 'scanning' });
+        else if (msg.type === 'result') { cleanup(); onStatus({ state: 'ready' }); resolve(msg.entities); }
+        else if (msg.type === 'error') fail(new Error('NER processing failed. Retry or disable the model.'));
       };
-
+      this.pending.set(requestId, fail);
+      onStatus({ state: 'loading' });
       worker.addEventListener('message', handleMessage);
-      const request: NerWorkerRequest = { type: 'run', text };
+      worker.addEventListener('error', handleError);
+      const request: NerWorkerRequest = { type: 'run', requestId, text };
       worker.postMessage(request);
     });
   }
-
-  terminate(): void {
-    this.worker?.terminate();
-    this.worker = null;
+  terminate(error: Error = new DOMException('NER cancelled.', 'AbortError')): void {
+    this.worker?.terminate(); this.worker = null;
+    [...this.pending.values()].forEach(reject => reject(error)); this.pending.clear();
   }
 }

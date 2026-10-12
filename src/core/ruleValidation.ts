@@ -2,7 +2,7 @@ import type { CustomDictionaryRule } from './types';
 
 export const isValidRegexPattern = (pattern: string): boolean => {
   try {
-    new RegExp(pattern);
+    new RegExp(pattern, 'gu');
     return true;
   } catch {
     return false;
@@ -112,7 +112,9 @@ export const parseImportedRules = (
   } catch {
     throw new Error('That file is not valid JSON.');
   }
+  if (json.length > 1_000_000) throw new Error('Dictionary file is too large.');
   if (!Array.isArray(parsed)) throw new Error('Expected a JSON array of dictionary rules.');
+  if (parsed.length > 1000) throw new Error('Too many dictionary rules.');
   if (!parsed.every(isRule)) throw new Error('One or more rules have an invalid shape.');
 
   const seen = [...existingRules];

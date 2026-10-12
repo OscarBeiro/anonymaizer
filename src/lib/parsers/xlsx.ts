@@ -185,6 +185,7 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
                 : raw;
         }
 
+        if (!Number.isSafeInteger(column) || column > 16383) throw new Error('Worksheet column exceeds the supported limit.');
         while (cells.length < column) cells.push('');
         cells[column] = value;
       }

@@ -13,8 +13,8 @@ done and its tests pass.
 
 1. **All logic runs client-side.** There is no backend and there never will be.
 2. **No network calls at runtime from the anonymization tool itself.** The two
-   exceptions are the opt-in M2 NER model download (cached locally) and, on the
-   public hosted deployment only, consent-gated analytics. Any
+   exceptions are the opt-in M2 NER model download on the public HTTPS deployment (cached locally) and, on the
+   public hosted deployment only, consent-gated visit-only analytics through an audited browser transport. Existing third-party analytics scripts are removed; events are omitted until a compatible transport is selected. Any
    locally-installed copy — the portable build, a `file://` page, localhost, or
    any self-hosted origin — makes no network call of any kind, ever. (Amended
    by M5 `P21`; both gates live in `src/lib/analytics.ts#isPublicDeployment()`.)

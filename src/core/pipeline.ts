@@ -30,6 +30,11 @@ export const runDetectionPipeline = (text: string, candidates: DetectedSpan[]): 
     if (mapping && surface && !mapping.variants.includes(surface)) mapping.variants.push(surface);
   }
 
+  for (const mapping of mappings) {
+    mapping.occurrences = accepted.filter(span => mapping.variants.includes(span.text))
+      .map(span => ({ start: span.start, end: span.end, text: text.slice(span.start, span.end) }));
+  }
+
   // Keyed by every variant, not just the canonical originalText — a
   // clustered NAME mapping (P7c) must still match the span for each of its
   // surface spellings.

@@ -32,13 +32,15 @@ env.customCache = createIndexedDbModelCache();
 // both the .wasm and .mjs files. Revisit if that dep version ever moves to
 // one jsdelivr hasn't mirrored yet.
 
-export type NerWorkerRequest = { type: 'run'; text: string };
+export type NerWorkerRequest = { type: 'run'; requestId: number; text: string };
 
 export type NerWorkerResponse =
-  | { type: 'progress'; status: string; progress?: number }
-  | { type: 'result'; entities: NerEntity[] }
-  | { type: 'error'; message: string };
+  | { type: 'scanning'; requestId: number }
+  | { type: 'progress'; requestId: number; status: string; progress?: number }
+  | { type: 'result'; requestId: number; entities: NerEntity[] }
+  | { type: 'error'; requestId: number; message: string };
 
+let currentRequestId = 0;
 let extractorPromise: Promise<TokenClassificationPipeline> | null = null;
 
 const getExtractor = (): Promise<TokenClassificationPipeline> => {
@@ -50,6 +52,7 @@ const getExtractor = (): Promise<TokenClassificationPipeline> => {
     progress_callback: (progress: { status: string; progress?: number }) => {
       const message: NerWorkerResponse = {
         type: 'progress',
+        requestId: currentRequestId,
         status: progress.status,
         progress: progress.progress,
       };
@@ -61,22 +64,25 @@ const getExtractor = (): Promise<TokenClassificationPipeline> => {
 
 self.onmessage = async (event: MessageEvent<NerWorkerRequest>) => {
   if (event.data.type !== 'run') return;
+  currentRequestId = event.data.requestId;
   try {
     const extractor = await getExtractor();
     // The pipeline returns one BIO-tagged prediction per token, so
     // aggregateBioTokens (src/core/ner.ts, pure and unit-tested) does the
     // B-/I- merging into whole entities ourselves rather than relying on
     // the library — that keeps the merge rules testable without a model.
+    postMessage({ type: 'scanning', requestId: event.data.requestId } satisfies NerWorkerResponse);
     const raw = (await extractor(event.data.text)) as unknown as RawNerToken[];
     // P8sec: v4 no longer returns start/end itself (see core/ner.ts).
     const withOffsets = computeTokenOffsets(raw, event.data.text);
     const entities: NerEntity[] = aggregateBioTokens(withOffsets, event.data.text);
 
-    const response: NerWorkerResponse = { type: 'result', entities };
+    const response: NerWorkerResponse = { type: 'result', requestId: event.data.requestId, entities };
     postMessage(response);
   } catch (err) {
     const response: NerWorkerResponse = {
       type: 'error',
+      requestId: event.data.requestId,
       message: err instanceof Error ? err.message : String(err),
     };
     postMessage(response);

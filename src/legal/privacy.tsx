@@ -36,8 +36,7 @@ const En = () => (
         placeholders and the restored text. All of this stays on your device.
       </li>
       <li>
-        Our analytics never receive any of the above, nor a count of it. They measure page views and coarse
-        interactions only.
+        Our analytics never receive any of the above, nor a count of it. Any future compatible transport is limited to consent-gated visits. This version omits events and loads no third-party analytics scripts.
       </li>
     </ul>
     <p>
@@ -59,10 +58,9 @@ const En = () => (
       </thead>
       <tbody>
         <tr>
-          <td>Web analytics (Google Analytics 4, Metricool)</td>
+          <td>Website visits (currently omitted)</td>
           <td>
-            Pseudonymous cookie identifiers, pages visited, approximate location derived from a truncated IP, device
-            and browser type, referrer
+            Only allowlisted route identifiers are permitted in future visit payloads; no content, filenames, query strings, fragments, referrers or tool actions. Ordinary connection metadata is visible to any future destination. No events are currently sent.
           </td>
           <td>Understand how many people use the site and how they reach it</td>
           <td>Your consent, GDPR art. 6(1)(a) and LSSI-CE art. 22.2. Nothing loads until you accept.</td>
@@ -93,17 +91,13 @@ const En = () => (
 
     <h2>5. Data stored on your device</h2>
     <p>
-      The app keeps its state in your browser's local storage so that a reload loses nothing: the current session
-      (text, placeholders and their originals), your custom rules, your settings (detection categories, output
-      mode, theme) and your cookie-consent decision. The AI model, if downloaded, is kept in IndexedDB. None of this
+      Documents, mappings, responses and new custom rules stay in memory by default. Reloading discards ephemeral work. You can separately enable document and dictionary retention in plaintext browser storage. Non-sensitive preferences and consent may persist. Save a password-encrypted private restoration key before discarding the only recoverable snapshot; keep it separate from upload files. Losing the password or key prevents recovery. Downloaded files are outside browser clearing. The AI model, if downloaded, is kept in IndexedDB. None of this
       leaves your device. You can delete all of it at any time from <em>Settings → Clear all local data</em>, or by
       clearing this site's data in your browser.
     </p>
 
     <h2>6. Recipients</h2>
     <ul>
-      <li>Google Ireland Ltd. / Google LLC — Google Analytics 4 (only with consent).</li>
-      <li>Metricool Software S.L. — Metricool analytics (only with consent).</li>
       <li>Cloudflare, Inc. — hosting and content delivery.</li>
       <li>
         Hugging Face, Inc. and jsDelivr (Prospect One) — only if you enable the AI model, and only for the download
@@ -114,16 +108,13 @@ const En = () => (
 
     <h2>7. International transfers</h2>
     <p>
-      Google Analytics and Cloudflare may transfer data to the United States. Google LLC and Cloudflare, Inc. are
+      Cloudflare may transfer hosting data to the United States. Cloudflare, Inc. is
       certified under the EU-US Data Privacy Framework (Commission adequacy decision of 10 July 2023), and both also
-      offer the European Commission's Standard Contractual Clauses (Decision (EU) 2021/914) as a safeguard. GA4 is
-      configured without advertising signals or user IDs, and IP addresses are not stored by Google Analytics 4.
+      offer the European Commission's Standard Contractual Clauses (Decision (EU) 2021/914) as a safeguard.
     </p>
 
     <h2>8. Retention</h2>
     <ul>
-      <li>Google Analytics 4: event data retained for 2 months (the minimum setting); cookies as listed in the cookie policy.</li>
-      <li>Metricool: {'{{METRICOOL_RETENTION}}'}.</li>
       <li>Cloudflare logs: per Cloudflare's standard retention, {'{{CLOUDFLARE_LOG_RETENTION}}'}.</li>
       <li>Emails: as long as needed to handle your request, then up to the applicable limitation periods.</li>
       <li>Local storage: until you delete it.</li>
@@ -199,7 +190,7 @@ const Es = () => (
       </thead>
       <tbody>
         <tr>
-          <td>Analítica web (Google Analytics 4, Metricool)</td>
+          <td>Visitas web (actualmente omitidas)</td>
           <td>
             Identificadores seudónimos en cookies, páginas visitadas, ubicación aproximada derivada de una IP
             truncada, tipo de dispositivo y navegador, página de procedencia
@@ -233,17 +224,13 @@ const Es = () => (
 
     <h2>5. Datos guardados en tu dispositivo</h2>
     <p>
-      La aplicación guarda su estado en el almacenamiento local de tu navegador para que una recarga no pierda nada:
-      la sesión actual (texto, marcadores y sus originales), tus reglas personalizadas, tus ajustes (categorías de
-      detección, modo de salida, tema) y tu decisión sobre cookies. El modelo de IA, si lo descargas, se guarda en
+      Los documentos, mapas, respuestas y reglas nuevas permanecen en memoria por defecto. Una recarga descarta el trabajo efímero. Puedes activar por separado la conservación de documentos y reglas sin cifrar en el almacenamiento local. Los ajustes no sensibles y el consentimiento pueden persistir. Guarda una clave privada cifrada antes de descartar la única copia recuperable, separada de los archivos que subas. Perder la clave o contraseña impide recuperar los originales. El borrado del navegador no elimina archivos descargados. El modelo de IA, si lo descargas, se guarda en
       IndexedDB. Nada de esto sale de tu dispositivo. Puedes borrarlo todo en cualquier momento desde{' '}
       <em>Ajustes → Borrar todos los datos locales</em>, o borrando los datos de este sitio en tu navegador.
     </p>
 
     <h2>6. Destinatarios</h2>
     <ul>
-      <li>Google Ireland Ltd. / Google LLC — Google Analytics 4 (solo con consentimiento).</li>
-      <li>Metricool Software S.L. — analítica de Metricool (solo con consentimiento).</li>
       <li>Cloudflare, Inc. — alojamiento y distribución de contenidos.</li>
       <li>
         Hugging Face, Inc. y jsDelivr (Prospect One) — solo si activas el modelo de IA, y solo para la descarga.
@@ -253,17 +240,14 @@ const Es = () => (
 
     <h2>7. Transferencias internacionales</h2>
     <p>
-      Google Analytics y Cloudflare pueden transferir datos a Estados Unidos. Google LLC y Cloudflare, Inc. están
+      Cloudflare puede transferir datos de alojamiento a Estados Unidos. Cloudflare, Inc. está
       certificadas en el Marco de Privacidad de Datos UE-EE. UU. (decisión de adecuación de la Comisión de 10 de julio
       de 2023) y ofrecen además las Cláusulas Contractuales Tipo de la Comisión Europea (Decisión (UE) 2021/914) como
-      garantía. GA4 está configurado sin señales publicitarias ni identificadores de usuario, y Google Analytics 4
-      no almacena direcciones IP.
+      garantía.
     </p>
 
     <h2>8. Plazos de conservación</h2>
     <ul>
-      <li>Google Analytics 4: datos de eventos durante 2 meses (el mínimo configurable); cookies según la política de cookies.</li>
-      <li>Metricool: {'{{METRICOOL_RETENTION}}'}.</li>
       <li>Registros de Cloudflare: según su política estándar, {'{{CLOUDFLARE_LOG_RETENTION}}'}.</li>
       <li>Correos: el tiempo necesario para atender tu solicitud y, después, los plazos de prescripción aplicables.</li>
       <li>Almacenamiento local: hasta que lo borres.</li>

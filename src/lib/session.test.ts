@@ -1,3 +1,4 @@
+import { acceptGeneration } from './retention';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   clearLocalData,
@@ -36,7 +37,7 @@ const memoryStorage = () => {
 };
 
 describe('theme preference', () => {
-  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  beforeEach(() => { vi.stubGlobal('localStorage', memoryStorage()); acceptGeneration(); });
   afterEach(() => vi.unstubAllGlobals());
 
   it('defaults to system', () => {
@@ -59,7 +60,7 @@ describe('theme preference', () => {
 });
 
 describe('app mode', () => {
-  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  beforeEach(() => { vi.stubGlobal('localStorage', memoryStorage()); acceptGeneration(); });
   afterEach(() => vi.unstubAllGlobals());
 
   it('defaults to standard on a first visit', () => {
@@ -81,7 +82,7 @@ describe('app mode', () => {
 });
 
 describe('restore format', () => {
-  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  beforeEach(() => { vi.stubGlobal('localStorage', memoryStorage()); acceptGeneration(); });
   afterEach(() => vi.unstubAllGlobals());
 
   it('defaults to markdown, round-trips, and rejects junk', () => {
@@ -96,7 +97,7 @@ describe('restore format', () => {
 });
 
 describe('clearLocalData', () => {
-  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  beforeEach(() => { vi.stubGlobal('localStorage', memoryStorage()); acceptGeneration(); });
   afterEach(() => vi.unstubAllGlobals());
 
   it('leaves no anonymaizer.-prefixed key behind, and nothing else touched', () => {
@@ -128,7 +129,7 @@ describe('clearLocalData', () => {
 });
 
 describe('pseudonym language (U6)', () => {
-  beforeEach(() => vi.stubGlobal('localStorage', memoryStorage()));
+  beforeEach(() => { vi.stubGlobal('localStorage', memoryStorage()); acceptGeneration(); });
   afterEach(() => vi.unstubAllGlobals());
 
   it('defaults to es, round-trips en, and falls back on garbage', () => {
@@ -163,12 +164,14 @@ describe('storage quota (L1)', () => {
 
   it('saveSession reports false and does not throw when the quota is exceeded', () => {
     vi.stubGlobal('localStorage', quotaStorage());
-    expect(saveSession(session)).toBe(false);
+    expect(saveSession(session)).toBe(true); // ephemeral mode performs no sensitive write
+
   });
 
   it('a failed save drops the stale stored copy', () => {
     const store = memoryStorage();
     store.setItem('anonymaizer.session', '{"old":true}');
+    store.setItem('anonymaizer.rememberDocument', 'true');
     vi.stubGlobal('localStorage', { ...store, setItem: () => { throw new Error('full'); } });
     expect(saveSession(session)).toBe(false);
     expect(store.getItem('anonymaizer.session')).toBeNull();

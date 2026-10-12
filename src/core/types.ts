@@ -1,3 +1,4 @@
+import type { MappingSnapshot, Revision } from './roundTrip';
 export type KnownCategory =
   | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'COMPANY'
   | 'DNI' | 'NIE' | 'INVALID_ID' | 'IBAN' | 'CREDIT_CARD'
@@ -26,6 +27,7 @@ export interface MappingItem {
   // then first-occurring). Reversal restores the canonical form for every
   // variant — that's the accepted cost of one-person-one-placeholder.
   variants: string[];
+  occurrences?: { start: number; end: number; text: string }[];
 }
 
 // Closed union rather than a free string: `originalFormat` feeds export
@@ -43,6 +45,10 @@ export interface MappingSession {
   mappings: MappingItem[];
   rawMarkdown: string;
   anonymizedMarkdown: string;
+  coverage?: ExtractionCoverage;
+  snapshots?: MappingSnapshot[];
+  identity?: Revision;
+  tokenCounter?: number;
 }
 
 export interface CustomDictionaryRule {
@@ -99,3 +105,12 @@ export const RUNG = {
   NAME: 6,
   COMPANY_ACRONYM: 7, // ALL-CAPS heuristic, off by default
 } as const;
+
+export interface ExtractionCoverage {
+  format: DocumentFormat;
+  status: 'complete' | 'review' | 'empty' | 'failed';
+  processedUnits: number;
+  skippedUnits: number;
+  warnings: string[];
+  structuralWarnings: string[];
+}

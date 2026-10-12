@@ -1,6 +1,6 @@
 # M09-01 — Safe document round trip and integration foundations
 
-Status: planned; implementation not started. Reviewed and expanded 2026-10-12.
+Status: in progress. Browser round-trip foundation implemented 2026-10-12; full acceptance remains open. See [implementation evidence and remaining phase gates](../m9-acceptance.md).
 
 ## Outcome and priority
 
@@ -253,7 +253,7 @@ with the network denied. Test pasted AI image links containing placeholders befo
 and after restoration. Run all existing tests, lint, hosted and portable builds,
 and one complete keyboard-accessible round trip after dependencies are repaired.
 
-### [ ] 07 — Future AI intermediary contract (design only)
+### [x] 07 — Future AI intermediary contract (design only)
 
 Write an architecture decision record and provider-neutral contract for an explicit
 browser SDK/adapter used by the other application. This is an application integration,

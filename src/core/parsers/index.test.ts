@@ -11,12 +11,12 @@ describe('parsers registry', () => {
 
   it('parses .txt into raw_text markdown', async () => {
     const result = await parseDocument('notes.txt', toBytes('hello world'));
-    expect(result).toEqual({ markdown: 'hello world', format: 'raw_text' });
+    expect(result).toMatchObject({ markdown: 'hello world', format: 'raw_text' });
   });
 
   it('parses .md the same way', async () => {
     const result = await parseDocument('notes.md', toBytes('# Title'));
-    expect(result).toEqual({ markdown: '# Title', format: 'raw_text' });
+    expect(result).toMatchObject({ markdown: '# Title', format: 'raw_text' });
   });
 
   it('lets a new parser register itself with zero changes here', async () => {
@@ -25,7 +25,7 @@ describe('parsers registry', () => {
       format: 'raw_text',
     }));
     const result = await parseDocument('file.XYZ', toBytes('shout'));
-    expect(result).toEqual({ markdown: 'SHOUT', format: 'raw_text' });
+    expect(result).toMatchObject({ markdown: 'SHOUT', format: 'raw_text' });
     expect(supportedExtensions()).toContain('xyz');
   });
 

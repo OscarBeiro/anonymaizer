@@ -57,7 +57,7 @@ describe('canExportXlsx', () => {
 describe('buildXlsxExport', () => {
   it('escapes & and < in cells and produces well-formed XML parts', () => {
     const out = buildXlsxExport('| Nombre | Nota |\n| --- | --- |\n| A & B | x < y |', session(), 'sanitized');
-    expect(out.fileName).toBe('clientes-sanitized.xlsx');
+    expect(out.fileName).toBe('anonymaizer-sanitized.xlsx');
     expect(out.mimeType).toBe('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     const sheet = out.parts['xl/worksheets/sheet1.xml'];
     expect(sheet).toContain('A &amp; B');

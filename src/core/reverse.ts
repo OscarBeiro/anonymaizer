@@ -2,47 +2,42 @@ import type { MappingItem } from './types';
 
 const escapeRegex = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/**
- * Diverges from spec §5 on purpose (see docs/plans "Two spec traps"):
- * - replaceAll underscores, not just the first (`.replace('_', …)` breaks
- *   PROJECT_NAME_1).
- * - the token is escaped for regex metacharacters before building the
- *   flexible pattern.
- * - sorts by **placeholder** length descending, not originalText length, so
- *   [NAME_1] can never eat [NAME_11].
- *
- * Lossy on purpose for a clustered NAME mapping (P7c): every placeholder
- * restores originalText, which is the cluster's canonical spelling — a
- * document that said "Ester Cuni" in one place and "Ester Cuni Peirote" in
- * another comes back with the canonical spelling in both. That's the
- * accepted cost of one-person-one-placeholder.
- *
- * Placeholders mint as double-bracket, zero-padded (e.g. `[[NAME_001]]`),
- * but an AI's reply is lossy/inconsistent about markup, so restoration
- * tolerates 0–2 brackets on each side and leading zeros dropped from the
- * counter (`[[NAME_001]]`, `[NAME_001]`, `[NAME_1]`, `NAME_1` all restore).
- */
-export const reverseText = (aiResponse: string, mappings: MappingItem[]): string => {
-  let restored = aiResponse;
+export interface RestorationReport {
+  restoredOccurrences: number;
+  unknownTokens: string[];
+  ambiguousCandidates: string[];
+  malformedCandidates: string[];
+}
+export interface RestorationResult { text: string; report: RestorationReport }
+export interface RestoreOptions { tolerant?: boolean; legacy?: boolean }
 
-  const activeMappings = [...mappings]
-    .filter((m) => m.enabled)
-    .sort((a, b) => b.placeholder.length - a.placeholder.length);
-
-  for (const item of activeMappings) {
-    const tokenRaw = item.placeholder.replace(/[[\]]/g, '');
-    const lastUnderscore = tokenRaw.lastIndexOf('_');
-    const prefix = tokenRaw.slice(0, lastUnderscore);
-    const digits = tokenRaw.slice(lastUnderscore + 1);
-    const unpaddedDigits = String(Number(digits));
-    const escapedPrefix = escapeRegex(prefix).replace(/_/g, '[\\s_]?');
-    const flexibleRegex = new RegExp(
-      `\\[{0,2}\\b${escapedPrefix}[\\s_]?0{0,2}${unpaddedDigits}\\b\\]{0,2}`,
-      'gi',
-    );
-
-    restored = restored.replace(flexibleRegex, item.originalText);
-  }
-
-  return restored;
+/** One pass over the response. Inserted originals are literal and never rescanned.
+ * Merged NAME variants intentionally restore their canonical spelling. Legacy
+ * compatibility must be selected; tolerant matching never accepts bare words. */
+export const restoreText = (response: string, mappings: readonly MappingItem[], options: RestoreOptions = {}): RestorationResult => {
+  const report: RestorationReport = { restoredOccurrences: 0, unknownTokens: [], ambiguousCandidates: [], malformedCandidates: [...response.matchAll(/\[\[(?:V1_|[A-Z][A-Z0-9_]*_\d)[^\]\r\n]*(?:$|\r?\n)/g)].map(m => m[0].trimEnd()) };
+  const active = mappings.filter(m => m.enabled && (options.legacy || m.placeholder.startsWith('[[V1_')));
+  const patterns = active.map(m => {
+    const raw = m.placeholder.slice(2, -2);
+    if (!options.tolerant) return escapeRegex(m.placeholder);
+    const split = raw.lastIndexOf('_');
+    const prefix = escapeRegex(raw.slice(0, split)).replace(/_/g, '[\\s_]+');
+    return `\\[{1,2}${prefix}[\\s_]+0*${Number(raw.slice(split + 1))}\\]{1,2}`;
+  });
+  const regexes = patterns.map(p => new RegExp(`^(?:${p})$`, options.tolerant ? 'iu' : 'u'));
+  const candidates = /\[{1,2}[^\][\r\n]{1,200}\]{1,2}/gu;
+  const pattern = [...patterns, candidates.source].join('|');
+  const text = response.replace(new RegExp(pattern, options.tolerant ? 'giu' : 'gu'), candidate => {
+    const hits = active.filter((_, i) => regexes[i].test(candidate));
+    if (hits.length > 1) { report.ambiguousCandidates.push(candidate); return candidate; }
+    if (hits.length === 1) { report.restoredOccurrences++; return hits[0].originalText; }
+    if (/^\[\[(?:V1_|[A-Za-z][A-Za-z0-9_]*_\d)/.test(candidate)) report.unknownTokens.push(candidate);
+    else if (/\[.*(?:V1_|[A-Z]+[_ ]\d)/.test(candidate)) report.malformedCandidates.push(candidate);
+    return candidate;
+  });
+  return { text, report };
 };
+
+/** Explicit compatibility API for pre-M9 callers. New UI uses restoreText. */
+export const reverseText = (response: string, mappings: MappingItem[]): string =>
+  restoreText(response, mappings, { legacy: true, tolerant: true }).text;

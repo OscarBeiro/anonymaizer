@@ -24,7 +24,7 @@ session, because that is where the iteration happens.
 | M6 model review — browser runtime and candidate selection | [`M06-01-Browser-local-model-review-plan.md`](M06-01-Browser-local-model-review-plan.md) | reviewed; implementation planned in P38–P40 |
 | M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
 | M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
-| M09 — Safe document round trip and integration foundations | [`M09-01-Safe-document-round-trip-plan.md`](M09-01-Safe-document-round-trip-plan.md) | planned (01–07 plus review follow-up phases 08–15) |
+| M09 — Safe document round trip and integration foundations | [`M09-01-Safe-document-round-trip-plan.md`](M09-01-Safe-document-round-trip-plan.md) | in progress (07 complete; implementation/evidence in [`../m9-acceptance.md`](../m9-acceptance.md); acceptance gates remain open) |
 
 **2026-10-12 review:** M6 P38 now covers inference correctness rather than a
 library upgrade. Its candidate selection is conditional on browser measurements;

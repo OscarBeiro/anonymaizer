@@ -14,12 +14,12 @@ const session = (over: Partial<MappingSession> = {}): MappingSession => ({
 });
 
 describe('exportFileStem', () => {
-  it('keeps a file source stem and drops its extension', () => {
-    expect(exportFileStem(session({ inputType: 'FILE', fileName: 'Contrato final.v2.docx' }))).toBe('Contrato final.v2');
+  it('uses a neutral stem for identifying source filenames', () => {
+    expect(exportFileStem(session({ inputType: 'FILE', fileName: 'Contrato final.v2.docx' }))).toBe('anonymaizer');
   });
 
   it('falls back to a session-id prefix for pasted text', () => {
-    expect(exportFileStem(session())).toBe('anonymaizer-abcdef12');
+    expect(exportFileStem(session())).toBe('anonymaizer');
   });
 });
 
@@ -28,17 +28,19 @@ describe('buildExport', () => {
 
   it('returns txt with the input bytes unchanged', () => {
     const out = buildExport('txt', text, session({ inputType: 'FILE', fileName: 'x.docx' }), 'sanitized');
-    expect(out).toEqual({ fileName: 'x-sanitized.txt', mimeType: 'text/plain;charset=utf-8', content: text });
+    expect(out).toEqual({ fileName: 'anonymaizer-sanitized.txt', mimeType: 'text/plain;charset=utf-8', content: text });
   });
 
   it('returns md with the input bytes unchanged', () => {
     const out = buildExport('md', text, session(), 'restored');
-    expect(out).toEqual({ fileName: 'anonymaizer-abcdef12-restored.md', mimeType: 'text/markdown;charset=utf-8', content: text });
+    expect(out.fileName).toBe('anonymaizer-restored.md');
+    expect(out.content).toContain('&#60;b&#62;');
+    expect(out.content).not.toContain('<b>');
   });
 
   it('escapes <, &, and quotes in html', () => {
     const out = buildExport('html', '<b> & "q" \'s\'', session(), 'restored');
-    expect(out.fileName).toBe('anonymaizer-abcdef12-restored.html');
+    expect(out.fileName).toBe('anonymaizer-restored.html');
     expect(out.mimeType).toBe('text/html;charset=utf-8');
     expect(out.content).toContain('&lt;b&gt; &amp; &quot;q&quot; &#39;s&#39;');
     expect(out.content).not.toContain('<b>');

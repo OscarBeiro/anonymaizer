@@ -30,6 +30,20 @@ export const applyEnabledMappings = (
   mappings: MappingItem[],
   render: (m: MappingItem) => string = (m) => m.placeholder,
 ): string => {
+  if (mappings.every(m => m.occurrences !== undefined)) {
+    const occurrences = mappings.filter(m => m.enabled).flatMap(m =>
+      (m.occurrences ?? []).map(o => ({ ...o, replacement: render(m) })))
+      .sort((a, b) => b.start - a.start);
+    let text = rawText;
+    let boundary = rawText.length;
+    for (const o of occurrences) {
+      if (o.start < 0 || o.end > boundary || rawText.slice(o.start, o.end) !== o.text) continue;
+      text = text.slice(0, o.start) + o.replacement + text.slice(o.end);
+      boundary = o.start;
+    }
+    return text;
+  }
+  // Legacy mappings lack anchors; explicit compatibility for old sessions only.
   const replacements = mappings
     .filter((m) => m.enabled)
     .flatMap((m) => {

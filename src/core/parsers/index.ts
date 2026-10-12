@@ -7,7 +7,7 @@
 // concrete parsers live in src/lib/parsers/ because mammoth, pdfjs and
 // DOMParser are browser code.
 
-import type { DocumentFormat } from '../types';
+import type { DocumentFormat, ExtractionCoverage } from '../types';
 
 export interface ParsedDocument {
   markdown: string;
@@ -15,9 +15,12 @@ export interface ParsedDocument {
   // Partial-failure channel: an image-only PDF, a dropped email attachment,
   // sheet 7 of 40. Non-blocking — the markdown is still usable.
   warnings?: string[];
+  coverage?: ExtractionCoverage;
 }
 
-export type Parser = (bytes: ArrayBuffer, fileName: string) => ParsedDocument | Promise<ParsedDocument>;
+export interface ParserControl { isCancelled: () => boolean; onCancel: (callback: () => void) => () => void }
+
+export type Parser = (bytes: ArrayBuffer, fileName: string, control?: ParserControl) => ParsedDocument | Promise<ParsedDocument>;
 
 export type ParserLoader = () => Promise<Parser>;
 
@@ -51,7 +54,8 @@ const extensionOf = (fileName: string): string => {
   return idx === -1 ? '' : fileName.slice(idx + 1).toLowerCase();
 };
 
-export const parseDocument = async (fileName: string, bytes: ArrayBuffer): Promise<ParsedDocument> => {
+export const parseDocument = async (fileName: string, bytes: ArrayBuffer, control?: ParserControl): Promise<ParsedDocument> => {
+  if (bytes.byteLength > 20_000_000) throw new Error('File exceeds the 20 MB import limit.');
   const ext = extensionOf(fileName);
   const loader = loaders.get(ext);
   if (!loader) {
@@ -71,7 +75,19 @@ export const parseDocument = async (fileName: string, bytes: ArrayBuffer): Promi
     }
     resolved.set(ext, parser);
   }
-  return parser(bytes, fileName);
+  if (control?.isCancelled()) throw new Error('Import cancelled.');
+  const parsed = await parser(bytes, fileName, control);
+  if (control?.isCancelled()) throw new Error('Import cancelled.');
+  const warnings = parsed.warnings ?? [];
+  if (!parsed.coverage) parsed.coverage = { format: parsed.format, processedUnits: 1, skippedUnits: 0, warnings, structuralWarnings: [],
+    status: !parsed.markdown.trim() ? 'empty' : warnings.length ? 'review' : 'complete' };
+  if (parsed.format !== 'raw_text' && !['csv'].includes(parsed.format)) {
+    const notice = 'Only supported extracted text is included. Images, attachments, metadata and unsupported structure require review of the source. No OCR is performed.';
+    parsed.coverage.warnings = [...new Set([...parsed.coverage.warnings, notice])];
+    if (parsed.coverage.status === 'complete') parsed.coverage.status = 'review';
+  }
+  if (parsed.markdown.length > 2_000_000) throw new Error('Extracted text exceeds the processing limit.');
+  return parsed;
 };
 
 const plainTextParser: Parser = (bytes) => ({
