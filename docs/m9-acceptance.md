@@ -1,5 +1,14 @@
 # M9 implementation and acceptance evidence — 2026-10-12
 
+**Frontend rollback:** at the user's request, `src/App.tsx`, the components,
+legal-page presentation and update-prompt behavior were restored to `fbd7944`
+(the version before M9). The sections below describe the earlier implementation
+and historical validation, not the current UI. Private-key controls, output
+review/preparation integration, manual occurrence review and retention controls
+are removed from the interface. Core modules and adapters remain available.
+The M9 browser runner describes the removed interface and is not an acceptance
+claim for the restored frontend.
+
 M9 is in progress. The browser round-trip foundation is implemented, but the
 full milestone release gate is not satisfied. Parent checkboxes remain open
 where their follow-up acceptance is incomplete. Do not ship this as a completed

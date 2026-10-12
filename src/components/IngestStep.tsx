@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
-import { supportedExtensions, type ParsedDocument } from '../core/parsers';
-import type { DocumentFormat, ExtractionCoverage } from '../core/types';
+import { useRef, useState } from 'react';
+import { parseDocument, supportedExtensions } from '../core/parsers';
+import type { DocumentFormat } from '../core/types';
 import type { AppMode } from '../lib/session';
 import { PastePanel } from './PastePanel';
 
@@ -11,12 +11,7 @@ interface IngestStepProps {
   /** A paste that replaces the whole document: the previous one is discarded. */
   onNewDocument: (markdown: string) => void;
   onCreateRule: (selectedText: string) => void;
-  onFileImport: (markdown: string, format: DocumentFormat, fileName: string, warnings: string[], coverage?: ExtractionCoverage) => void;
-  parseFile: (name: string, bytes: ArrayBuffer) => Promise<ParsedDocument>;
-  onBeginImport: () => number;
-  onCancelImport: () => void;
-  onImportError: () => void;
-  isImportCurrent: (id: number) => boolean;
+  onFileImport: (markdown: string, format: DocumentFormat, fileName: string, warnings: string[]) => void;
   /** S2: the remembered mode gets the primary button. */
   defaultMode: AppMode;
   onRun: (mode: AppMode) => void;
@@ -29,34 +24,20 @@ export const IngestStep = ({
   onNewDocument,
   onCreateRule,
   onFileImport,
-  onBeginImport,
-  parseFile,
-  isImportCurrent,
-  onCancelImport,
-  onImportError,
   defaultMode,
   onRun,
 }: IngestStepProps) => {
-  const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const alive = useRef(true);
-  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
   const handleFile = async (file: File) => {
     setError(null);
-    const request = onBeginImport(); setParsing(true);
     try {
-      if (file.size > 20_000_000) throw new Error('File exceeds the 20 MB import limit.');
       const bytes = await file.arrayBuffer();
-      const parsed = await parseFile(file.name, bytes);
-      if (!alive.current || !isImportCurrent(request)) return;
-      setParsing(false);
-      onFileImport(parsed.markdown, parsed.format, file.name, parsed.coverage?.warnings ?? parsed.warnings ?? [], parsed.coverage);
+      const parsed = await parseDocument(file.name, bytes);
+      onFileImport(parsed.markdown, parsed.format, file.name, parsed.warnings ?? []);
     } catch (e) {
-      if (!alive.current || !isImportCurrent(request)) return;
-      setParsing(false); onImportError();
       setError(e instanceof Error ? e.message : 'Could not read that file.');
     }
   };
@@ -84,7 +65,6 @@ export const IngestStep = ({
           Choose file
         </button>
         <p className="drop-zone-hint">Supported: {supportedExtensions().join(', ')}</p>
-        {parsing && <button type="button" onClick={() => { onCancelImport(); setParsing(false); setError('Import cancelled.'); }}>Cancel import</button>}
         {error && <p className="form-error">{error}</p>}
         {warnings.length > 0 && (
           <div className="import-warnings" role="status">

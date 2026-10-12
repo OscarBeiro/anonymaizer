@@ -1,4 +1,3 @@
-import { useOutput } from './OutputContext';
 import { useState } from 'react';
 import { countByCategory } from '../core/stats';
 import { PLACEHOLDER_PATTERN } from '../core/export/textExport';
@@ -57,18 +56,7 @@ export const SanitizedTextPanel = ({
   onMoneyRangeChange,
   pseudonymLang,
   onPseudonymLangChange,
-}: SanitizedTextPanelProps) => {
-  const output = useOutput();
-  const [copiedText, setCopiedText] = useState('');
-  const [copyError, setCopyError] = useState('');
-  const copy = async () => {
-    try {
-      const artifact = output.prepare(anonymizedText, 'txt'); artifact.assertCurrent();
-      await navigator.clipboard.writeText(artifact.file.content); output.delivered(artifact.exportId);
-      setCopiedText(anonymizedText); setCopyError('');
-    } catch (e) { setCopyError(e instanceof Error ? e.message : 'Copy failed.'); }
-  };
-  return (
+}: SanitizedTextPanelProps) => (
   <section className="panel">
     <h2>Sanitized text</h2>
     <fieldset className="output-mode">
@@ -111,16 +99,14 @@ export const SanitizedTextPanel = ({
         type="button"
         className="copy-button"
         disabled={!anonymizedText}
-        onClick={() => void copy()}
+        onClick={() => navigator.clipboard.writeText(anonymizedText)}
       >
         Copy sanitized text
       </button>
-      <span role="status" aria-live="polite">{copyError || (copiedText && copiedText === anonymizedText ? 'Copied.' : '')}</span>
       <SaveAsControl text={anonymizedText} session={session} side="sanitized" />
     </div>
   </section>
 );
-};
 
 interface MappingListProps {
   mappings: MappingItem[];
@@ -178,7 +164,7 @@ export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingLis
               {mappings.map((m) => (
                 <tr key={m.id} className={m.enabled ? undefined : 'mapping-row-disabled'}>
                   <td>
-                    <input type="checkbox" aria-label={`Enable ${m.placeholder}`} checked={m.enabled} onChange={() => onToggle(m.id)} />
+                    <input type="checkbox" checked={m.enabled} onChange={() => onToggle(m.id)} />
                   </td>
                   <td>
                     <input

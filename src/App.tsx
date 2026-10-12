@@ -1,15 +1,3 @@
-import { ParseControl } from './lib/parserControl';
-import { ManualReview } from './components/ManualReview';
-import { modelDownloadAllowed } from './lib/analytics';
-import { RecoveryControls } from './components/RecoveryControls';
-import { OutputContext, type OutputService } from './components/OutputContext';
-import { DetectionClient } from './lib/detectionClient';
-import { newScope } from './lib/restorationKey';
-import { clearRetained, acceptGeneration, generation, remembered, setRemembered, legacyRetentionPresent } from './lib/retention';
-import { identifyMappings, mintToken, outputFindings, revisionKey, type MappingSnapshot, type Revision } from './core/roundTrip';
-import { structuredDocument } from './core/structuredDocument';
-import { prepareArtifact } from './core/export/prepare';
-import { restoreText } from './core/reverse';
 import { BrandName } from './components/BrandName';
 import { BetaBadge } from './components/BetaBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -26,10 +14,10 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { SettingsMenu, type SettingsSection } from './components/SettingsMenu';
 import { CategoryToggles } from './components/CategoryToggles';
 import { RulesEditor } from './components/RulesEditor';
-
-import { type RestoreFormat } from './core/markdownRender';
+import DOMPurify from 'dompurify';
+import { markdownToHtml, markdownToPlainText, type RestoreFormat } from './core/markdownRender';
 import { applyTheme, watchSystemTheme } from './lib/theme';
-
+import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
 import { renderPseudonymized, type MoneyRange, type PseudonymLang } from './core/pseudonymize';
@@ -42,11 +30,12 @@ import { SiteLinks } from './landing/SiteLinks';
 import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { deleteModelCache } from './workers/nerModelCache';
-
+import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
 import { FINE_TUNE_POSITION, type RestoreSubStep, type ReviewSubStep, type WizardGate, type WizardPosition } from './lib/wizard';
 import { QuickResult } from './components/QuickResult';
 import {
+  clearLocalData,
   loadAppMode,
   loadCategorySettings,
   loadDictionaryRules,
@@ -100,29 +89,10 @@ function App() {
   useEffect(() => saveAppMode(defaultMode), [defaultMode]);
   const [viewMode, setViewMode] = useState<AppMode>(() => (step === 'restore' ? 'advanced' : defaultMode));
   const standard = viewMode === 'standard';
-  // Parser warnings persist with the source extraction report.
-  const [importWarnings, setImportWarnings] = useState<string[]>(() => session.coverage?.warnings ?? []);
-  const [rememberDocument, setRememberDocument] = useState(() => remembered('document'));
-  const [rememberRules, setRememberRules] = useState(() => remembered('rules'));
-  const [migration, setMigration] = useState(() => legacyRetentionPresent() || loadDictionaryRules().length > 0 && !remembered('rules'));
-  const [storageError, setStorageError] = useState('');
-  const [snapshots, setSnapshots] = useState<MappingSnapshot[]>(() => session.snapshots ?? []);
-  const [selectedSnapshot, setSelectedSnapshot] = useState('');
-  const [tolerantRestore, setTolerantRestore] = useState(false);
-  const [legacyRestore, setLegacyRestore] = useState(false);
-  const revisionRef = useRef<Revision>(session.identity ?? { scope: session.mappings.find(m => m.placeholder.startsWith('[[V1_'))?.placeholder.slice(5, 37) ?? newScope(), documentId: session.sessionId, documentRevision: 0, policyRevision: 0, mappingRevision: 0 });
-  const counterRef = useRef(Math.max(session.tokenCounter ?? 0, ...session.mappings.map(m => Number(m.placeholder.match(/_(\d+)\]\]$/)?.[1]) || 0)) + 1);
-  const requestRef = useRef(0);
-  const parseRef = useRef<ParseControl | null>(null);
-  const detectionRef = useRef<DetectionClient | null>(null);
-  const sessionRef = useRef(session); sessionRef.current = session;
-  const [scan, setScan] = useState<'pending' | 'ready' | 'failed'>('ready');
-  const [processingError, setProcessingError] = useState('');
-  const [acknowledgedRevision, setAcknowledgedRevision] = useState('');
-  const [undoMappings, setUndoMappings] = useState<MappingItem[] | null>(null);
-  const [deliveryMessage, setDeliveryMessage] = useState('');
-  const outputModeRef = useRef<OutputMode>('placeholders');
-
+  // Non-blocking parser warnings for the document currently imported
+  // (dropped images, an unreadable sheet). Deliberately not persisted with
+  // the session — they describe one import action, not the mapping.
+  const [importWarnings, setImportWarnings] = useState<string[]>([]);
 
   // P7d: opt-in only, never loaded or run automatically. A ref (not state)
   // for the client itself — it owns a real Worker, which must survive
@@ -134,19 +104,17 @@ function App() {
   // L1: false when the document is too large for localStorage; it then lives in memory only.
   const [sessionSaved, setSessionSaved] = useState(true);
   useEffect(() => {
-    setSessionSaved(saveSession({ ...session, snapshots, identity: revisionRef.current, tokenCounter: counterRef.current }));
-  }, [session, snapshots, rememberDocument]);
-  useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules, rememberRules]);
+    setSessionSaved(saveSession(session));
+  }, [session]);
+  useEffect(() => saveDictionaryRules(dictionaryRules), [dictionaryRules]);
   useEffect(() => saveCategorySettings(categorySettings), [categorySettings]);
   useEffect(() => saveStep(step), [step]);
   const [outputMode, setOutputMode] = useState<OutputMode>(() => loadOutputMode());
-  outputModeRef.current = outputMode;
-
+  useEffect(() => saveOutputMode(outputMode), [outputMode]);
   const [moneyRange, setMoneyRange] = useState<MoneyRange>(() => loadMoneyRange());
   useEffect(() => saveMoneyRange(moneyRange), [moneyRange]);
   const [pseudonymLang, setPseudonymLang] = useState<PseudonymLang>(() => loadPseudonymLang());
   useEffect(() => savePseudonymLang(pseudonymLang), [pseudonymLang]);
-  useEffect(() => { saveOutputMode(outputMode); setAcknowledgedRevision(''); }, [outputMode, moneyRange, pseudonymLang]);
   const [restoreFormat, setRestoreFormat] = useState<RestoreFormat>(() => loadRestoreFormat());
   useEffect(() => saveRestoreFormat(restoreFormat), [restoreFormat]);
   const [theme, setTheme] = useState<ThemePreference>(() => loadTheme());
@@ -168,74 +136,42 @@ function App() {
     [outputMode, session, moneyRange, pseudonymLang],
   );
   const sanitizedText = outputMode === 'realistic' ? realisticText : session.anonymizedMarkdown;
-  useEffect(() => () => { nerClientRef.current?.terminate(); detectionRef.current?.cancel(); parseRef.current?.cancel(); }, []);
-  const invalidate = () => {
-    requestRef.current++; parseRef.current?.cancel();
-    detectionRef.current?.cancel(); nerClientRef.current?.terminate();
-    setAcknowledgedRevision(''); setDeliveryMessage('');
-  };
-  useEffect(() => {
-    const clear = (event: StorageEvent) => {
-      if (event.key === 'anonymaizer.storageGeneration' || !event.key) {
-        invalidate(); setSession(emptySession()); setAiResponse(''); setSnapshots([]); setSelectedSnapshot('');
-        setImportWarnings([]); setDictionaryRules([]); setRememberDocument(false); setRememberRules(false);
-        setMigration(false); setStep('ingest'); setScan('ready'); acceptGeneration();
-        setStorageError('Browser data was cleared in another tab.');
-      } else if (event.key === 'anonymaizer.rememberDocument') setRememberDocument(event.newValue === 'true');
-      else if (event.key === 'anonymaizer.rememberRules') setRememberRules(event.newValue === 'true');
-    };
-    window.addEventListener('storage', clear);
-    return () => window.removeEventListener('storage', clear);
-  }, []);
-
+  useEffect(() => () => nerClientRef.current?.terminate(), []);
 
   // A new document replaces everything tied to the previous one: its mappings,
   // file metadata, session id (so realistic output reseeds) and AI response.
   // Custom rules and settings belong to the user and are kept.
   const resetForNewDocument = (): void => {
-    invalidate();
-    const fresh = emptySession();
-    revisionRef.current = { scope: newScope(), documentId: fresh.sessionId, documentRevision: 0, policyRevision: 0, mappingRevision: 0 };
-    counterRef.current = 1;
-    setScan('ready'); setProcessingError(''); setSelectedSnapshot(''); setUndoMappings(null);
-    setSession(fresh);
+    setSession(emptySession());
     setAiResponse('');
     setImportWarnings([]);
     setReviewSubStep('placeholders');
     setRestoreSubStep('response');
   };
 
-  const commitDetection = (rawMarkdown: string, result: Awaited<ReturnType<DetectionClient['run']>>) => {
-    setSession(prev => {
-      const lost = prev.mappings.filter(m => m.source === 'manual' || !m.enabled).some(m =>
-        !result.mappings.some(n => n.originalText === m.originalText && JSON.stringify(n.occurrences) === JSON.stringify(m.occurrences)));
-      if (lost) setProcessingError('Some manual review decisions no longer match this revision. Review them again.');
-      const identified = identifyMappings(rawMarkdown, result.mappings, prev.mappings, revisionRef.current.scope, counterRef.current);
-      counterRef.current = identified.next;
-      revisionRef.current.mappingRevision++;
-      return { ...prev, rawMarkdown, mappings: identified.mappings, anonymizedMarkdown: identified.text };
-    });
-    setScan('ready');
+  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings);
+    setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
   };
-  const runAnonymize = async (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
-    invalidate(); setUndoMappings(null); const request = requestRef.current;
-    revisionRef.current.documentRevision++; revisionRef.current.policyRevision++;
-    setSession(prev => ({ ...prev, rawMarkdown })); setScan('pending'); setProcessingError('');
-    detectionRef.current ??= new DetectionClient();
-    try {
-      const result = await detectionRef.current.run({ text: rawMarkdown, rules, settings, manualMappings: sessionRef.current.mappings.filter(m => m.source === 'manual') });
-      if (request !== requestRef.current) return;
-      commitDetection(rawMarkdown, result);
-    } catch (e) {
-      if (request !== requestRef.current) return;
-      setScan('failed'); setProcessingError(e instanceof Error ? e.message : 'Detection failed.');
-    }
-  };
-  const handleFileImport = (rawMarkdown: string, format: DocumentFormat, fileName: string, warnings: string[], coverage?: MappingSession['coverage']) => {
-    resetForNewDocument(); setImportWarnings(warnings);
-    setSession(prev => ({ ...prev, rawMarkdown, inputType: 'FILE', fileName, originalFormat: format,
-      coverage: coverage ?? { format, processedUnits: 1, skippedUnits: 0, warnings, structuralWarnings: [], status: !rawMarkdown.trim() ? 'empty' : warnings.length ? 'review' : 'complete' } }));
-    void runAnonymize(rawMarkdown, dictionaryRules, categorySettings);
+
+  const handleFileImport = (
+    rawMarkdown: string,
+    format: DocumentFormat,
+    fileName: string,
+    warnings: string[],
+  ) => {
+    resetForNewDocument();
+    setImportWarnings(warnings);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings);
+    setSession(() => ({
+      ...emptySession(),
+      rawMarkdown,
+      mappings,
+      anonymizedMarkdown: anonymizedText,
+      inputType: 'FILE',
+      fileName,
+      originalFormat: format,
+    }));
   };
 
   // P19: text or a file handed over by the landing's call to action. It
@@ -248,19 +184,14 @@ function App() {
       setStep('review');
       return;
     }
-    invalidate();
-    const handoffRequest = requestRef.current;
-    const control = new ParseControl(); parseRef.current = control;
     void handoff.file
       .arrayBuffer()
-      .then((bytes) => parseDocument(handoff.file.name, bytes, control))
+      .then((bytes) => parseDocument(handoff.file.name, bytes))
       .then((parsed) => {
-        if (handoffRequest !== requestRef.current) return;
-        handleFileImport(parsed.markdown, parsed.format, handoff.file.name, parsed.warnings ?? [], parsed.coverage);
+        handleFileImport(parsed.markdown, parsed.format, handoff.file.name, parsed.warnings ?? []);
         setStep('review');
       })
       .catch((e: unknown) => {
-        if (handoffRequest !== requestRef.current) return;
         setStep('ingest');
         setImportWarnings([`Could not read ${handoff.file.name}: ${e instanceof Error ? e.message : 'unknown error'}`]);
       });
@@ -269,29 +200,25 @@ function App() {
   }, []);
 
   const runNerScan = async (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
-    invalidate(); setUndoMappings(null); const request = requestRef.current;
-    revisionRef.current.documentRevision++; revisionRef.current.policyRevision++;
-    setSession(prev => ({ ...prev, rawMarkdown })); setScan('pending'); setProcessingError('');
-    nerClientRef.current ??= new NerClient(); detectionRef.current ??= new DetectionClient();
+    nerClientRef.current ??= new NerClient();
     try {
-      const entities = await nerClientRef.current.runNer(rawMarkdown, status => { if (request === requestRef.current) setNerStatus(status); });
-      if (request !== requestRef.current) return;
-      const result = await detectionRef.current.run({ text: rawMarkdown, rules, settings, entities, manualMappings: sessionRef.current.mappings.filter(m => m.source === 'manual') });
-      if (request === requestRef.current) commitDetection(rawMarkdown, result);
-    } catch (e) {
-      if (request !== requestRef.current) return;
-      setScan('failed'); setProcessingError(e instanceof Error ? e.message : 'NER failed.');
+      const entities = await nerClientRef.current.runNer(rawMarkdown, setNerStatus);
+      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings);
+      setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
+    } catch {
+      // nerStatus is already set to the error by the client's onStatus
+      // callback — the M1/P7a-c mapping stays in place, nothing to undo.
     }
   };
 
   const handlePasteChange = (rawMarkdown: string) => {
     // Editing the text by hand makes the imported document's warnings stale.
-    // Source edits retain the extraction report: editing extracted text does not recover omitted content.
+    setImportWarnings([]);
     // Once the model is loaded and opted into, every edit re-scans with it
     // automatically — no separate "Re-scan" button to remember to press.
     // Before that (not enabled, or still downloading) this falls back to
     // the instant M1/P7a-c regex heuristics.
-    if (nerEnabled) {
+    if (nerEnabled && nerStatus.state === 'ready') {
       void runNerScan(rawMarkdown, dictionaryRules);
     } else {
       runAnonymize(rawMarkdown, dictionaryRules);
@@ -306,7 +233,6 @@ function App() {
   };
 
   const handleNerToggle = (checked: boolean) => {
-    if (checked && !modelDownloadAllowed()) { setNerStatus({ state: 'error', message: 'Model download is available only on the public HTTPS deployment. Local and portable copies remain offline.' }); return; }
     // L3: NER is slow on a book-length text; the user may still turn it on.
     if (checked && isLongForNer(session.rawMarkdown) && !window.confirm(nerLongDocumentMessage(session.rawMarkdown.length))) {
       return;
@@ -336,8 +262,6 @@ function App() {
   };
 
   const handleToggle = (id: string) => {
-    invalidate(); revisionRef.current.mappingRevision++;
-    if (scan === 'pending') { setScan('failed'); setProcessingError('Processing cancelled by review. Retry detection before exporting.'); }
     setSession((prev) => {
       const mappings: MappingItem[] = prev.mappings.map((m) =>
         m.id === id ? { ...m, enabled: !m.enabled } : m,
@@ -362,8 +286,6 @@ function App() {
   // it doesn't feed back into the detector, so re-pasting the same text
   // re-clusters from scratch.
   const handleSplit = (id: string) => {
-    invalidate(); revisionRef.current.mappingRevision++;
-    if (scan === 'pending') { setScan('failed'); setProcessingError('Processing was cancelled by review. Retry detection.'); }
     setSession((prev) => {
       const target = prev.mappings.find((m) => m.id === id);
       if (!target || target.variants.length <= 1) return prev;
@@ -371,15 +293,14 @@ function App() {
       const remaining = prev.mappings.filter((m) => m.id !== id);
       let counter = nextCounter(prev.mappings, target.category);
       const split: MappingItem[] = target.variants.map((variant) => ({
-        id: `${target.category}_${counter++}`,
-        placeholder: mintToken(revisionRef.current.scope, target.category, counterRef.current++),
+        id: `${target.category}_${counter}`,
+        placeholder: `[[${target.category}_${String(counter++).padStart(3, '0')}]]`,
         originalText: variant,
         category: target.category,
         confidence: target.confidence,
         source: target.source,
         enabled: target.enabled,
         variants: [variant],
-        occurrences: target.occurrences?.filter(o => o.text === variant),
       }));
 
       const mappings = [...remaining, ...split];
@@ -392,8 +313,6 @@ function App() {
   // keeping every variant from every mapping merged. The longest variant
   // becomes canonical (originalText), matching entities.ts's own convention.
   const handleMerge = (ids: string[]) => {
-    invalidate(); revisionRef.current.mappingRevision++;
-    if (scan === 'pending') { setScan('failed'); setProcessingError('Processing was cancelled by review. Retry detection.'); }
     setSession((prev) => {
       const targets = prev.mappings.filter((m) => ids.includes(m.id));
       if (targets.length < 2) return prev;
@@ -404,7 +323,7 @@ function App() {
         (a, b) => b.length - a.length,
       );
       const first = targets[0];
-      const merged: MappingItem = { ...first, originalText: variants[0], variants, placeholder: mintToken(revisionRef.current.scope, first.category, counterRef.current++), occurrences: targets.flatMap(t => t.occurrences ?? []) };
+      const merged: MappingItem = { ...first, originalText: variants[0], variants };
 
       const mappings = [...remaining, merged];
       const anonymizedMarkdown = applyEnabledMappings(prev.rawMarkdown, mappings);
@@ -414,7 +333,7 @@ function App() {
 
   const updateRules = (rules: CustomDictionaryRule[]) => {
     setDictionaryRules(rules);
-    if (nerEnabled) {
+    if (nerEnabled && nerStatus.state === 'ready') {
       void runNerScan(session.rawMarkdown, rules);
     } else {
       runAnonymize(session.rawMarkdown, rules);
@@ -424,33 +343,11 @@ function App() {
   // P11: changing a category toggle re-runs detection for the current document.
   const updateCategorySettings = (settings: CategorySettings) => {
     setCategorySettings(settings);
-    if (nerEnabled) {
+    if (nerEnabled && nerStatus.state === 'ready') {
       void runNerScan(session.rawMarkdown, dictionaryRules, settings);
     } else {
       runAnonymize(session.rawMarkdown, dictionaryRules, settings);
     }
-  };
-
-  const manualRedact = (start: number, end: number, all: boolean) => {
-    if (scan !== 'ready') { setProcessingError('Wait for detection before manual review.'); return; }
-    const raw = session.rawMarkdown; const originalText = raw.slice(start, end);
-    if (!originalText) return;
-    invalidate(); revisionRef.current.mappingRevision++; setUndoMappings(session.mappings);
-    const occurrences: { start: number; end: number; text: string }[] = [];
-    if (all) {
-      let offset = 0;
-      while ((offset = raw.indexOf(originalText, offset)) >= 0) { occurrences.push({ start: offset, end: offset + originalText.length, text: originalText }); offset += originalText.length; }
-    } else occurrences.push({ start, end, text: originalText });
-    const remaining = session.mappings.map(m => ({ ...m, occurrences: (m.occurrences ?? []).filter(o => !occurrences.some(n => n.start < o.end && o.start < n.end)) }));
-    const counter = counterRef.current++;
-    const manual: MappingItem = { id: `manual_${counter}`, placeholder: `[[V1_${revisionRef.current.scope}_CUSTOM_${counter}]]`, category: 'CUSTOM', originalText, variants: [originalText], confidence: 1, source: 'manual', enabled: true, occurrences };
-    const mappings = [...remaining, manual];
-    setSession(prev => ({ ...prev, mappings, anonymizedMarkdown: applyEnabledMappings(raw, mappings) }));
-  };
-  const undoManual = () => {
-    if (!undoMappings) return; invalidate(); revisionRef.current.mappingRevision++;
-    setSession(prev => ({ ...prev, mappings: undoMappings, anonymizedMarkdown: applyEnabledMappings(prev.rawMarkdown, undoMappings) }));
-    setUndoMappings(null);
   };
 
   const handleCreateRule = (selectedText: string) => {
@@ -464,7 +361,7 @@ function App() {
 
   const gate: WizardGate = {
     hasText: session.rawMarkdown.length > 0,
-    hasMappings: session.mappings.length > 0 || snapshots.some(s => s.exportId === selectedSnapshot),
+    hasMappings: session.mappings.length > 0,
     hasAiResponse: aiResponse.length > 0,
   };
   const position: WizardPosition =
@@ -499,66 +396,42 @@ function App() {
     if (!ok) return;
     nerClientRef.current?.terminate();
     nerClientRef.current = null;
-    invalidate();
-    setSession(emptySession()); setAiResponse(''); setSnapshots([]); setSelectedSnapshot(''); setDictionaryRules([]);
-    setImportWarnings([]); setStep('ingest'); setScan('ready'); setRememberDocument(false); setRememberRules(false); setMigration(false);
-    if (!clearRetained()) { setStorageError('Could not clear browser storage. Storage is blocked; deletion cannot be confirmed.'); return; }
-    void deleteModelCache().then(() => setStorageError('Browser data cleared. Downloaded files are unaffected.'), () => setStorageError('Document data cleared; model-cache deletion failed.'));
+    clearLocalData();
+    void deleteModelCache().finally(() => window.location.reload());
   };
 
   const startOver = (): void => {
     const ok = window.confirm(
       'Start again with a new document?\n\n' +
-        'This replaces the current document and AI response. Prepared snapshots remain available in this tab. ' +
-        'Save a private restoration key to recover them after closing the browser.\n\n' +
+        'This clears the current text, its placeholders and the AI response. ' +
+        'Without the placeholders, an AI response for this document can no longer be restored.\n\n' +
         'Your custom rules are kept.',
     );
     if (!ok) return;
-    resetForNewDocument();
+    setSession(emptySession());
+    setAiResponse('');
+    setImportWarnings([]);
+    setReviewSubStep('placeholders');
+    setRestoreSubStep('response');
     setStep('ingest');
     setViewMode(defaultMode);
   };
-  const selected = snapshots.find(s => s.exportId === selectedSnapshot);
-  const restoreMappings = selected?.mappings ?? (legacyRestore ? session.mappings : []);
-  const restoreOptions = { tolerant: tolerantRestore, legacy: !selected && legacyRestore };
-  const restoration = restoreText(aiResponse, restoreMappings, restoreOptions);
-  const restoredDocument = structuredDocument(aiResponse, restoreMappings, restoreOptions);
-  const restored = restoreFormat === 'plain' ? restoration.text : restoredDocument.markdown;
-  const restoredHtml = restoredDocument.html;
-  const restoredPlain = restoration.text;
+  const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
+  // The AI reply is Markdown. The Markdown view renders it (sanitized here,
+  // once: both innerHTML and the clipboard's text/html use it); the HTML view
+  // shows the same sanitized HTML as source.
+  const restoredHtml = useMemo(
+    () => (restored && restoreFormat !== 'plain' ? DOMPurify.sanitize(markdownToHtml(restored)) : ''),
+    [restored, restoreFormat],
+  );
+  const restoredPlain = useMemo(
+    () => (restored && restoreFormat === 'plain' ? markdownToPlainText(restored) : ''),
+    [restored, restoreFormat],
+  );
   const restoredView = restoreFormat === 'plain' ? restoredPlain : restoredHtml;
-  const currentRevisionKey = revisionKey(session, revisionRef.current) + JSON.stringify([outputMode, moneyRange, pseudonymLang]);
-  const currentKeyRef = useRef(currentRevisionKey); currentKeyRef.current = currentRevisionKey;
-  const findings = outputFindings(session, sanitizedText, { revision: currentRevisionKey, acknowledged: acknowledgedRevision === currentRevisionKey, scan,
-    categoriesOff: toggleableCategories(dictionaryRules).filter(c => !isCategoryOn(categorySettings, c)).length });
-  const outputService: OutputService = {
-    prepare: (text, kind) => {
-      if (scan !== 'ready') throw new Error('Wait for complete detection or retry processing.');
-      const expected = outputModeRef.current === 'realistic' && !standard ? sanitizedText : session.anonymizedMarkdown;
-      if (text !== expected) throw new Error('Output changed. Prepare the current result again.');
-      const check = outputFindings(session, text, { revision: currentRevisionKey, acknowledged: acknowledgedRevision === currentRevisionKey, scan,
-        categoriesOff: toggleableCategories(dictionaryRules).filter(c => !isCategoryOn(categorySettings, c)).length });
-      if (check.blocked.length) throw new Error(check.blocked.join(' '));
-      if (check.review.length && acknowledgedRevision !== currentRevisionKey) throw new Error('Review and acknowledge the current output findings before sharing.');
-      const exportId = crypto.randomUUID();
-      const prepared = prepareArtifact({ session, text, kind, revision: revisionRef.current, exportId, engineVersion: __APP_VERSION__, reversible: standard || outputMode === 'placeholders',
-        review: { revision: currentRevisionKey, acknowledged: acknowledgedRevision === currentRevisionKey, scan, categoriesOff: toggleableCategories(dictionaryRules).filter(c => !isCategoryOn(categorySettings, c)).length } });
-      const file = prepared.upload;
-      if (prepared.privateSnapshot) {
-        const snapshot = prepared.privateSnapshot;
-        setSnapshots(prev => [...prev, snapshot]); setSelectedSnapshot(exportId);
-      }
-      setDeliveryMessage('Output prepared. Its private snapshot remains available even if delivery fails.');
-      const captured = currentRevisionKey; const capturedGeneration = generation(); const capturedRequest = requestRef.current;
-      return { file, exportId, assertCurrent: () => {
-        if (currentKeyRef.current !== captured || requestRef.current !== capturedRequest || generation() !== capturedGeneration) throw new Error('Output changed during preparation. Retry with the current revision.');
-      } };
-    },
-    delivered: () => setDeliveryMessage('Output handed to the browser. Check your clipboard or downloaded file; this does not prove it was saved.'),
-  };
   const copyAction: CopyAction | undefined =
     position.subStep === 'sanitized'
-      ? { sanitized: true, label: 'Copy sanitized text', text: sanitizedText, doneMessage: 'Copied — your text is ready to send to the AI.' }
+      ? { label: 'Copy sanitized text', text: sanitizedText, doneMessage: 'Copied — your text is ready to send to the AI.' }
       : position.subStep === 'restored'
         ? {
             label: 'Copy restored text',
@@ -570,7 +443,7 @@ function App() {
         : undefined;
 
   return (
-    <OutputContext.Provider value={outputService}><div className="app-shell">
+    <div className="app-shell">
       <header className="app-header">
         {/* The portable build has no landing to go back to. */}
         {__PORTABLE__ ? (
@@ -622,36 +495,6 @@ function App() {
         )}
 
         <main className="app-main">
-          <section className="panel" aria-label="Session privacy">
-            <p>Sessions are ephemeral by default. Reversible placeholders provide pseudonymization; context can still identify people.</p>
-            {migration && <p role="alert">A previous document was found in browser storage. You can save a private key before deleting it. Choose Remember on this device to retain it, or Keep only in memory to remove the stored copy.</p>}
-            <label><input type="checkbox" checked={rememberDocument} onChange={e => {
-              if (setRemembered('document', e.target.checked)) { setRememberDocument(e.target.checked); setMigration(false); }
-              else setStorageError('Could not change document retention.');
-            }} /> Remember on this device (plaintext browser storage)</label>
-            <label><input type="checkbox" checked={rememberRules} onChange={e => {
-              if (setRemembered('rules', e.target.checked)) setRememberRules(e.target.checked);
-              else setStorageError('Could not change dictionary retention.');
-            }} /> Retain custom dictionary separately</label>
-            {migration && <button type="button" onClick={() => { if (setRemembered('document', false) && setRemembered('rules', false)) { setMigration(false); setRememberDocument(false); setRememberRules(false); } else setStorageError('Could not remove retained data.'); }}>Keep only in memory</button>}
-            <p role="status">{storageError}</p>
-          </section>
-          <RecoveryControls snapshots={snapshots} selected={selectedSnapshot} onSelect={setSelectedSnapshot} onLoad={snapshot => {
-            const existing = snapshots.find(s => s.exportId === snapshot.exportId);
-            if (existing && JSON.stringify(existing) !== JSON.stringify(snapshot)) throw new Error('This export ID conflicts with an existing snapshot. The existing snapshot was preserved.');
-            setSnapshots(prev => [...prev.filter(s => s.exportId !== snapshot.exportId), snapshot]); setSelectedSnapshot(snapshot.exportId);
-            setViewMode('advanced'); navigate({ step: 'restore', subStep: 'response' });
-          }} />
-          {step !== 'ingest' && <section className="panel" aria-label="Output review">
-            <p role="status">{scan === 'pending' ? 'Processing… output is blocked.' : processingError || 'Detection complete. Nothing detected does not mean nothing sensitive.'}</p>
-            {scan !== 'ready' && <><button type="button" onClick={() => { invalidate(); setScan('failed'); setProcessingError('Processing cancelled. Retry before exporting.'); }}>Cancel processing</button>
-              <button type="button" onClick={() => void (nerEnabled ? runNerScan(session.rawMarkdown, dictionaryRules) : runAnonymize(session.rawMarkdown, dictionaryRules))}>Retry detection</button></>}
-            {session.coverage && <p>Extraction: {session.coverage.status} · {session.coverage.processedUnits} processed · {session.coverage.skippedUnits} skipped. Exports contain extracted text, not the original file.</p>}
-            {[...findings.blocked, ...findings.review].map(f => <p key={f}>{f}</p>)}
-            {findings.review.length > 0 && <label><input type="checkbox" checked={acknowledgedRevision === currentRevisionKey} onChange={e => setAcknowledgedRevision(e.target.checked ? currentRevisionKey : '')} /> I reviewed these findings for this output revision.</label>}
-            <p role="status" aria-live="polite">{deliveryMessage}</p>
-          </section>}
-
           {!sessionSaved && (
             <p className="session-unsaved" role="alert">
               This document is too large to survive a reload. Copy or save the result before closing or refreshing
@@ -667,11 +510,6 @@ function App() {
               onNewDocument={handleNewDocumentText}
               onCreateRule={handleCreateRule}
               onFileImport={handleFileImport}
-              onBeginImport={() => { invalidate(); setScan('pending'); parseRef.current = new ParseControl(); return requestRef.current; }}
-              parseFile={(name, bytes) => parseDocument(name, bytes, parseRef.current ?? undefined)}
-              onCancelImport={() => { invalidate(); setScan('failed'); setProcessingError('Import cancelled. Retry detection on the remaining text.'); }}
-              onImportError={() => { setScan('failed'); setProcessingError('Import failed. Retry detection on the remaining text.'); }}
-              isImportCurrent={id => id === requestRef.current}
               defaultMode={defaultMode}
               onRun={runInMode}
             />
@@ -689,7 +527,6 @@ function App() {
             />
           )}
 
-          {!standard && step === 'review' && <ManualReview text={session.rawMarkdown} onRedact={manualRedact} onUndo={undoManual} canUndo={!!undoMappings} />}
           {!standard && step === 'review' && (
             <>
               <ReviewStep
@@ -713,24 +550,15 @@ function App() {
             </>
           )}
 
-          {step === 'restore' && <section className="panel" aria-label="Restoration report">
-            <p>Revision: unverifiable. A pasted response cannot prove which export it came from. Restoration uses only your explicitly selected snapshot.</p>
-            {!selected && <p>Select an export snapshot or load a private restoration key.</p>}
-            <label><input type="checkbox" checked={tolerantRestore} onChange={e => setTolerantRestore(e.target.checked)} /> Preview tolerant bracket, case and spacing matching</label>
-            <label><input type="checkbox" checked={legacyRestore} onChange={e => setLegacyRestore(e.target.checked)} /> Explicitly use this document’s legacy mappings</label>
-            <p>{restoration.report.restoredOccurrences} restored occurrences · {restoration.report.unknownTokens.length} unknown tokens · {restoration.report.ambiguousCandidates.length} ambiguous candidates · {restoration.report.malformedCandidates.length} malformed candidates</p>
-            {restoredDocument.warnings.map(w => <p key={w}>{w}</p>)}
-          </section>}
           {step === 'restore' && (
             <ReversalPanel
               session={session}
               aiResponse={aiResponse}
-              restored={restoration.text}
-              restoredMarkdown={restoredDocument.markdown}
+              restored={restored}
               restoredView={restoredView}
               restoreFormat={restoreFormat}
               onRestoreFormatChange={setRestoreFormat}
-              onAiResponseChange={text => { if (text.length > 2_000_000) setProcessingError('Response exceeds the 2 million character limit.'); else setAiResponse(text); }}
+              onAiResponseChange={setAiResponse}
               subStep={restoreSubStep}
               onSubStepChange={setRestoreSubStep}
             />
@@ -789,7 +617,7 @@ function App() {
           <Copyright />
         </nav>
       </footer>
-    </div></OutputContext.Provider>
+    </div>
   );
 }
 

@@ -18,8 +18,6 @@ const statusText = (status: NerStatus): string | null => {
       // returning user who already has it cached sees this too, briefly.
       // Claiming "downloading" every time would be a false alarm.
       return status.detail ? `Loading model… (${status.detail})` : 'Loading model…';
-    case 'scanning': return 'Scanning document…';
-    case 'cancelled': return 'NER cancelled.';
     case 'error':
       return `NER failed: ${status.message}`;
     default:
@@ -80,7 +78,7 @@ export const NerToggle = ({ enabled, longDocument, status, onToggle, onDeleteMod
         <input
           type="checkbox"
           checked={enabled}
-          aria-busy={loading}
+          disabled={loading}
           onChange={(e) => onToggle(e.target.checked)}
         />
         {' '}Smart name/company detection (local AI model, ~104MB one-time download, opt-in — runs entirely in

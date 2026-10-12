@@ -1,4 +1,3 @@
-import { useOutput } from './OutputContext';
 import { useState } from 'react';
 import { labelOf, nextPosition, prevPosition, type WizardGate, type WizardPosition } from '../lib/wizard';
 
@@ -10,7 +9,6 @@ export interface CopyAction {
   /** When set, copied as rich text (text/html) with `text` as the plain fallback. */
   html?: string;
   doneMessage: string;
-  sanitized?: boolean;
 }
 
 interface StepFooterProps {
@@ -35,21 +33,15 @@ const nextLabel = (to: WizardPosition): string => (to.subStep === 'restored' ? '
 export const StepFooter = ({ position, gate, onNavigate, copyAction, onStartOver }: StepFooterProps) => {
   // The exact text copied, not a flag: if the text changes afterwards,
   // "Copied" no longer holds and the Copy button comes back.
-  const output = useOutput();
-  const [error, setError] = useState('');
   const [copiedText, setCopiedText] = useState<string | null>(null);
   const copied = copyAction !== undefined && copiedText === copyAction.text;
   const prev = prevPosition(position);
   const next = nextPosition(position, gate);
   const isLast = position.step === 'restore' && position.subStep === 'restored';
 
-  const copy = async (): Promise<void> => {
+  const copy = (): void => {
     if (!copyAction) return;
-    try {
-    const artifact = copyAction.sanitized ? output.prepare(copyAction.text, 'txt') : null;
-    artifact?.assertCurrent();
-    const text = artifact?.file.content ?? copyAction.text;
-    const html = copyAction.html;
+    const { text, html } = copyAction;
     const write =
       html && typeof ClipboardItem !== 'undefined'
         ? navigator.clipboard.write([
@@ -59,11 +51,10 @@ export const StepFooter = ({ position, gate, onNavigate, copyAction, onStartOver
             }),
           ])
         : navigator.clipboard.writeText(text);
-    await write;
-    if (artifact) output.delivered(artifact.exportId);
-    setCopiedText(copyAction.text); setError('');
-    } catch (e) { setCopiedText(null); setError(e instanceof Error ? e.message : 'Copy failed.'); }
-
+    write.then(
+      () => setCopiedText(text),
+      () => setCopiedText(null),
+    );
   };
 
   return (
@@ -76,10 +67,9 @@ export const StepFooter = ({ position, gate, onNavigate, copyAction, onStartOver
         <span />
       )}
       <div className="step-footer-next-group">
-        <span role="status" aria-live="polite">{error}</span>
-        {copied && <span className="step-footer-done" role="status">✓ {copyAction.doneMessage}</span>}
+        {copied && <span className="step-footer-done">✓ {copyAction.doneMessage}</span>}
         {copyAction && !copied && (
-          <button type="button" className="step-footer-next" disabled={!copyAction.text} onClick={() => void copy()}>
+          <button type="button" className="step-footer-next" disabled={!copyAction.text} onClick={copy}>
             {copyAction.label}
           </button>
         )}

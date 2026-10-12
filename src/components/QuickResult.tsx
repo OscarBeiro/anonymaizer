@@ -1,4 +1,3 @@
-import { useOutput } from './OutputContext';
 import { useState } from 'react';
 import type { MappingSession } from '../core/types';
 import { HighlightedText } from './MappingPanels';
@@ -15,25 +14,17 @@ interface QuickResultProps {
 // realistic one, so whatever is copied here can still be restored later.
 export const QuickResult = ({ session, onFineTune, onRestore, onNewDocument }: QuickResultProps) => {
   const text = session.anonymizedMarkdown;
-  const output = useOutput();
-  const [error, setError] = useState('');
-  const [copiedText, setCopiedText] = useState('');
-  const copied = copiedText === text && !!text;
+  const [copied, setCopied] = useState(false);
 
-  const copy = async () => {
-    try {
-      const artifact = output.prepare(text, 'txt');
-      artifact.assertCurrent();
-      await navigator.clipboard.writeText(artifact.file.content);
-      output.delivered(artifact.exportId);
-      setCopiedText(text);
-    } catch (e) { setCopiedText(''); setError(e instanceof Error ? e.message : 'Copy failed.'); }
-  };
+  const copy = () =>
+    navigator.clipboard.writeText(text).then(
+      () => setCopied(true),
+      () => setCopied(false),
+    );
 
   return (
     <section className="panel quick-result">
-      <h2>Sanitized text</h2>
-      <p role="status" aria-live="polite">{error || (copied ? 'Copied.' : 'Detection can miss sensitive context. Review before sharing.')}</p>
+      <h2>Anonymized text</h2>
       <div className="panel-textarea sanitized-highlight"><HighlightedText text={text} /></div>
       <p className="quick-result-hint">
         Need realistic fake data (names, companies, amounts ± a range you choose) for test files? Use Fine-tune…, then

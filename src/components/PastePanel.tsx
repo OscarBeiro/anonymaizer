@@ -47,7 +47,6 @@ export const PastePanel = ({ rawMarkdown, onChange, onNewDocument, onCreateRule 
       <textarea
         ref={textareaRef}
         className="panel-textarea"
-        aria-label="Source text"
         placeholder="Paste plain text or rich HTML here…"
         value={rawMarkdown}
         onChange={(e) => onChange(e.target.value)}
