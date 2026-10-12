@@ -1,3 +1,4 @@
+import { BrandName, BrandText } from '../components/BrandName';
 import { linkProps } from '../lib/router';
 import { COPYRIGHT, LABS_URL, REPO_URL } from '../site';
 import { SiteFooter } from './SiteFooter';
@@ -31,7 +32,7 @@ export default function About() {
             <p className="landing-eyebrow">A TICGAL Labs project</p>
             <h1>A thought is a spark; a product is the fire.</h1>
             <p className="landing-lede">
-              AnonymAIzer was built at <a href={LABS_URL}>TICGAL Labs</a>, the space where the TICGAL team experiments
+              <BrandName /> was built at <a href={LABS_URL}>TICGAL Labs</a>, the space where the TICGAL team experiments
               with new technology and solves niche problems — and ships the result as a working tool, not vaporware.
             </p>
           </div>
@@ -42,7 +43,7 @@ export default function About() {
           <p>
             Our own team, and the organisations we support, wanted to use AI assistants on real work: contracts,
             tickets, invoices, emails. Those documents are full of names, IDs and bank details that should never be
-            pasted into a third-party service. AnonymAIzer is the small, honest tool we wanted: it removes the
+            pasted into a third-party service. <BrandName /> is the small, honest tool we wanted: it removes the
             personal data, lets you use any AI, and puts the data back — all without a server of its own.
           </p>
         </section>
@@ -64,7 +65,7 @@ export default function About() {
             {VALUES.map((v) => (
               <li key={v.title}>
                 <h3>{v.title}</h3>
-                <p>{v.body}</p>
+                <p><BrandText text={v.body} /></p>
               </li>
             ))}
           </ul>
@@ -76,7 +77,7 @@ export default function About() {
             {MILESTONES.map((m) => (
               <li key={m.year}>
                 <span className="about-year">{m.year}</span>
-                <span>{m.text}</span>
+                <span><BrandText text={m.text} /></span>
               </li>
             ))}
           </ol>
@@ -91,8 +92,8 @@ export default function About() {
           </p>
           <div className="landing-cta-actions">
             <a className="landing-secondary" href={LABS_URL}>See other Labs projects</a>
-            <a className="landing-secondary" href={REPO_URL}>AnonymAIzer on GitHub</a>
-            <a className="landing-primary" {...linkProps('/app')}>Try AnonymAIzer</a>
+            <a className="landing-secondary" href={REPO_URL}><BrandName /> on GitHub</a>
+            <a className="landing-primary" {...linkProps('/app')}>Try <BrandName /></a>
           </div>
         </section>
       </main>

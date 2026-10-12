@@ -21,8 +21,15 @@ session, because that is where the iteration happens.
 | M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](done/m4b-pseudonym-i18n.md) | done (P12–P13); P14–P15 moved to M6 |
 | M5 — Polish & public beta | [`m5-polish-beta.md`](done/m5-polish-beta.md) | done (launch checklist in P20/P22) |
 | M6 — Languages: i18n, detection packs and multilingual NER | [`m6-language-packs.md`](m6-language-packs.md) | planned (P14–P15, P23–P28, P38–P40) |
+| M6 model review — browser runtime and candidate selection | [`M06-01-Browser-local-model-review-plan.md`](M06-01-Browser-local-model-review-plan.md) | reviewed; implementation planned in P38–P40 |
 | M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
 | M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
+
+**2026-10-12 review:** M6 P38 now covers inference correctness rather than a
+library upgrade. Its candidate selection is conditional on browser measurements;
+see the model review above. The complementary
+[M09 round-trip plan](M09-01-Safe-document-round-trip-plan.md) covers restoration,
+structured derivative exports and browser-first integration foundations.
 
 M4 is split in two: **M4a** is dependency-free user-visible output and control
 (export, category toggles); **M4b** is the one-way realistic-output mode and the

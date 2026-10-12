@@ -1,3 +1,5 @@
+import { BrandName } from './components/BrandName';
+import { BetaBadge } from './components/BetaBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
 import { IngestStep } from './components/IngestStep';
@@ -451,7 +453,8 @@ function App() {
         )}
         <div className="app-title">
           <h1>
-            AnonymAIzer
+            <BrandName />
+            <BetaBadge />
             <span className="app-version">v{__APP_VERSION__}</span>
           </h1>
           <p className="app-tagline">Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>

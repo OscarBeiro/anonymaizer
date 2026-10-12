@@ -1,3 +1,4 @@
+import { BrandText } from '../components/BrandName';
 import { requestConsentBanner } from '../lib/consentBus';
 import type { LegalLang } from './meta';
 
@@ -64,7 +65,7 @@ const Table = ({ lang }: { lang: LegalLang }) => {
               <td>
                 <code>{r.name}</code>
               </td>
-              <td>{r.provider}</td>
+              <td><BrandText text={r.provider} /></td>
               <td>{r.purpose[i]}</td>
               <td>{r.type[i]}</td>
               <td>{r.duration[i]}</td>

@@ -1,3 +1,4 @@
+import { BrandName } from '../components/BrandName';
 import { useRef, useState } from 'react';
 import '../lib/parsers';
 import { supportedExtensions } from '../core/parsers';
@@ -131,7 +132,7 @@ export default function Landing() {
             <p className="landing-eyebrow">Free · open source · no sign-up</p>
             <h1>Take the personal data out before you ask the AI. Put it back after.</h1>
             <p className="landing-lede">
-              AnonymAIzer swaps names, IDs, bank details and other identifiers for placeholders, then restores them in
+              <BrandName /> swaps names, IDs, bank details and other identifiers for placeholders, then restores them in
               the AI's reply.{' '}
               <strong>It runs entirely in your browser: there is no server, and your text is never uploaded.</strong>
             </p>
@@ -308,7 +309,7 @@ export default function Landing() {
 
         <section className="landing-section" aria-labelledby="use-cases">
           <h2 id="use-cases">Would you upload this to an AI?</h2>
-          <p>Probably not as it is. With AnonymAIzer, you can still get the help.</p>
+          <p>Probably not as it is. With <BrandName />, you can still get the help.</p>
           <ul className="landing-cards landing-cards-3 landing-cases">
             {USE_CASES.map((c) => (
               <li key={c.title}>
@@ -318,7 +319,7 @@ export default function Landing() {
                   <strong>The problem.</strong> {c.risk}
                 </p>
                 <p>
-                  <strong>With AnonymAIzer.</strong> {c.fix}
+                  <strong>With <BrandName />.</strong> {c.fix}
                 </p>
               </li>
             ))}
@@ -329,7 +330,7 @@ export default function Landing() {
           <h2 id="audiences">For anyone trusted with other people’s data</h2>
           <p>
             If your job means handling someone else’s personal details, you are responsible for where they go.
-            AnonymAIzer lets you use AI on that work without handing the details over.
+            <BrandName /> lets you use AI on that work without handing the details over.
           </p>
           <ul className="landing-cards landing-cards-3">
             {AUDIENCES.map((a) => (
@@ -358,12 +359,12 @@ export default function Landing() {
           <p className="landing-eyebrow">A TICGAL Labs project</p>
           <h2 id="labs">Built by people who handle sensitive data every day (and who doesn’t?)</h2>
           <p>
-            AnonymAIzer comes from <a href={LABS_URL}>TICGAL Labs</a>, where the TICGAL team — a GLPI Network Platinum
+            <BrandName /> comes from <a href={LABS_URL}>TICGAL Labs</a>, where the TICGAL team — a GLPI Network Platinum
             Partner from Pontevedra, Galicia — turns “what if” ideas into working tools.
           </p>
           <p className="about-motto">Local Roots, Global Reach IT.</p>
           <p>
-            That is why AnonymAIzer is being built for more than one language: it handles Spanish documents today, and
+            That is why <BrandName /> is being built for more than one language: it handles Spanish documents today, and
             packs for Galician — our own language — and Portuguese are on the way.
           </p>
           <a className="landing-secondary" {...linkProps('/about')}>
