@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useState } from 'react';
 import { startAnalytics, stopAnalytics } from '../lib/analytics';
 import { loadConsent, saveConsent, type ConsentDecision } from '../lib/consent';
@@ -48,36 +49,29 @@ export function ConsentBanner() {
 
   return (
     <section className="consent-banner" role="dialog" aria-labelledby="consent-title" aria-live="polite">
-      <h2 id="consent-title">Cookies for analytics?</h2>
+      <h2 id="consent-title">{t('ConsentBanner.cookies_for_analytics')}</h2>
       <p>
-        We'd like to count visits with Google Analytics and Metricool, which set cookies. They would see page views
-        only — never the text or files you anonymize, which never leave this tab. The tool works the same whether
-        you accept or not. <a {...linkProps('/cookies')}>Cookie policy</a>
+        {t('ConsentBanner.we_d_like_to_count_visits_with')}<a {...linkProps('/cookies')}>{t('ConsentBanner.cookie_policy')}</a>
       </p>
       {customizing && (
         <label className="consent-option">
           <input type="checkbox" checked={analyticsChoice} onChange={(e) => setAnalyticsChoice(e.target.checked)} />
           <span>
-            <strong>Analytics</strong> — Google Analytics 4 and Metricool, page views only
-          </span>
+            <strong>{t('ConsentBanner.analytics')}</strong> {t('ConsentBanner.google_analytics_4_and_metricool_page_views')}</span>
         </label>
       )}
       <div className="consent-actions">
         {customizing ? (
           <button type="button" className="consent-button" onClick={() => decide(analyticsChoice)}>
-            Save choice
-          </button>
+            {t('ConsentBanner.save_choice')}</button>
         ) : (
           <>
             <button type="button" className="consent-button" onClick={() => decide(false)}>
-              Reject
-            </button>
+              {t('ConsentBanner.reject')}</button>
             <button type="button" className="consent-button" onClick={() => decide(true)}>
-              Accept
-            </button>
+              {t('ConsentBanner.accept')}</button>
             <button type="button" className="consent-link" onClick={() => setCustomizing(true)}>
-              Choose
-            </button>
+              {t('ConsentBanner.choose')}</button>
           </>
         )}
       </div>

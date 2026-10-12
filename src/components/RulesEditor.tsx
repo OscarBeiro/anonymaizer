@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useRef, useState } from 'react';
 import { isValidRegexPattern, parseImportedRules, validateRuleInput } from '../core/ruleValidation';
 import type { CustomDictionaryRule } from '../core/types';
@@ -80,18 +81,18 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
       const imported = parseImportedRules(text, rules).map((r) => ({ ...r, id: newRuleId() }));
       onChange([...rules, ...imported]);
     } catch (e) {
-      setImportError(e instanceof Error ? e.message : 'Import failed.');
+      setImportError(e instanceof Error ? e.message : t('RulesEditor.import_failed'));
     }
   };
 
   return (
     <section className="panel">
-      <h2>Custom dictionary rules</h2>
+      <h2>{t('RulesEditor.custom_dictionary_rules')}</h2>
 
       <div className="rule-form">
         <input
           type="text"
-          placeholder="Term or regex pattern"
+          placeholder={t('RulesEditor.term_or_regex_pattern')}
           value={form.termOrPattern}
           onChange={(e) => setForm({ ...form, termOrPattern: e.target.value })}
         />
@@ -99,13 +100,13 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
           value={form.replacementType}
           onChange={(e) => setForm({ ...form, replacementType: e.target.value as 'FIXED' | 'CATEGORY' })}
         >
-          <option value="FIXED">FIXED (→ CUSTOM)</option>
-          <option value="CATEGORY">CATEGORY</option>
+          <option value="FIXED">{t('RulesEditor.fixed_custom')}</option>
+          <option value="CATEGORY">{t('RulesEditor.category')}</option>
         </select>
         {form.replacementType === 'CATEGORY' && (
           <input
             type="text"
-            placeholder="Target category, e.g. PROJECT_NAME"
+            placeholder={t('RulesEditor.target_category_e_g_project_name')}
             value={form.targetCategory}
             onChange={(e) => setForm({ ...form, targetCategory: e.target.value })}
           />
@@ -116,18 +117,16 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
             checked={form.isRegex}
             onChange={(e) => setForm({ ...form, isRegex: e.target.checked })}
           />
-          Regex
-        </label>
+          {t('RulesEditor.regex')}</label>
         <button type="button" onClick={submit} disabled={!!error}>
-          {editingId ? 'Save' : 'Add rule'}
+          {editingId ? 'Save' : t('RulesEditor.add_rule')}
         </button>
         {editingId && (
           <button type="button" onClick={cancelEdit}>
-            Cancel
-          </button>
+            {t('RulesEditor.cancel')}</button>
         )}
       </div>
-      {regexInvalid && <p className="form-error">Not a valid regular expression.</p>}
+      {regexInvalid && <p className="form-error">{t('RulesEditor.not_a_valid_regular_expression')}</p>}
       {!regexInvalid && error && form.termOrPattern && <p className="form-error">{error}</p>}
 
       {rules.length > 0 && (
@@ -135,10 +134,10 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
         <table className="mapping-table">
           <thead>
             <tr>
-              <th>Term/pattern</th>
-              <th>Type</th>
-              <th>Category</th>
-              <th>Regex</th>
+              <th>{t('RulesEditor.term_pattern')}</th>
+              <th>{t('RulesEditor.type')}</th>
+              <th>{t('RulesEditor.category_2')}</th>
+              <th>{t('RulesEditor.regex_2')}</th>
               <th></th>
             </tr>
           </thead>
@@ -151,11 +150,9 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
                 <td>{rule.isRegex ? 'yes' : 'no'}</td>
                 <td>
                   <button type="button" onClick={() => startEdit(rule)}>
-                    Edit
-                  </button>
+                    {t('RulesEditor.edit')}</button>
                   <button type="button" onClick={() => remove(rule.id)}>
-                    Delete
-                  </button>
+                    {t('RulesEditor.delete')}</button>
                 </td>
               </tr>
             ))}
@@ -166,11 +163,9 @@ export const RulesEditor = ({ rules, onChange }: RulesEditorProps) => {
 
       <div className="rule-import-export">
         <button type="button" onClick={exportRules} disabled={rules.length === 0}>
-          Export rules (JSON)
-        </button>
+          {t('RulesEditor.export_rules_json')}</button>
         <button type="button" onClick={() => fileInputRef.current?.click()}>
-          Import rules (JSON)
-        </button>
+          {t('RulesEditor.import_rules_json')}</button>
         <input
           ref={fileInputRef}
           type="file"

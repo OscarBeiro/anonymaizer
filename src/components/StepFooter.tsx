@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import { labelOf, nextPosition, prevPosition, type WizardGate, type WizardPosition } from '../lib/wizard';
 
@@ -22,13 +23,13 @@ interface StepFooterProps {
 
 // Why Next is disabled, when the order has a next position but the gate holds it back.
 const blockedHint = (pos: WizardPosition): string => {
-  if (pos.step === 'ingest') return 'Paste text or drop a document first.';
-  if (pos.step === 'restore') return "Paste the AI's response first.";
-  return 'Nothing was detected, so there is nothing to restore.';
+  if (pos.step === 'ingest') return t('StepFooter.paste_text_or_drop_a_document_first');
+  if (pos.step === 'restore') return t('StepFooter.paste_the_ai_s_response_first');
+  return t('StepFooter.nothing_was_detected_so_there_is_nothing');
 };
 
 // 3.1's Next is the restore itself, so it says so.
-const nextLabel = (to: WizardPosition): string => (to.subStep === 'restored' ? 'Restore' : `Next: ${labelOf(to)}`);
+const nextLabel = (to: WizardPosition): string => (to.subStep === 'restored' ? t('StepFooter.restore') : t('StepFooter.next', { p0: labelOf(to) }));
 
 export const StepFooter = ({ position, gate, onNavigate, copyAction, onStartOver }: StepFooterProps) => {
   // The exact text copied, not a flag: if the text changes afterwards,
@@ -77,8 +78,7 @@ export const StepFooter = ({ position, gate, onNavigate, copyAction, onStartOver
           // The end of the round trip. Always offered; primary once the
           // restored text has been copied.
           <button type="button" className={copied ? 'step-footer-next' : 'step-footer-back'} onClick={onStartOver}>
-            Start again →
-          </button>
+            {t('StepFooter.start_again')}</button>
         )}
         {!isLast && (!copyAction || copied) && (
           <>

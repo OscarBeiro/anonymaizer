@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useRef, useState } from 'react';
 import { parseDocument, supportedExtensions } from '../core/parsers';
 import type { DocumentFormat } from '../core/types';
@@ -38,7 +39,7 @@ export const IngestStep = ({
       const parsed = await parseDocument(file.name, bytes);
       onFileImport(parsed.markdown, parsed.format, file.name, parsed.warnings ?? []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not read that file.');
+      setError(e instanceof Error ? e.message : t('IngestStep.could_not_read_that_file'));
     }
   };
 
@@ -60,15 +61,14 @@ export const IngestStep = ({
           if (file) void handleFile(file);
         }}
       >
-        <p>Drop a file here, or</p>
+        <p>{t('IngestStep.drop_a_file_here_or')}</p>
         <button type="button" onClick={() => fileInputRef.current?.click()}>
-          Choose file
-        </button>
-        <p className="drop-zone-hint">Supported: {supportedExtensions().join(', ')}</p>
+          {t('IngestStep.choose_file')}</button>
+        <p className="drop-zone-hint">{t('IngestStep.supported')}{supportedExtensions().join(', ')}</p>
         {error && <p className="form-error">{error}</p>}
         {warnings.length > 0 && (
           <div className="import-warnings" role="status">
-            <p className="import-warnings-title">Imported with warnings</p>
+            <p className="import-warnings-title">{t('IngestStep.imported_with_warnings')}</p>
             <ul>
               {warnings.map((warning) => (
                 <li key={warning}>{warning}</li>
@@ -91,8 +91,8 @@ export const IngestStep = ({
         />
       </div>
 
-      <div className="mode-choice" role="group" aria-label="How to anonymize">
-        {!rawMarkdown && <span className="empty-hint">Paste or drop a document first</span>}
+      <div className="mode-choice" role="group" aria-label={t('IngestStep.how_to_anonymize')}>
+        {!rawMarkdown && <span className="empty-hint">{t('IngestStep.paste_or_drop_a_document_first')}</span>}
         {(['standard', 'advanced'] as const).map((mode) => (
           <button
             key={mode}
@@ -101,7 +101,7 @@ export const IngestStep = ({
             disabled={!rawMarkdown}
             onClick={() => onRun(mode)}
           >
-            {mode === 'standard' ? 'Quick — anonymize now' : 'Detailed — review each item'}
+            {mode === 'standard' ? t('IngestStep.quick_anonymize_now') : t('IngestStep.detailed_review_each_item')}
           </button>
         ))}
       </div>

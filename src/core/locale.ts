@@ -7,3 +7,12 @@ export const resolveLocale = (requested: string | null | undefined, available: r
     ?? available.find(code => normalize(code) === normalize(fallback))
     ?? fallback;
 };
+
+/** Choose the first supported browser preference, then fall back once. */
+export const resolvePreferredLocale = (requested: readonly string[], available: readonly string[], fallback = 'en'): string => {
+  for (const code of requested) {
+    const match = resolveLocale(code, available, '');
+    if (match) return match;
+  }
+  return resolveLocale(fallback, available, fallback);
+};

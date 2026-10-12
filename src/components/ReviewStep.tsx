@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { MappingItem, MappingSession } from '../core/types';
 import { MappingList, SanitizedTextPanel, StatisticsPanel } from './MappingPanels';
 import { REVIEW_SUB_STEPS, type ReviewSubStep } from '../lib/wizard';
@@ -47,7 +48,7 @@ export const ReviewStep = ({
   return (
     <div className="review-step">
       <nav className="review-sub-nav">
-        {REVIEW_SUB_STEPS.map((s) => (
+        {REVIEW_SUB_STEPS().map((s) => (
           <button
             key={s.id}
             type="button"
@@ -62,10 +63,9 @@ export const ReviewStep = ({
       {subStep === 'placeholders' && (
         <>
           <p className="detection-settings-link">
-            {offCount > 0 && <>{offCount} {offCount === 1 ? 'category' : 'categories'} off · </>}
+            {offCount > 0 && <>{offCount} {offCount === 1 ? 'category' : 'categories'} {t('ReviewStep.off')}</>}
             <button type="button" className="link-button" onClick={onOpenDetectionSettings}>
-              Detection settings and custom rules
-            </button>
+              {t('ReviewStep.detection_settings_and_custom_rules')}</button>
           </p>
           <MappingList mappings={mappings} onToggle={onToggle} onSplit={onSplit} onMerge={onMerge} />
         </>

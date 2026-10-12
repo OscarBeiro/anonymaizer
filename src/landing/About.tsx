@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { BrandName, BrandText } from '../components/BrandName';
 import { linkProps } from '../lib/router';
 import { COPYRIGHT, LABS_URL, REPO_URL } from '../site';
@@ -5,12 +6,12 @@ import { SiteFooter } from './SiteFooter';
 import { SiteHeader } from './SiteHeader';
 import './landing.css';
 
-const VALUES = [
-  { title: 'Universal inclusivity', body: 'Tools anyone can use, whatever their budget or technical background.' },
-  { title: 'Global mindset, local heart', body: 'Built in Pontevedra, Galicia, for teams everywhere.' },
-  { title: 'Open collaboration', body: 'Open-licence software first. AnonymAIzer’s source is public.' },
-  { title: 'Integrity & transparency', body: 'We say exactly what the tool does — and what it doesn’t.' },
-];
+const VALUES = () => ([
+  { title: t('About.universal_inclusivity'), body: t('About.tools_anyone_can_use_whatever_their_budget') },
+  { title: t('About.global_mindset_local_heart'), body: t('About.built_in_pontevedra_galicia_for_teams_everywhere') },
+  { title: t('About.open_collaboration'), body: t('About.open_licence_software_first_anonymaizer_s_source') },
+  { title: t('About.integrity_transparency'), body: t('About.we_say_exactly_what_the_tool_does') },
+]);
 
 const MILESTONES = [
   { year: '2014', text: 'TICGAL is founded in Pontevedra, starting with Zabbix training.' },
@@ -29,40 +30,28 @@ export default function About() {
       <main>
         <section className="landing-hero about-hero">
           <div className="landing-hero-copy">
-            <p className="landing-eyebrow">A TICGAL Labs project</p>
-            <h1>A thought is a spark; a product is the fire.</h1>
+            <p className="landing-eyebrow">{t('About.a_ticgal_labs_project')}</p>
+            <h1>{t('About.a_thought_is_a_spark_a_product')}</h1>
             <p className="landing-lede">
-              <BrandName /> was built at <a href={LABS_URL}>TICGAL Labs</a>, the space where the TICGAL team experiments
-              with new technology and solves niche problems — and ships the result as a working tool, not vaporware.
-            </p>
+              <BrandName /> {t('About.was_built_at')}<a href={LABS_URL}>TICGAL Labs</a>{t('About.the_space_where_the_ticgal_team_experiments')}</p>
           </div>
         </section>
 
         <section className="landing-section" aria-labelledby="why">
-          <h2 id="why">Why we built it</h2>
+          <h2 id="why">{t('About.why_we_built_it')}</h2>
           <p>
-            Our own team, and the organisations we support, wanted to use AI assistants on real work: contracts,
-            tickets, invoices, emails. Those documents are full of names, IDs and bank details that should never be
-            pasted into a third-party service. <BrandName /> is the small, honest tool we wanted: it removes the
-            personal data, lets you use any AI, and puts the data back — all without a server of its own.
-          </p>
+            {t('About.our_own_team_and_the_organisations_we')}<BrandName /> {t('About.is_the_small_honest_tool_we_wanted')}</p>
         </section>
 
         <section className="landing-section" aria-labelledby="who">
-          <h2 id="who">Who we are</h2>
+          <h2 id="who">{t('About.who_we_are')}</h2>
           <p>
-            <a href={COPYRIGHT.url}>TICGAL</a> is a people’s company from Pontevedra, Galicia: IT specialists,
-            software developers and support professionals with over a decade of collective experience. We are a GLPI
-            Network Platinum Partner, build GLPI plugins and the Gapp mobile solution, and work with organisations
-            such as Würth, Bellota, the Government of Navarre, Votorantim, UNIR and several universities.
-          </p>
-          <p className="about-motto">Local Roots, Global Reach IT.</p>
+            <a href={COPYRIGHT.url}>TICGAL</a> {t('About.is_a_people_s_company_from_pontevedra')}</p>
+          <p className="about-motto">{t('About.local_roots_global_reach_it')}</p>
           <p>
-            Our mission: empower businesses and communities with innovative, tailored IT solutions that enable
-            sustainable growth while positively impacting our local community.
-          </p>
+            {t('About.our_mission_empower_businesses_and_communities_with')}</p>
           <ul className="landing-cards about-values">
-            {VALUES.map((v) => (
+            {VALUES().map((v) => (
               <li key={v.title}>
                 <h3>{v.title}</h3>
                 <p><BrandText text={v.body} /></p>
@@ -72,7 +61,7 @@ export default function About() {
         </section>
 
         <section className="landing-section" aria-labelledby="timeline">
-          <h2 id="timeline">Along the way</h2>
+          <h2 id="timeline">{t('About.along_the_way')}</h2>
           <ol className="about-timeline">
             {MILESTONES.map((m) => (
               <li key={m.year}>
@@ -86,14 +75,12 @@ export default function About() {
         <section className="landing-section" aria-labelledby="labs">
           <h2 id="labs">TICGAL Labs</h2>
           <p>
-            We value the human element: critical and creative thinking over mere task execution. Labs is where a
-            “what if” becomes something you can deploy today — then the lessons flow back into our core services.{' '}
-            <em>A cabeza non para</em> — the mind never rests.
-          </p>
+            {t('About.we_value_the_human_element_critical_and')}{' '}
+            <em>A cabeza non para</em> {t('About.the_mind_never_rests')}</p>
           <div className="landing-cta-actions">
-            <a className="landing-secondary" href={LABS_URL}>See other Labs projects</a>
-            <a className="landing-secondary" href={REPO_URL}><BrandName /> on GitHub</a>
-            <a className="landing-primary" {...linkProps('/app')}>Try <BrandName /></a>
+            <a className="landing-secondary" href={LABS_URL}>{t('About.see_other_labs_projects')}</a>
+            <a className="landing-secondary" href={REPO_URL}><BrandName /> {t('About.on_github')}</a>
+            <a className="landing-primary" {...linkProps('/app')}>{t('About.try')}<BrandName /></a>
           </div>
         </section>
       </main>

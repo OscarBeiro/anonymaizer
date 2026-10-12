@@ -1,3 +1,5 @@
+import { LanguagePicker } from './components/LanguagePicker';
+import { t } from './i18n';
 import { BrandName } from './components/BrandName';
 import { BetaBadge } from './components/BetaBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -193,7 +195,7 @@ function App() {
       })
       .catch((e: unknown) => {
         setStep('ingest');
-        setImportWarnings([`Could not read ${handoff.file.name}: ${e instanceof Error ? e.message : 'unknown error'}`]);
+        setImportWarnings([t('App.could_not_read', { p0: handoff.file.name, p1: e instanceof Error ? e.message : 'unknown error' })]);
       });
     // Mount only: a handoff is consumed once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -389,9 +391,9 @@ function App() {
   // No state changes in between, so no save effect writes a key back.
   const clearAllLocalData = (): void => {
     const ok = window.confirm(
-      'Clear all local data?\n\n' +
-        'This removes the current document, its placeholders, your custom rules, your settings ' +
-        'and the downloaded AI model from this browser. It cannot be undone.',
+      t('App.clear_all_local_data') +
+        t('App.this_removes_the_current_document_its_placeholders') +
+        t('App.and_the_downloaded_ai_model_from_this'),
     );
     if (!ok) return;
     nerClientRef.current?.terminate();
@@ -402,10 +404,10 @@ function App() {
 
   const startOver = (): void => {
     const ok = window.confirm(
-      'Start again with a new document?\n\n' +
-        'This clears the current text, its placeholders and the AI response. ' +
-        'Without the placeholders, an AI response for this document can no longer be restored.\n\n' +
-        'Your custom rules are kept.',
+      t('App.start_again_with_a_new_document') +
+        t('App.this_clears_the_current_text_its_placeholders') +
+        t('App.without_the_placeholders_an_ai_response_for') +
+        t('App.your_custom_rules_are_kept'),
     );
     if (!ok) return;
     setSession(emptySession());
@@ -431,14 +433,14 @@ function App() {
   const restoredView = restoreFormat === 'plain' ? restoredPlain : restoredHtml;
   const copyAction: CopyAction | undefined =
     position.subStep === 'sanitized'
-      ? { label: 'Copy sanitized text', text: sanitizedText, doneMessage: 'Copied — your text is ready to send to the AI.' }
+      ? { label: t('App.copy_sanitized_text'), text: sanitizedText, doneMessage: t('App.copied_your_text_is_ready_to_send') }
       : position.subStep === 'restored'
         ? {
-            label: 'Copy restored text',
+            label: t('App.copy_restored_text'),
             text: restoreFormat === 'plain' ? restoredPlain : restoreFormat === 'html' ? restoredHtml : restored,
             // Markdown: rich text for Word/Docs/email, the Markdown source for plain editors.
             html: restoreFormat === 'markdown' ? restoredHtml : undefined,
-            doneMessage: 'Copied — your restored text is on the clipboard.',
+            doneMessage: t('App.copied_your_restored_text_is_on_the'),
           }
         : undefined;
 
@@ -449,7 +451,7 @@ function App() {
         {__PORTABLE__ ? (
           <span className="app-mark" aria-hidden="true">A</span>
         ) : (
-          <a className="app-mark" aria-label="AnonymAIzer home" {...linkProps('/')}>A</a>
+          <a className="app-mark" aria-label={t('App.anonymaizer_home')} {...linkProps('/')}>A</a>
         )}
         <div className="app-title">
           <h1>
@@ -457,7 +459,7 @@ function App() {
             <BetaBadge />
             <span className="app-version">v{__APP_VERSION__}</span>
           </h1>
-          <p className="app-tagline">Sanitize text before sending it to an AI, restore it after. Nothing leaves your browser.</p>
+          <p className="app-tagline">{t('App.sanitize_text_before_sending_it_to_an')}</p>
         </div>
         {/* P18: the settings menu button mounts here. */}
         <div className="app-header-slot">
@@ -470,13 +472,12 @@ function App() {
                 navigate({ step: 'review' });
               }}
             >
-              Quick view
-            </button>
+              {t('App.quick_view')}</button>
           )}
+          <LanguagePicker />
           <ThemeToggle theme={theme} onChange={setTheme} />
           <button type="button" className="settings-button" aria-haspopup="dialog" onClick={() => openSettings()}>
-            ⚙ Settings
-          </button>
+            {t('App.settings')}</button>
         </div>
       </header>
 
@@ -497,9 +498,7 @@ function App() {
         <main className="app-main">
           {!sessionSaved && (
             <p className="session-unsaved" role="alert">
-              This document is too large to survive a reload. Copy or save the result before closing or refreshing
-              this tab.
-            </p>
+              {t('App.this_document_is_too_large_to_survive')}</p>
           )}
 
           {step === 'ingest' && (
@@ -611,8 +610,8 @@ function App() {
       />
 
       <footer className="app-footer">
-        <span>Runs entirely in your browser — no text is uploaded.</span>
-        <nav className="app-footer-links" aria-label="Legal">
+        <span>{t('App.runs_entirely_in_your_browser_no_text')}</span>
+        <nav className="app-footer-links" aria-label={t('App.legal')}>
           <SiteLinks />
           <Copyright />
         </nav>

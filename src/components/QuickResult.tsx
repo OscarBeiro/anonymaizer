@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useState } from 'react';
 import type { MappingSession } from '../core/types';
 import { HighlightedText } from './MappingPanels';
@@ -24,26 +25,21 @@ export const QuickResult = ({ session, onFineTune, onRestore, onNewDocument }: Q
 
   return (
     <section className="panel quick-result">
-      <h2>Anonymized text</h2>
+      <h2>{t('QuickResult.anonymized_text')}</h2>
       <div className="panel-textarea sanitized-highlight"><HighlightedText text={text} /></div>
       <p className="quick-result-hint">
-        Need realistic fake data (names, companies, amounts ± a range you choose) for test files? Use Fine-tune…, then
-        2.3 Sanitized text → Realistic. Realistic output cannot be restored.
-      </p>
+        {t('QuickResult.need_realistic_fake_data_names_companies_amounts')}</p>
       <div className="panel-actions quick-result-actions">
         <button type="button" className="step-footer-next" disabled={!text} onClick={() => void copy()}>
-          {copied ? '✓ Copied' : 'Copy'}
+          {copied ? t('QuickResult.copied') : t('QuickResult.copy')}
         </button>
         <SaveAsControl text={text} session={session} side="sanitized" />
         <button type="button" className="step-footer-back" onClick={onFineTune}>
-          Fine-tune…
-        </button>
+          {t('QuickResult.fine_tune')}</button>
         <button type="button" className="step-footer-back" onClick={onNewDocument}>
-          New document
-        </button>
+          {t('QuickResult.new_document')}</button>
         <button type="button" className="link-button" onClick={onRestore}>
-          Restore an AI response
-        </button>
+          {t('QuickResult.restore_an_ai_response')}</button>
       </div>
     </section>
   );

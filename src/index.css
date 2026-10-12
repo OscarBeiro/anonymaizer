@@ -259,3 +259,13 @@ input[type='radio'] {
   letter-spacing: 0;
   white-space: nowrap;
 }
+
+.language-control { position: relative; display: inline-flex; }
+.language-toggle { white-space: nowrap; }
+.language-options {
+  position: absolute; top: calc(100% + .4rem); right: 0; z-index: 20;
+  display: grid; min-width: 12rem; padding: .4rem; border: 1px solid var(--color-border);
+  border-radius: .5rem; background: var(--color-surface-raised); box-shadow: 0 .4rem 1.2rem #0002;
+}
+.language-options button { text-align: left; padding: .5rem .75rem; white-space: nowrap; }
+.language-options button[aria-pressed="true"] { font-weight: 700; }

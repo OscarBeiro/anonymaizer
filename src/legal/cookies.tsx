@@ -1,3 +1,4 @@
+import { t, type TranslationKey } from '../i18n';
 import { BrandText } from '../components/BrandName';
 import { requestConsentBanner } from '../lib/consentBus';
 import type { LegalLang } from './meta';
@@ -15,40 +16,41 @@ interface Row {
   duration: [en: string, es: string];
 }
 
-const ROWS: Row[] = [
+const ROWS: (lang: LegalLang) => Row[] = (lang) => ([
   {
     name: 'anonymaizer.consent',
     provider: 'AnonymAIzer (first party)',
-    purpose: ['Remembers your analytics choice and when you made it', 'Recuerda tu elección sobre analítica y cuándo la hiciste'],
-    type: ['Technical, exempt from consent; local storage, not a cookie', 'Técnica, exenta de consentimiento; almacenamiento local, no es una cookie'],
-    duration: ['Until you clear it; re-asked when this policy changes', 'Hasta que la borres; se vuelve a preguntar si cambia esta política'],
+    purpose: [t('cookies.remembers_your_analytics_choice_and_when_you', {}, lang), "Recuerda tu elección sobre analítica y cuándo la hiciste"],
+    type: [t('cookies.technical_exempt_from_consent_local_storage_not', {}, lang), 'Técnica, exenta de consentimiento; almacenamiento local, no es una cookie'],
+    duration: [t('cookies.until_you_clear_it_re_asked_when', {}, lang), "Hasta que la borres; se vuelve a preguntar si cambia esta política"],
   },
   {
     name: '_ga',
     provider: 'Google (Google Analytics 4)',
-    purpose: ['Distinguishes visitors with a random identifier', 'Distingue visitantes mediante un identificador aleatorio'],
-    type: ['Analytics, first-party, consent required', 'Analítica, propia, requiere consentimiento'],
-    duration: ['2 years', '2 años'],
+    purpose: [t('cookies.distinguishes_visitors_with_a_random_identifier', {}, lang), "Distingue visitantes mediante un identificador aleatorio"],
+    type: [t('cookies.analytics_first_party_consent_required', {}, lang), "Analítica, propia, requiere consentimiento"],
+    duration: [t('cookies.two_years', {}, lang), '2 años'],
   },
   {
     name: '_ga_{{GA4_MEASUREMENT_ID}}',
     provider: 'Google (Google Analytics 4)',
-    purpose: ['Keeps session state', 'Mantiene el estado de la sesión'],
-    type: ['Analytics, first-party, consent required', 'Analítica, propia, requiere consentimiento'],
-    duration: ['2 years', '2 años'],
+    purpose: [t('cookies.keeps_session_state', {}, lang), "Mantiene el estado de la sesión"],
+    type: [t('cookies.analytics_first_party_consent_required', {}, lang), "Analítica, propia, requiere consentimiento"],
+    duration: [t('cookies.two_years', {}, lang), '2 años'],
   },
   {
     name: '{{METRICOOL_COOKIES}}',
     provider: 'Metricool Software S.L.',
-    purpose: ['Web traffic statistics', 'Estadísticas de tráfico web'],
-    type: ['Analytics, consent required', 'Analítica, requiere consentimiento'],
+    purpose: [t('cookies.web_traffic_statistics', {}, lang), "Estadísticas de tráfico web"],
+    type: [t('cookies.analytics_consent_required', {}, lang), "Analítica, requiere consentimiento"],
     duration: ['{{METRICOOL_COOKIE_DURATION}}', '{{METRICOOL_COOKIE_DURATION}}'],
   },
-];
+]);
 
 const Table = ({ lang }: { lang: LegalLang }) => {
+  const translate = (key: TranslationKey) => t(key, {}, lang);
   const i = lang === 'es' ? 1 : 0;
-  const head = lang === 'es' ? ['Nombre', 'Proveedor', 'Finalidad', 'Tipo', 'Duración'] : ['Name', 'Provider', 'Purpose', 'Type', 'Duration'];
+  const head = lang === 'es' ? ['Nombre', 'Proveedor', 'Finalidad', 'Tipo', 'Duración'] : [translate('cookies.name'), translate('cookies.provider'), translate('cookies.purpose'), translate('cookies.type'), translate('cookies.duration')];
   return (
     <div className="legal-table-wrap">
       <table>
@@ -60,7 +62,7 @@ const Table = ({ lang }: { lang: LegalLang }) => {
           </tr>
         </thead>
         <tbody>
-          {ROWS.map((r) => (
+          {ROWS(lang).map((r) => (
             <tr key={r.name}>
               <td>
                 <code>{r.name}</code>
@@ -83,49 +85,41 @@ const ChangeChoice = ({ label }: { label: string }) => (
   </button>
 );
 
-const En = () => (
+const En = ({ lang }: { lang: LegalLang }) => {
+  const translate = (key: TranslationKey) => t(key, {}, lang);
+  return (
   <>
-    <h1>Cookie policy</h1>
+    <h1>{translate('cookies.cookie_policy')}</h1>
     <p>
-      This site uses cookies only for analytics, and only after you accept them in the banner. Rejecting is as easy
-      as accepting, and the site and the tool work exactly the same either way. The anonymization tool itself uses
-      no cookies. The offline (portable) version, and any copy not served from our public website, loads no
-      analytics at all.
-    </p>
+      {translate('cookies.this_site_uses_cookies_only_for_analytics')}</p>
     <p>
-      This follows art. 22.2 of Spanish Law 34/2002 (LSSI-CE), which requires informed consent before storing or
-      reading non-essential information on your device, and the Spanish Data Protection Agency's (AEPD) guide on
-      the use of cookies.
+      {translate('cookies.this_follows_art_22_2_of_spanish')}</p>
+
+    <h2>{translate('cookies.cookies_and_similar_storage_we_use')}</h2>
+    <Table lang={lang} />
+    <p>
+      {translate('cookies.the_app_also_keeps_your_session_rules')}{' '}
+      <a href="/privacy">{translate('cookies.privacy_policy')}</a>.
     </p>
 
-    <h2>Cookies and similar storage we use</h2>
-    <Table lang="en" />
+    <h2>{translate('cookies.changing_or_withdrawing_your_consent')}</h2>
     <p>
-      The app also keeps your session, rules and settings in local storage so a reload loses nothing. That data is
-      strictly necessary for the service you asked for, never leaves your device, and is described in the{' '}
-      <a href="/privacy">privacy policy</a>.
-    </p>
+      {translate('cookies.you_can_change_your_choice_at_any')}</p>
+    <ChangeChoice label={translate('cookies.change_cookie_settings')} />
 
-    <h2>Changing or withdrawing your consent</h2>
-    <p>
-      You can change your choice at any time. Withdrawing stops analytics from loading and deletes the Google
-      Analytics cookies this site can reach.
-    </p>
-    <ChangeChoice label="Change cookie settings" />
-
-    <h2>Blocking cookies in your browser</h2>
-    <p>You can also block or delete cookies from your browser's settings:</p>
+    <h2>{translate('cookies.blocking_cookies_in_your_browser')}</h2>
+    <p>{translate('cookies.you_can_also_block_or_delete_cookies')}</p>
     <ul>
-      <li>Chrome: Settings → Privacy and security → Third-party cookies / Site data.</li>
-      <li>Firefox: Settings → Privacy &amp; Security → Cookies and Site Data.</li>
-      <li>Safari: Settings → Privacy → Manage Website Data.</li>
-      <li>Edge: Settings → Cookies and site permissions.</li>
+      <li>{translate('cookies.chrome_settings_privacy_and_security_third_party')}</li>
+      <li>{translate('cookies.firefox_settings_privacy_security_cookies_and_site')}</li>
+      <li>{translate('cookies.safari_settings_privacy_manage_website_data')}</li>
+      <li>{translate('cookies.edge_settings_cookies_and_site_permissions')}</li>
     </ul>
     <p>
-      Google also offers an opt-out add-on for Google Analytics at tools.google.com/dlpage/gaoptout.
-    </p>
+      {translate('cookies.google_also_offers_an_opt_out_add')}</p>
   </>
 );
+};
 
 const Es = () => (
   <>
@@ -169,4 +163,4 @@ const Es = () => (
   </>
 );
 
-export const Cookies = ({ lang }: { lang: LegalLang }) => (lang === 'es' ? <Es /> : <En />);
+export const Cookies = ({ lang }: { lang: LegalLang }) => (lang === 'es' ? <Es /> : <En lang={lang} />);

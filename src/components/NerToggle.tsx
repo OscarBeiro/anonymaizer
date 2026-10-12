@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { NerStatus } from '../lib/nerClient';
 
 interface NerToggleProps {
@@ -17,9 +18,9 @@ const statusText = (status: NerStatus): string | null => {
       // from our IndexedDB cache — it gives no cache-hit signal — so a
       // returning user who already has it cached sees this too, briefly.
       // Claiming "downloading" every time would be a false alarm.
-      return status.detail ? `Loading model… (${status.detail})` : 'Loading model…';
+      return status.detail ? t('NerToggle.loading_model', { p0: status.detail }) : t('NerToggle.loading_model_2');
     case 'error':
-      return `NER failed: ${status.message}`;
+      return t('NerToggle.ner_failed', { p0: status.message });
     default:
       return null;
   }
@@ -46,27 +47,23 @@ export const NerToggle = ({ enabled, longDocument, status, onToggle, onDeleteMod
     return (
       <div className="ner-toggle ner-toggle-active">
         {enabled ? (
-          <span className="ner-status-ready">🔒 Local AI detection on — model runs fully in your browser, nothing is uploaded</span>
+          <span className="ner-status-ready">{t('NerToggle.local_ai_detection_on_model_runs_fully')}</span>
         ) : (
           <label>
             <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
-            {' '}Local AI detection (model already downloaded — re-enabling is instant)
-          </label>
+            {' '}{t('NerToggle.local_ai_detection_model_already_downloaded_re')}</label>
         )}
         {enabled && longDocument && (
           <p className="ner-long-note" role="note">
-            Large document: AI detection runs on every edit and can take minutes. Turn it off to work faster.
-          </p>
+            {t('NerToggle.large_document_ai_detection_runs_on_every')}</p>
         )}
         <div className="ner-model-actions">
           {enabled && (
             <button type="button" className="ner-rescan-button" onClick={() => onToggle(false)}>
-              Turn off
-            </button>
+              {t('NerToggle.turn_off')}</button>
           )}
           <button type="button" className="ner-rescan-button ner-delete-button" onClick={onDeleteModel}>
-            Delete model
-          </button>
+            {t('NerToggle.delete_model')}</button>
         </div>
       </div>
     );
@@ -81,9 +78,7 @@ export const NerToggle = ({ enabled, longDocument, status, onToggle, onDeleteMod
           disabled={loading}
           onChange={(e) => onToggle(e.target.checked)}
         />
-        {' '}Smart name/company detection (local AI model, ~104MB one-time download, opt-in — runs entirely in
-        your browser, nothing is ever sent anywhere)
-      </label>
+        {' '}{t('NerToggle.smart_name_company_detection_local_ai_model')}</label>
       {text && <span className={status.state === 'error' ? 'ner-status ner-status-error' : 'ner-status'}>{text}</span>}
     </div>
   );

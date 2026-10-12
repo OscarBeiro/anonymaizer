@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { WizardStep } from './session';
 
 // W1: the one place that knows the wizard's order and what unlocks each step,
@@ -9,16 +10,16 @@ export type ReviewSubStep = 'placeholders' | 'sanitized' | 'statistics';
 export type RestoreSubStep = 'response' | 'restored';
 export type SubStep = ReviewSubStep | RestoreSubStep;
 
-export const REVIEW_SUB_STEPS: { id: ReviewSubStep; label: string }[] = [
-  { id: 'placeholders', label: '2.1 Placeholders' },
-  { id: 'sanitized', label: '2.2 Sanitized text' },
-  { id: 'statistics', label: '2.3 Statistics' },
-];
+export const REVIEW_SUB_STEPS: () => { id: ReviewSubStep; label: string }[] = () => ([
+  { id: 'placeholders', label: t('wizard.2_1_placeholders') },
+  { id: 'sanitized', label: t('wizard.2_2_sanitized_text') },
+  { id: 'statistics', label: t('wizard.2_3_statistics') },
+]);
 
-export const RESTORE_SUB_STEPS: { id: RestoreSubStep; label: string }[] = [
-  { id: 'response', label: '3.1 AI response' },
-  { id: 'restored', label: '3.2 Restored text' },
-];
+export const RESTORE_SUB_STEPS: () => { id: RestoreSubStep; label: string }[] = () => ([
+  { id: 'response', label: t('wizard.3_1_ai_response') },
+  { id: 'restored', label: t('wizard.3_2_restored_text') },
+]);
 
 export interface WizardPosition {
   step: WizardStep;
@@ -36,8 +37,8 @@ export const canEnter = (step: WizardStep, gate: WizardGate): boolean =>
 
 const ORDER: WizardPosition[] = [
   { step: 'ingest' },
-  ...REVIEW_SUB_STEPS.map((s) => ({ step: 'review' as const, subStep: s.id })),
-  ...RESTORE_SUB_STEPS.map((s) => ({ step: 'restore' as const, subStep: s.id })),
+  ...REVIEW_SUB_STEPS().map((s) => ({ step: 'review' as const, subStep: s.id })),
+  ...RESTORE_SUB_STEPS().map((s) => ({ step: 'restore' as const, subStep: s.id })),
 ];
 
 const indexOf = (pos: WizardPosition): number => {
@@ -61,9 +62,9 @@ export const nextPosition = (pos: WizardPosition, gate: WizardGate): WizardPosit
 export const prevPosition = (pos: WizardPosition): WizardPosition | null => ORDER[indexOf(pos) - 1] ?? null;
 
 export const labelOf = (pos: WizardPosition): string => {
-  const sub = [...REVIEW_SUB_STEPS, ...RESTORE_SUB_STEPS].find((s) => s.id === pos.subStep);
+  const sub = [...REVIEW_SUB_STEPS(), ...RESTORE_SUB_STEPS()].find((s) => s.id === pos.subStep);
   if (sub) return sub.label.replace(/^[\d.]+\s*/, '');
-  return { ingest: 'Ingest', review: 'Review', restore: 'Restore' }[pos.step];
+  return { ingest: t('StepNav.1_ingest'), review: t('StepNav.2_review'), restore: t('StepNav.3_restore') }[pos.step].replace(/^\d+\.\s*/, '');
 };
 
 // S1: Fine-tune opens the Advanced review on the same session, at the placeholders.

@@ -1,3 +1,5 @@
+import { LanguagePicker } from '../components/LanguagePicker';
+import { t } from '../i18n';
 import { BrandName } from '../components/BrandName';
 import { BetaBadge } from '../components/BetaBadge';
 import { useEffect, useState } from 'react';
@@ -22,12 +24,13 @@ export function SiteHeader() {
       <a className="landing-brand" {...linkProps('/')}>
         <span className="app-mark" aria-hidden="true">A</span> <BrandName /> <BetaBadge />
       </a>
-      <nav aria-label="Main">
-        <a {...linkProps('/#how')}>How it works</a>
-        <a {...linkProps('/#privacy')}>How private?</a>
-        <a {...linkProps('/about')}>About</a>
+      <nav aria-label={t('SiteHeader.main')}>
+        <a {...linkProps('/#how')}>{t('SiteHeader.how_it_works')}</a>
+        <a {...linkProps('/#privacy')}>{t('SiteHeader.how_private')}</a>
+        <a {...linkProps('/about')}>{t('SiteHeader.about')}</a>
+        <LanguagePicker />
         <ThemeToggle theme={theme} onChange={setTheme} />
-        <a {...linkProps('/app')} className="landing-nav-cta">Open the tool</a>
+        <a {...linkProps('/app')} className="landing-nav-cta">{t('SiteHeader.open_the_tool')}</a>
       </nav>
     </header>
   );

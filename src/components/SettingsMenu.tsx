@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { BrandName } from './BrandName';
 import { type ReactNode, useEffect, useRef } from 'react';
 import type { AppMode, ThemePreference } from '../lib/session';
@@ -7,10 +8,10 @@ import { ThemeControl } from './ThemeControl';
 // S4: General · Detection · Dictionary · Data & privacy · About.
 export type SettingsSection = 'general' | 'detection' | 'dictionary' | 'privacy' | 'about';
 
-const MODE_OPTIONS: { value: AppMode; label: string }[] = [
-  { value: 'standard', label: 'Quick' },
-  { value: 'advanced', label: 'Detailed' },
-];
+const MODE_OPTIONS: () => { value: AppMode; label: string }[] = () => ([
+  { value: 'standard', label: t('SettingsMenu.quick') },
+  { value: 'advanced', label: t('SettingsMenu.detailed') },
+]);
 
 interface SettingsMenuProps {
   open: boolean;
@@ -83,17 +84,17 @@ export function SettingsMenu({
     >
       <div className="settings-menu-inner">
         <header className="settings-menu-header">
-          <h2 id="settings-title">Settings</h2>
-          <button type="button" className="settings-close" aria-label="Close settings" onClick={() => ref.current?.close()}>
+          <h2 id="settings-title">{t('SettingsMenu.settings')}</h2>
+          <button type="button" className="settings-close" aria-label={t('SettingsMenu.close_settings')} onClick={() => ref.current?.close()}>
             ×
           </button>
         </header>
 
         <section id="settings-general" className="settings-section">
-          <h3>General</h3>
-          <h4>Default mode</h4>
-          <div className="segmented" role="radiogroup" aria-label="Default mode">
-            {MODE_OPTIONS.map((o) => (
+          <h3>{t('SettingsMenu.general')}</h3>
+          <h4>{t('SettingsMenu.default_mode')}</h4>
+          <div className="segmented" role="radiogroup" aria-label={t('SettingsMenu.default_mode')}>
+            {MODE_OPTIONS().map((o) => (
               <label key={o.value} className={defaultMode === o.value ? 'segmented-option is-active' : 'segmented-option'}>
                 <input
                   type="radio"
@@ -107,54 +108,41 @@ export function SettingsMenu({
             ))}
           </div>
           <p className="settings-hint">
-            Quick anonymizes a document in one step; Detailed lets you review every item. Fine-tune is always
-            available from the quick result.
-          </p>
+            {t('SettingsMenu.quick_anonymizes_a_document_in_one_step')}</p>
 
-          <h4>Language</h4>
-          {/* M6 P14 (the t() layer and locales) is pending; this slot gets the
-              locale selector plus "follow browser" when it lands. */}
-          <select disabled aria-label="Language" value="en">
-            <option value="en">English</option>
-          </select>
-          <p className="settings-hint">More languages are on the way.</p>
-
-          <h4>Theme</h4>
+          <h4>{t('SettingsMenu.theme')}</h4>
           <ThemeControl theme={theme} onChange={onThemeChange} />
         </section>
 
         <section id="settings-detection" className="settings-section">
-          <h3>Detection</h3>
+          <h3>{t('SettingsMenu.detection')}</h3>
           {detection}
         </section>
 
         <section id="settings-dictionary" className="settings-section">
-          <h3>Dictionary</h3>
+          <h3>{t('SettingsMenu.dictionary')}</h3>
           {dictionary}
         </section>
 
         <section id="settings-privacy" className="settings-section">
-          <h3>Data &amp; privacy</h3>
-          <p className="settings-hint">Everything stays in this browser. Nothing is uploaded.</p>
+          <h3>{t('SettingsMenu.data_privacy')}</h3>
+          <p className="settings-hint">{t('SettingsMenu.everything_stays_in_this_browser_nothing_is')}</p>
           <button type="button" className="danger-button" onClick={onDeleteModel}>
-            Delete downloaded AI model
-          </button>
-          <p className="settings-hint">Frees the ~104 MB model cache. It is downloaded again if you turn AI detection back on.</p>
+            {t('SettingsMenu.delete_downloaded_ai_model')}</button>
+          <p className="settings-hint">{t('SettingsMenu.frees_the_104_mb_model_cache_it')}</p>
           <button type="button" className="danger-button" onClick={onClearLocalData}>
-            Clear all local data
-          </button>
+            {t('SettingsMenu.clear_all_local_data')}</button>
           <p className="settings-hint">
-            Removes the saved session, rules and settings from this browser, and the downloaded AI model.
-          </p>
+            {t('SettingsMenu.removes_the_saved_session_rules_and_settings')}</p>
         </section>
 
         <section id="settings-about" className="settings-section">
-          <h3>About</h3>
-          <p><BrandName /> v{__APP_VERSION__}. Runs entirely in your browser — no text is uploaded.</p>
+          <h3>{t('SettingsMenu.about')}</h3>
+          <p><BrandName /> v{__APP_VERSION__}{t('SettingsMenu.runs_entirely_in_your_browser_no_text')}</p>
           <p>
             <Copyright />
           </p>
-          {legalLinks && <nav className="settings-links" aria-label="Legal">{legalLinks}</nav>}
+          {legalLinks && <nav className="settings-links" aria-label={t('SettingsMenu.legal')}>{legalLinks}</nav>}
         </section>
       </div>
     </dialog>

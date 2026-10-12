@@ -1,3 +1,4 @@
+import { t, useLocale } from './i18n';
 import { lazy, Suspense, useEffect } from 'react';
 import { ROUTE_PATHS, useRoute, type Route } from './lib/router';
 import { SITE_ORIGIN } from './site';
@@ -15,22 +16,26 @@ const Landing = __PORTABLE__ ? null! : lazy(() => import('./landing/Landing'));
 const About = __PORTABLE__ ? null! : lazy(() => import('./landing/About'));
 const LegalPage = __PORTABLE__ ? null! : lazy(() => import('./landing/LegalPage'));
 
-const TITLES: Record<Route, string> = {
-  landing: 'AnonymAIzer — anonymize text before sending it to an AI',
+const titles = (): Record<Route, string> => ({
+  landing: t('title.landing'),
   app: 'AnonymAIzer',
-  about: 'About — AnonymAIzer, a TICGAL Labs project',
-  privacy: 'Privacy policy — AnonymAIzer',
-  cookies: 'Cookie policy — AnonymAIzer',
-  terms: 'Terms of use — AnonymAIzer',
-};
+  about: t('title.about'),
+  privacy: t('title.privacy'),
+  cookies: t('title.cookies'),
+  terms: t('title.terms'),
+});
 
 const Loading = () => <div className="route-loading" aria-busy="true" />;
 
 function HostedRoot() {
   const route = useRoute();
+  const locale = useLocale();
   useEffect(() => {
-    document.title = TITLES[route];
+    document.title = titles()[route];
     document.querySelector('link[rel="canonical"]')?.setAttribute('href', `${SITE_ORIGIN}${ROUTE_PATHS[route]}`);
+  }, [route, locale]);
+
+  useEffect(() => {
     // A no-op unless analytics was consented to and loaded. Path only.
     trackPageView(ROUTE_PATHS[route]);
   }, [route]);
@@ -51,6 +56,7 @@ function HostedRoot() {
 }
 
 function PortableRoot() {
+  useLocale();
   return (
     <Suspense fallback={<Loading />}>
       <App />

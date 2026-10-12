@@ -1,3 +1,4 @@
+import { t, categoryLabel } from '../i18n';
 import { summarizeMappings } from '../core/stats';
 import type { MappingSession } from '../core/types';
 
@@ -23,25 +24,23 @@ export const SidebarStats = ({ session, onOpen }: SidebarStatsProps) => {
   const { enabled, disabled, byCategory } = summarizeMappings(session.mappings);
 
   return (
-    <button type="button" className="sidebar-stats" title="Open 2.2 Placeholders" onClick={onOpen}>
+    <button type="button" className="sidebar-stats" title={t('SidebarStats.open_2_2_placeholders')} onClick={onOpen}>
       {session.inputType === 'FILE' && session.fileName && (
         <span className="sidebar-stats-file" title={session.fileName}>
           <span className="sidebar-stats-format">{FORMAT_LABELS[session.originalFormat]}</span> {session.fileName}
         </span>
       )}
       <span className="sidebar-stats-total">
-        <strong>{enabled}</strong> masked
-      </span>
+        <strong>{enabled}</strong> {t('SidebarStats.masked')}</span>
       {disabled > 0 && (
         <span className="sidebar-stats-total sidebar-stats-muted">
-          <strong>{disabled}</strong> unticked
-        </span>
+          <strong>{disabled}</strong> {t('SidebarStats.unticked')}</span>
       )}
       {byCategory.length > 0 && (
         <span className="sidebar-stats-list">
           {byCategory.map(({ category, count }) => (
-            <span className="sidebar-stats-row" key={category}>
-              <span className="sidebar-stats-category">{category}</span>
+            <span className="sidebar-stats-row" key={categoryLabel(category)}>
+              <span className="sidebar-stats-category">{categoryLabel(category)}</span>
               <span className="sidebar-stats-count">{count}</span>
             </span>
           ))}

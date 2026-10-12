@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import { useEffect, useState } from 'react';
 import { applyUpdate, onUpdateAvailable } from '../lib/swUpdate';
 
@@ -8,11 +9,10 @@ export function UpdatePrompt() {
   if (!available) return null;
   return (
     <div className="update-prompt" role="status">
-      <span>New version available.</span>
+      <span>{t('UpdatePrompt.new_version_available')}</span>
       <button type="button" onClick={applyUpdate}>
-        Reload
-      </button>
-      <button type="button" className="update-prompt-dismiss" aria-label="Dismiss" onClick={() => setAvailable(false)}>
+        {t('UpdatePrompt.reload')}</button>
+      <button type="button" className="update-prompt-dismiss" aria-label={t('UpdatePrompt.dismiss')} onClick={() => setAvailable(false)}>
         ×
       </button>
     </div>

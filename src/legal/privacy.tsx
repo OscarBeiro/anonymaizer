@@ -1,3 +1,4 @@
+import { t, type TranslationKey } from '../i18n';
 import { BrandName } from '../components/BrandName';
 import { OPERATOR as o, SITE_ORIGIN } from '../site';
 import type { LegalLang } from './meta';
@@ -5,148 +6,117 @@ import type { LegalLang } from './meta';
 // P20 — DRAFT FOR LEGAL REVIEW, not legal advice. Every double-brace placeholder comes
 // from src/site.ts and must be filled before publication.
 
-const AEPD_ES = 'Agencia Española de Protección de Datos (AEPD), C/ Jorge Juan, 6, 28001 Madrid — www.aepd.es';
-const AEPD_EN = 'Spanish Data Protection Agency (AEPD), C/ Jorge Juan, 6, 28001 Madrid, Spain — www.aepd.es';
+const AEPD_ES = "Agencia Española de Protección de Datos (AEPD), C/ Jorge Juan, 6, 28001 Madrid — www.aepd.es";
 
-const En = () => (
+const En = ({ lang }: { lang: LegalLang }) => {
+  const translate = (key: TranslationKey) => t(key, {}, lang);
+  return (
   <>
-    <h1>Privacy policy</h1>
+    <h1>{translate('privacy.privacy_policy')}</h1>
 
-    <h2>1. The short version</h2>
+    <h2>{translate('privacy.1_the_short_version')}</h2>
     <p>
       <strong>
-        <BrandName /> has no backend. The text and documents you anonymize are processed only inside your browser and
-        are never sent to us or to anyone else.
-      </strong>{' '}
-      We cannot see, store or recover them. This policy therefore covers the few things that do involve personal
-      data: the analytics on this website (only if you accept them), the hosting of the site, and the optional
-      download of the AI name-detection model.
-    </p>
+        <BrandName /> {translate('privacy.has_no_backend_the_text_and_documents')}</strong>{' '}
+      {translate('privacy.we_cannot_see_store_or_recover_them')}</p>
 
-    <h2>2. Who is responsible</h2>
+    <h2>{translate('privacy.2_who_is_responsible')}</h2>
     <p>
-      Controller: {o.legalName}, tax ID (NIF) {o.nif}, {o.address}. Contact: <a href={`mailto:${o.contactEmail}`}>{o.contactEmail}</a>.
-      Data protection officer: {o.dpo}.
+      {translate('privacy.controller')}{o.legalName}{translate('privacy.tax_id_nif')}{o.nif}, {o.address}{translate('privacy.contact')}<a href={`mailto:${o.contactEmail}`}>{o.contactEmail}</a>{translate('privacy.data_protection_officer')}{o.dpo}.
     </p>
 
-    <h2>3. What is not processed</h2>
+    <h2>{translate('privacy.3_what_is_not_processed')}</h2>
     <ul>
       <li>
-        The content you paste or import, the files you open, their names, the entities detected in them, the
-        placeholders and the restored text. All of this stays on your device.
-      </li>
+        {translate('privacy.the_content_you_paste_or_import_the')}</li>
       <li>
-        Our analytics never receive any of the above, nor a count of it. They measure page views and coarse
-        interactions only.
-      </li>
+        {translate('privacy.our_analytics_never_receive_any_of_the')}</li>
     </ul>
     <p>
-      If the documents you process contain personal data about other people, <strong>you</strong> are the
-      controller of that processing under the GDPR, and it is your responsibility to have a legal basis for it. The
-      tool helps you minimise what you share with third-party AI services; it does not make that sharing lawful by
-      itself, and automated detection can miss data (see the <a href="/terms">terms of use</a>).
+      {translate('privacy.if_the_documents_you_process_contain_personal')}<strong>{translate('privacy.you')}</strong> {translate('privacy.are_the_controller_of_that_processing_under')}<a href="/terms">{translate('privacy.terms_of_use')}</a>).
     </p>
 
-    <h2>4. What is processed, why, and on what basis</h2>
+    <h2>{translate('privacy.4_what_is_processed_why_and_on')}</h2>
     <table>
       <thead>
         <tr>
-          <th>Processing</th>
-          <th>Data</th>
-          <th>Purpose</th>
-          <th>Legal basis</th>
+          <th>{translate('privacy.processing')}</th>
+          <th>{translate('privacy.data')}</th>
+          <th>{translate('privacy.purpose')}</th>
+          <th>{translate('privacy.legal_basis')}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td>Web analytics (Google Analytics 4, Metricool)</td>
+          <td>{translate('privacy.web_analytics_google_analytics_4_metricool')}</td>
           <td>
-            Pseudonymous cookie identifiers, pages visited, approximate location derived from a truncated IP, device
-            and browser type, referrer
-          </td>
-          <td>Understand how many people use the site and how they reach it</td>
-          <td>Your consent, GDPR art. 6(1)(a) and LSSI-CE art. 22.2. Nothing loads until you accept.</td>
+            {translate('privacy.pseudonymous_cookie_identifiers_pages_visited_approximate_location')}</td>
+          <td>{translate('privacy.understand_how_many_people_use_the_site')}</td>
+          <td>{translate('privacy.your_consent_gdpr_art_6_1_a')}</td>
         </tr>
         <tr>
-          <td>Hosting and delivery (Cloudflare)</td>
-          <td>IP address, request metadata in server logs</td>
-          <td>Deliver the site and protect it against abuse</td>
-          <td>Legitimate interest in operating a secure website, GDPR art. 6(1)(f)</td>
+          <td>{translate('privacy.hosting_and_delivery_cloudflare')}</td>
+          <td>{translate('privacy.ip_address_request_metadata_in_server_logs')}</td>
+          <td>{translate('privacy.deliver_the_site_and_protect_it_against')}</td>
+          <td>{translate('privacy.legitimate_interest_in_operating_a_secure_website')}</td>
         </tr>
         <tr>
-          <td>Optional AI model download</td>
-          <td>Your IP address and request metadata, received by the model host</td>
-          <td>Download the name-detection model to your browser, once, when you switch it on</td>
+          <td>{translate('privacy.optional_ai_model_download')}</td>
+          <td>{translate('privacy.your_ip_address_and_request_metadata_received')}</td>
+          <td>{translate('privacy.download_the_name_detection_model_to_your')}</td>
           <td>
-            Your request (you switch it on). We do not receive this data; Hugging Face and jsDelivr act as
-            independent providers.
-          </td>
+            {translate('privacy.your_request_you_switch_it_on_we')}</td>
         </tr>
         <tr>
-          <td>Emails you send us</td>
-          <td>Your address and message</td>
-          <td>Answer you</td>
-          <td>Legitimate interest in replying, GDPR art. 6(1)(f)</td>
+          <td>{translate('privacy.emails_you_send_us')}</td>
+          <td>{translate('privacy.your_address_and_message')}</td>
+          <td>{translate('privacy.answer_you')}</td>
+          <td>{translate('privacy.legitimate_interest_in_replying_gdpr_art_6')}</td>
         </tr>
       </tbody>
     </table>
 
-    <h2>5. Data stored on your device</h2>
+    <h2>{translate('privacy.5_data_stored_on_your_device')}</h2>
     <p>
-      The app keeps its state in your browser's local storage so that a reload loses nothing: the current session
-      (text, placeholders and their originals), your custom rules, your settings (detection categories, output
-      mode, theme) and your cookie-consent decision. The AI model, if downloaded, is kept in IndexedDB. None of this
-      leaves your device. You can delete all of it at any time from <em>Settings → Clear all local data</em>, or by
-      clearing this site's data in your browser.
-    </p>
+      {translate('privacy.the_app_keeps_its_state_in_your')}<em>{translate('privacy.settings_clear_all_local_data')}</em>{translate('privacy.or_by_clearing_this_site_s_data')}</p>
 
-    <h2>6. Recipients</h2>
+    <h2>{translate('privacy.6_recipients')}</h2>
     <ul>
-      <li>Google Ireland Ltd. / Google LLC — Google Analytics 4 (only with consent).</li>
-      <li>Metricool Software S.L. — Metricool analytics (only with consent).</li>
-      <li>Cloudflare, Inc. — hosting and content delivery.</li>
+      <li>{translate('privacy.google_ireland_ltd_google_llc_google_analytics')}</li>
+      <li>{translate('privacy.metricool_software_s_l_metricool_analytics_only')}</li>
+      <li>{translate('privacy.cloudflare_inc_hosting_and_content_delivery')}</li>
       <li>
-        Hugging Face, Inc. and jsDelivr (Prospect One) — only if you enable the AI model, and only for the download
-        itself.
-      </li>
+        {translate('privacy.hugging_face_inc_and_jsdelivr_prospect_one')}</li>
     </ul>
-    <p>We do not sell data or use it for advertising.</p>
+    <p>{translate('privacy.we_do_not_sell_data_or_use')}</p>
 
-    <h2>7. International transfers</h2>
+    <h2>{translate('privacy.7_international_transfers')}</h2>
     <p>
-      Google Analytics and Cloudflare may transfer data to the United States. Google LLC and Cloudflare, Inc. are
-      certified under the EU-US Data Privacy Framework (Commission adequacy decision of 10 July 2023), and both also
-      offer the European Commission's Standard Contractual Clauses (Decision (EU) 2021/914) as a safeguard. GA4 is
-      configured without advertising signals or user IDs, and IP addresses are not stored by Google Analytics 4.
-    </p>
+      {translate('privacy.google_analytics_and_cloudflare_may_transfer_data')}</p>
 
-    <h2>8. Retention</h2>
+    <h2>{translate('privacy.8_retention')}</h2>
     <ul>
-      <li>Google Analytics 4: event data retained for 2 months (the minimum setting); cookies as listed in the cookie policy.</li>
-      <li>Metricool: {'{{METRICOOL_RETENTION}}'}.</li>
-      <li>Cloudflare logs: per Cloudflare's standard retention, {'{{CLOUDFLARE_LOG_RETENTION}}'}.</li>
-      <li>Emails: as long as needed to handle your request, then up to the applicable limitation periods.</li>
-      <li>Local storage: until you delete it.</li>
+      <li>{translate('privacy.google_analytics_4_event_data_retained_for')}</li>
+      <li>{translate('privacy.metricool')}{'{{METRICOOL_RETENTION}}'}.</li>
+      <li>{translate('privacy.cloudflare_logs_per_cloudflare_s_standard_retention')}{'{{CLOUDFLARE_LOG_RETENTION}}'}.</li>
+      <li>{translate('privacy.emails_as_long_as_needed_to_handle')}</li>
+      <li>{translate('privacy.local_storage_until_you_delete_it')}</li>
     </ul>
 
-    <h2>9. Your rights</h2>
+    <h2>{translate('privacy.9_your_rights')}</h2>
     <p>
-      Under GDPR arts. 15–22 you may request access, rectification, erasure, restriction, portability and object to
-      processing, and you may withdraw consent at any time without affecting prior processing (art. 7(3)). Write to{' '}
-      <a href={`mailto:${o.contactEmail}`}>{o.contactEmail}</a> with proof of identity. Note that we hold no data
-      about the documents you process, and analytics identifiers are pseudonymous: to act on them we may need the
-      identifier from your browser. You can withdraw analytics consent directly from the{' '}
-      <a href="/cookies">cookie policy</a>.
+      {translate('privacy.under_gdpr_arts_15_22_you_may')}{' '}
+      <a href={`mailto:${o.contactEmail}`}>{o.contactEmail}</a> {translate('privacy.with_proof_of_identity_note_that_we')}{' '}
+      <a href="/cookies">{translate('privacy.cookie_policy')}</a>.
     </p>
-    <p>If you believe your rights have not been respected, you may complain to the {AEPD_EN}.</p>
+    <p>{translate('privacy.if_you_believe_your_rights_have_not')}{translate('privacy.spanish_data_protection_agency_aepd_c_jorge')}.</p>
 
-    <h2>10. Changes</h2>
+    <h2>{translate('privacy.10_changes')}</h2>
     <p>
-      We will publish any change on this page at {SITE_ORIGIN}/privacy. If a change affects what analytics are used,
-      we will ask for your consent again.
-    </p>
+      {translate('privacy.we_will_publish_any_change_on_this')}{SITE_ORIGIN}{translate('privacy.privacy_if_a_change_affects_what_analytics')}</p>
   </>
 );
+};
 
 const Es = () => (
   <>
@@ -289,4 +259,4 @@ const Es = () => (
   </>
 );
 
-export const Privacy = ({ lang }: { lang: LegalLang }) => (lang === 'es' ? <Es /> : <En />);
+export const Privacy = ({ lang }: { lang: LegalLang }) => (lang === 'es' ? <Es /> : <En lang={lang} />);

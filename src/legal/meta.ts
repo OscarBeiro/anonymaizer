@@ -5,7 +5,7 @@
 export const LEGAL_LAST_UPDATED = '2026-09-27';
 export const CONSENT_POLICY_VERSION = 1;
 
-export type LegalLang = 'es' | 'en';
+export type LegalLang = 'es' | 'en' | 'gl';
 export type LegalPageId = 'privacy' | 'cookies' | 'terms';
 
 // Every placeholder the drafter must fill before launch. Mirrored in

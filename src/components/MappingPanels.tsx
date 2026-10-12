@@ -1,3 +1,4 @@
+import { t, categoryLabel } from '../i18n';
 import { useState } from 'react';
 import { countByCategory } from '../core/stats';
 import { PLACEHOLDER_PATTERN } from '../core/export/textExport';
@@ -58,9 +59,9 @@ export const SanitizedTextPanel = ({
   onPseudonymLangChange,
 }: SanitizedTextPanelProps) => (
   <section className="panel">
-    <h2>Sanitized text</h2>
+    <h2>{t('MappingPanels.sanitized_text')}</h2>
     <fieldset className="output-mode">
-      <legend>Output</legend>
+      <legend>{t('MappingPanels.output')}</legend>
       {(['placeholders', 'realistic'] as const).map((mode) => (
         <label key={mode}>
           <input
@@ -69,29 +70,27 @@ export const SanitizedTextPanel = ({
             checked={outputMode === mode}
             onChange={() => onOutputModeChange(mode)}
           />
-          {mode === 'placeholders' ? 'Placeholders' : 'Realistic'}
+          {mode === 'placeholders' ? 'Placeholders' : t('MappingPanels.realistic')}
         </label>
       ))}
     </fieldset>
     {outputMode === 'realistic' && (
       <p className="output-mode-warning" role="note">
-        Realistic output swaps in fake names, companies and amounts, and those cannot be restored in step 3. Use
-        Placeholders for text you will send to an AI and restore afterwards.
-      </p>
+        {t('MappingPanels.realistic_output_swaps_in_fake_names_companies')}</p>
     )}
     <label className="pseudonym-lang">
-      Fake names in{' '}
+      {t('MappingPanels.fake_names_in')}{' '}
       <select value={pseudonymLang} onChange={(e) => onPseudonymLangChange(e.target.value as PseudonymLang)}>
-        <option value="es">Spanish</option>
-        <option value="en">English</option>
+        <option value="es">{t('MappingPanels.spanish')}</option>
+        <option value="en">{t('MappingPanels.english')}</option>
       </select>
     </label>
     <div className="money-range">
-      <span>Amounts vary by ±</span>
-      {percentInput('from', moneyRange.min, (min) => onMoneyRangeChange({ ...moneyRange, min }))}
-      {percentInput('to', moneyRange.max, (max) => onMoneyRangeChange({ ...moneyRange, max }))}
+      <span>{t('MappingPanels.amounts_vary_by')}</span>
+      {percentInput(t('MappingPanels.from'), moneyRange.min, (min) => onMoneyRangeChange({ ...moneyRange, min }))}
+      {percentInput(t('MappingPanels.to'), moneyRange.max, (max) => onMoneyRangeChange({ ...moneyRange, max }))}
       <span>%</span>
-      {outputMode !== 'realistic' && <em> (applies to Realistic output)</em>}
+      {outputMode !== 'realistic' && <em> {t('MappingPanels.applies_to_realistic_output')}</em>}
     </div>
     <div className="panel-textarea sanitized-highlight"><HighlightedText text={anonymizedText} /></div>
     <div className="panel-actions">
@@ -101,8 +100,7 @@ export const SanitizedTextPanel = ({
         disabled={!anonymizedText}
         onClick={() => navigator.clipboard.writeText(anonymizedText)}
       >
-        Copy sanitized text
-      </button>
+        {t('MappingPanels.copy_sanitized_text')}</button>
       <SaveAsControl text={anonymizedText} session={session} side="sanitized" />
     </div>
   </section>
@@ -139,24 +137,24 @@ export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingLis
 
   return (
     <section className="panel">
-      <h2>Placeholders</h2>
+      <h2>{t('MappingPanels.placeholders')}</h2>
       {mappings.length === 0 ? (
-        <p className="empty-hint">Nothing detected yet.</p>
+        <p className="empty-hint">{t('MappingPanels.nothing_detected_yet')}</p>
       ) : (
         <>
           <button type="button" className="merge-button" disabled={!canMerge} onClick={handleMerge}>
-            Merge selected ({selected.size})
+            {t('MappingPanels.merge_selected')}{selected.size})
           </button>
           <div className="mapping-table-wrapper">
           <table className="mapping-table">
             <thead>
               <tr>
-                <th>On</th>
-                <th>Merge?</th>
-                <th>Placeholder</th>
-                <th>Category</th>
-                <th>Original</th>
-                <th>Confidence</th>
+                <th>{t('MappingPanels.on')}</th>
+                <th>{t('MappingPanels.merge')}</th>
+                <th>{t('MappingPanels.placeholder')}</th>
+                <th>{t('MappingPanels.category')}</th>
+                <th>{t('MappingPanels.original')}</th>
+                <th>{t('MappingPanels.confidence')}</th>
                 <th />
               </tr>
             </thead>
@@ -171,16 +169,16 @@ export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingLis
                       type="checkbox"
                       checked={selected.has(m.id)}
                       onChange={() => toggleSelected(m.id)}
-                      aria-label={`Select ${m.placeholder} to merge`}
+                      aria-label={t('MappingPanels.select_to_merge', { p0: m.placeholder })}
                     />
                   </td>
                   <td>{m.placeholder}</td>
-                  <td>{m.category}</td>
+                  <td>{categoryLabel(m.category)}</td>
                   <td>
                     {m.originalText}
                     {m.variants.length > 1 && (
                       <div className="mapping-variants">
-                        also matches: {m.variants.slice(1).join(', ')}
+                        {t('MappingPanels.also_matches')}{m.variants.slice(1).join(', ')}
                       </div>
                     )}
                   </td>
@@ -191,10 +189,9 @@ export const MappingList = ({ mappings, onToggle, onSplit, onMerge }: MappingLis
                         type="button"
                         className="split-button"
                         onClick={() => onSplit(m.id)}
-                        title="Split back into one placeholder per spelling"
+                        title={t('MappingPanels.split_back_into_one_placeholder_per_spelling')}
                       >
-                        Split
-                      </button>
+                        {t('MappingPanels.split')}</button>
                     )}
                   </td>
                 </tr>
@@ -220,15 +217,15 @@ export const StatisticsPanel = ({ mappings }: StatisticsPanelProps) => {
 
   return (
     <section className="panel">
-      <h2>Statistics</h2>
+      <h2>{t('MappingPanels.statistics')}</h2>
       {counts.length === 0 ? (
-        <p className="empty-hint">Nothing detected yet.</p>
+        <p className="empty-hint">{t('MappingPanels.nothing_detected_yet')}</p>
       ) : (
         <div className="stats-grid">
           {counts.map(({ category, count }) => (
-            <div className="stat-card" key={category}>
+            <div className="stat-card" key={categoryLabel(category)}>
               <span className="stat-count">{count}</span>
-              <span className="stat-category">{category}</span>
+              <span className="stat-category">{categoryLabel(category)}</span>
             </div>
           ))}
         </div>

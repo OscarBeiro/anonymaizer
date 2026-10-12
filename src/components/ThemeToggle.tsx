@@ -1,3 +1,4 @@
+import { t } from '../i18n';
 import type { ThemePreference } from '../lib/session';
 import { resolveTheme } from '../lib/theme';
 
@@ -16,8 +17,8 @@ export function ThemeToggle({ theme, onChange }: ThemeToggleProps) {
     <button
       type="button"
       className="settings-button theme-toggle"
-      aria-label={`Switch to ${next} mode`}
-      title={`Switch to ${next} mode`}
+      aria-label={t('ThemeToggle.switch_to_mode', { p0: next === 'dark' ? t('ThemeControl.dark') : t('ThemeControl.light') })}
+      title={t('ThemeToggle.switch_to_mode', { p0: next === 'dark' ? t('ThemeControl.dark') : t('ThemeControl.light') })}
       onClick={() => onChange(next)}
     >
       <span aria-hidden="true">{current === 'dark' ? '☀' : '☾'}</span>
