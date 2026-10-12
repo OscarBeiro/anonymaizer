@@ -1,3 +1,5 @@
+import { GALICIAN_PACK } from './packs/gl';
+import type { DocumentLanguage } from './langDetect';
 import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { detectMoney } from './money';
 import { RUNG, type DetectedSpan } from './types';
@@ -556,11 +558,12 @@ const STRUCTURE_HEAD_RE = new RegExp(
  * "Psicóloga" and arbitration drops the whole overlapping NAME candidate. So
  * both are peeled off the front here, not used to reject the whole match.
  */
-const stripLeadingLabels = (matchText: string, start: number): { text: string; start: number } => {
+const stripLeadingLabels = (matchText: string, start: number, extraLabels?: RegExp): { text: string; start: number } => {
   let text = matchText;
   let offset = start;
   for (;;) {
     const leading =
+      extraLabels?.exec(text) ??
       LEADING_LABEL_RE.exec(text) ??
       HONORIFIC_RE.exec(text) ??
       STRUCTURE_HEAD_RE.exec(text) ??
@@ -585,8 +588,8 @@ const NAME_STOPWORDS_LOWER = new Set([...NAME_STOPWORDS].map((word) => word.toLo
  * the leading-strip is enough, and this would wrongly reject a real surname
  * that happens to collide with the list.
  */
-const containsStopword = (matchText: string): boolean =>
-  matchText.split(/\s+/).some((word) => NAME_STOPWORDS_LOWER.has(word.toLowerCase()));
+const containsStopword = (matchText: string, extra?: ReadonlySet<string>): boolean =>
+  matchText.split(/\s+/).some((word) => NAME_STOPWORDS_LOWER.has(word.toLowerCase()) || extra?.has(word.toLowerCase()));
 
 const isLabelColon = (text: string, endIndex: number): boolean => text[endIndex] === ':';
 
@@ -659,10 +662,10 @@ const tryExtendCommaForm = (
   return { text: `${given} ${matchText}`, end: start + matchText.length + continuation[0].length };
 };
 
-export const detectNames = (text: string): DetectedSpan[] =>
+export const detectNames = (text: string, extraLabels?: RegExp, extraStopwords?: ReadonlySet<string>): DetectedSpan[] =>
   collect(new RegExp(NAME_REGEX), text, (m) => {
     if (isLetteredItem(m[0])) return null;
-    const { text: matchText, start } = stripLeadingLabels(m[0], m.index);
+    const { text: matchText, start } = stripLeadingLabels(m[0], m.index, extraLabels);
     if (tokenCount(matchText) < 2) return null;
     // A sentence-initial candidate is accepted, but only on the strength of
     // the candidate itself: no lowercase word precedes it, so the two-token
@@ -672,7 +675,7 @@ export const detectNames = (text: string): DetectedSpan[] =>
     // documents are full of. The residual cost is over-masking a title-case
     // heading like "Evaluación Externa Anual"; that is reviewable in step 2,
     // where an unmasked name is not.
-    if (isSentenceInitial(text, start) && containsStopword(matchText)) return null;
+    if (isSentenceInitial(text, start) && containsStopword(matchText, extraStopwords)) return null;
     if (startsAttachedToPrevious(text, start)) return null;
 
     const extended = tryExtendCommaForm(text, matchText, start);
@@ -867,8 +870,13 @@ export const runHeuristicDetectors = (
 export const runAllDetectors = (
   text: string,
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
+  languages: readonly DocumentLanguage[] = ['en', 'es'],
 ): DetectedSpan[] => [
   ...runShieldDetectors(text),
   ...runDeterministicDetectors(text, settings),
-  ...runHeuristicDetectors(text, settings),
+  ...runHeuristicDetectors(text, { ...settings, NAME: false }),
+  ...gated(settings, ['NAME'], value => detectNames(value,
+    languages.includes('gl') ? new RegExp(`^(?:${GALICIAN_PACK.stopwords.join('|')})\\b${WS}*`, 'u') : undefined,
+    languages.includes('gl') ? new Set(GALICIAN_PACK.stopwords.map(word => word.toLowerCase())) : undefined), text),
+  ...(languages.includes('gl') && isCategoryOn(settings, 'COMPANY') ? collect(new RegExp(`\\b(?:${GALICIAN_PACK.companyPrefixes.join('|')})${WS}+\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*)*`, 'gu'), text, m => ({ start: m.index, end: m.index + m[0].length, text: m[0], category: 'COMPANY', confidence: 1, source: 'regex', rung: RUNG.COMPANY })) : []),
 ];

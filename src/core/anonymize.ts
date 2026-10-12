@@ -1,3 +1,4 @@
+import type { DocumentLanguage } from './langDetect';
 import { DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { applyDictionary } from './dictionary';
 import { runAllDetectors } from './detectors';
@@ -24,8 +25,9 @@ export const anonymize = (
   rules: CustomDictionaryRule[],
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
   manualSpans: DetectedSpan[] = [],
+  languages: readonly DocumentLanguage[] = ['en', 'es'],
 ): PipelineResult => {
-  const candidates = [...manualSpans, ...dictionarySpans(text, rules, settings), ...runAllDetectors(text, settings)];
+  const candidates = [...manualSpans, ...dictionarySpans(text, rules, settings), ...runAllDetectors(text, settings, languages)];
   return runDetectionPipeline(text, candidates);
 };
 
@@ -42,11 +44,12 @@ export const anonymizeWithNer = (
   nerEntities: NerEntity[],
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
   manualSpans: DetectedSpan[] = [],
+  languages: readonly DocumentLanguage[] = ['en', 'es'],
 ): PipelineResult => {
   const candidates = [
     ...manualSpans,
     ...dictionarySpans(text, rules, settings),
-    ...runAllDetectors(text, settings),
+    ...runAllDetectors(text, settings, languages),
     ...mapNerEntitiesToSpans(nerEntities).filter((span) => isCategoryOn(settings, span.category)),
   ];
   return runDetectionPipeline(text, candidates);
