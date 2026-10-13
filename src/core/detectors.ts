@@ -916,7 +916,7 @@ export const JURISDICTION_PACKS: Readonly<Record<string, JurisdictionPack>> = {
       { categories: ['MASKED_ID'], detect: detectMaskedIds },
       { categories: ['ID_CODE'], detect: detectIdCodes },
       { categories: ['PHONE'], detect: detectPhones },
-      { categories: ['ADDRESS'], detect: detectAddresses },
+      { categories: ['ADDRESS'], detect: value => [...detectAddresses(value), ...detectSpanishPostalAddressFragments(value)] },
     ],
   },
 };
@@ -927,6 +927,8 @@ const commonDetectors: readonly PackDetector[] = [
   { categories: ['IBAN'], detect: detectIbans },
   { categories: ['CREDIT_CARD'], detect: detectCreditCards },
   { categories: ['MONEY'], detect: detectMoney },
+  { categories: ['VAT_NUMBER'], detect: detectVatNumbers },
+  { categories: ['LOCATION'], detect: detectLocations },
 ];
 
 const runPackDetectors = (text: string, settings: CategorySettings, detectors: readonly PackDetector[], origin: Pick<DetectedSpan, 'pack' | 'packs'>): DetectedSpan[] =>
