@@ -73,6 +73,7 @@ it('keeps the newest edit and ignores an old result after turning the model off'
 });
 
 it('automatically scans files imported after the model is ready', async () => {
+  await act(async () => state.ingest!.onChange('Initial document'));
   await act(async () => state.ner!.onToggle(true));
   await act(async () => state.scans[0].resolve([]));
   await act(async () => state.ingest!.onFileImport('Zorvax', 'raw_text', 'later.txt', []));
