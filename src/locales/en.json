@@ -446,7 +446,7 @@
   "wizard.3_1_ai_response": "3.1 AI response",
   "wizard.3_2_restored_text": "3.2 Restored text",
   "language.interface": "Interface language",
-  "language.browser": "Follow browser",
+  "language.browser": "Auto-detect",
   "title.landing": "AnonymAIzer — anonymize text before sending it to an AI",
   "title.about": "About — AnonymAIzer, a TICGAL Labs project",
   "title.privacy": "Privacy policy — AnonymAIzer",
