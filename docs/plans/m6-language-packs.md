@@ -175,7 +175,7 @@ its browser acceptance check remain in P26; P24 adds no runtime network calls
 or dependencies. These fixtures are regression checks, not a multilingual
 accuracy benchmark.
 
-### [ ] P25 — Profile-gated detection pipeline
+### [x] P25 — Profile-gated detection pipeline
 
 > `runAllDetectors(text, settings, profile = DEFAULT_PROFILE)` (and
 > `anonymize`/`anonymizeWithNer`) iterates the active packs' detectors. The
@@ -185,6 +185,35 @@ accuracy benchmark.
 > contextual pack filtering of NER against recall; do not blanket-drop ambiguous names. Tests: with a
 > PT-only profile, no `INVALID_ID`/name heuristics from ES; a checksummed DNI
 > outranks an overlapping NER span; the default profile gives today's output.
+
+Implemented 2026-10-13. `DetectionProfile` separates `languages` from
+`jurisdictions`; the default remains ES/EN language context with the ES
+jurisdiction. `runAllDetectors`, `anonymize`, `anonymizeWithNer` and the detection
+worker accept the profile. Existing language-array callers retain the ES
+jurisdiction for compatibility. Category switches still gate each detector;
+shields remain untoggleable. Common EMAIL/IBAN/card/MONEY rules and timestamp
+shields are independent of the selected packs. The ES jurisdiction owns IDs,
+phones and address cues (including the existing English address forms).
+Checksum-valid DNI/NIE remain broad even without the ES jurisdiction; invalid
+ID guesses require ES. Category switches also gate these broad checks.
+
+Added the required pack types, lexical data and language registry from the
+unfinished P23 scaffold. A merged pass uses active EN/ES/GL lexical context,
+avoiding duplicate or partially overlapping names. PT/FR/IT/DE suggestions do
+not register unfinished rule packs; PT-only contributes no Spanish heuristics.
+Regex candidates record `pack` or contributing `packs`; NER candidates record
+the supplied model identity (current BERT by default). Shared technical acronym
+exclusions remain conservative across implemented language packs.
+
+Regression checks compare default mappings and substitutions with the legacy
+detector composition, including the clinical fixture. Profile tests cover
+independent GL/ES choices, PT-only isolation, category gates, duplicate packs,
+empty English shield vocabulary, checksum priority and retained NER names such
+as `Amparo Paz`. No blanket stopword filtering of NER was introduced; these
+checks protect specific recall cases rather than claiming a model benchmark.
+The UI remains P26. P23 stays open for the remaining scaffold/pseudonym cleanup.
+
+Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 
 ### [ ] P26 — "Language & region" setup step
 
