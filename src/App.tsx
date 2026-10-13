@@ -31,6 +31,7 @@ import { linkProps } from './lib/router';
 import { SiteLinks } from './landing/SiteLinks';
 import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
+import { NerQueue } from './lib/nerQueue';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
@@ -201,30 +202,37 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const runNerScan = async (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
+  // Queue changes during loading/inference without restarting the model download.
+  // Only the newest document/settings may publish results or status.
+  const [nerQueue] = useState(() => new NerQueue<{
+    rawMarkdown: string;
+    rules: CustomDictionaryRule[];
+    settings: CategorySettings;
+  }>(async ({ rawMarkdown, rules, settings }, isCurrent) => {
     nerClientRef.current ??= new NerClient();
     try {
-      const entities = await nerClientRef.current.runNer(rawMarkdown, setNerStatus);
+      const entities = await nerClientRef.current.runNer(rawMarkdown, (status) => {
+        if (isCurrent()) setNerStatus(status);
+      });
+      if (!isCurrent()) return;
       const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings);
-      setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
-    } catch {
-      // nerStatus is already set to the error by the client's onStatus
-      // callback — the M1/P7a-c mapping stays in place, nothing to undo.
+      setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText }));
+    } catch (error) {
+      if (isCurrent()) setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'NER processing failed.' });
     }
-  };
+  }));
+
+  useEffect(() => {
+    if (nerEnabled) {
+      nerQueue.submit({ rawMarkdown: session.rawMarkdown, rules: dictionaryRules, settings: categorySettings });
+    }
+    return () => nerQueue.invalidate();
+  }, [nerEnabled, session.sessionId, session.rawMarkdown, dictionaryRules, categorySettings, nerQueue]);
 
   const handlePasteChange = (rawMarkdown: string) => {
     // Editing the text by hand makes the imported document's warnings stale.
     setImportWarnings([]);
-    // Once the model is loaded and opted into, every edit re-scans with it
-    // automatically — no separate "Re-scan" button to remember to press.
-    // Before that (not enabled, or still downloading) this falls back to
-    // the instant M1/P7a-c regex heuristics.
-    if (nerEnabled && nerStatus.state === 'ready') {
-      void runNerScan(rawMarkdown, dictionaryRules);
-    } else {
-      runAnonymize(rawMarkdown, dictionaryRules);
-    }
+    runAnonymize(rawMarkdown, dictionaryRules);
   };
 
   // A paste that replaces the document (see PastePanel) or text from the
@@ -240,9 +248,8 @@ function App() {
       return;
     }
     setNerEnabled(checked);
-    if (checked) {
-      void runNerScan(session.rawMarkdown, dictionaryRules);
-    } else {
+    if (!checked) {
+      nerQueue.invalidate();
       // Falls back to the instant M1/P7a-c heuristics — the model stays
       // loaded (in the worker and in IndexedDB) for a fast re-enable.
       runAnonymize(session.rawMarkdown, dictionaryRules);
@@ -255,6 +262,7 @@ function App() {
   // memory) is torn down and the IndexedDB cache cleared, so the next
   // enable is a full re-download.
   const handleDeleteModel = () => {
+    nerQueue.invalidate();
     nerClientRef.current?.terminate();
     nerClientRef.current = null;
     setNerEnabled(false);
@@ -335,21 +343,13 @@ function App() {
 
   const updateRules = (rules: CustomDictionaryRule[]) => {
     setDictionaryRules(rules);
-    if (nerEnabled && nerStatus.state === 'ready') {
-      void runNerScan(session.rawMarkdown, rules);
-    } else {
-      runAnonymize(session.rawMarkdown, rules);
-    }
+    runAnonymize(session.rawMarkdown, rules);
   };
 
   // P11: changing a category toggle re-runs detection for the current document.
   const updateCategorySettings = (settings: CategorySettings) => {
     setCategorySettings(settings);
-    if (nerEnabled && nerStatus.state === 'ready') {
-      void runNerScan(session.rawMarkdown, dictionaryRules, settings);
-    } else {
-      runAnonymize(session.rawMarkdown, dictionaryRules, settings);
-    }
+    runAnonymize(session.rawMarkdown, dictionaryRules, settings);
   };
 
   const handleCreateRule = (selectedText: string) => {
@@ -396,6 +396,7 @@ function App() {
         t('App.and_the_downloaded_ai_model_from_this'),
     );
     if (!ok) return;
+    nerQueue.invalidate();
     nerClientRef.current?.terminate();
     nerClientRef.current = null;
     clearLocalData();

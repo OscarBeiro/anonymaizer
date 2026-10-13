@@ -1,4 +1,5 @@
 {
+  "NerToggle.scanning_document": "Scanning document with local AI…",
   "App.could_not_read": "Could not read {p0}: {p1}",
   "App.clear_all_local_data": "Clear all local data?\n\n",
   "App.this_removes_the_current_document_its_placeholders": "This removes the current document, its placeholders, your custom rules, your settings ",
@@ -460,9 +461,11 @@
   "category.EMAIL": "Email",
   "category.PHONE": "Phone",
   "category.ADDRESS": "Address",
+  "category.LOCATION": "Location",
   "category.DNI": "DNI",
   "category.NIE": "NIE",
   "category.INVALID_ID": "Unverified ID",
+  "category.VAT_NUMBER": "VAT number",
   "category.IBAN": "IBAN",
   "category.CREDIT_CARD": "Credit card",
   "category.MASKED_ID": "Masked ID",

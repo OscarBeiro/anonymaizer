@@ -41,16 +41,36 @@ describe('anonymize', () => {
 
   it('a dictionary term overlapping a regex hit wins the whole span', () => {
     // "Fernando Olmedo" (dictionary) sits inside the ADDRESS regex hit
-    // "Rúa Fernando Olmedo 12, Pontevedra" — dictionary must win outright,
-    // dropping the ADDRESS candidate entirely rather than truncating it.
+    // "Rúa Fernando Olmedo 12, Pontevedra" — dictionary must win outright.
+    // Once that containing address is dropped, the independent municipality
+    // detection remains a LOCATION span.
     const rules: CustomDictionaryRule[] = [
       { id: '1', termOrPattern: 'Fernando Olmedo', replacementType: 'FIXED', isRegex: false },
     ];
     const { mappings, anonymizedText } = anonymize('Vivo en Rúa Fernando Olmedo 12, Pontevedra.', rules);
 
-    expect(mappings).toHaveLength(1);
+    expect(mappings).toHaveLength(2);
     expect(mappings[0]).toMatchObject({ category: 'CUSTOM', originalText: 'Fernando Olmedo' });
-    expect(anonymizedText).toBe('Vivo en Rúa [[CUSTOM_001]] 12, Pontevedra.');
+    expect(mappings[1]).toMatchObject({ category: 'LOCATION', originalText: 'Pontevedra' });
+    expect(anonymizedText).toBe('Vivo en Rúa [[CUSTOM_001]] 12, [[LOCATION_001]].');
+  });
+
+  it('keeps company and address spans whole when they contain place names', () => {
+    const { mappings } = anonymize('empresa Madrid S.L. en Calle Mayor 5, Madrid.', []);
+    expect(mappings.map((mapping) => [mapping.category, mapping.originalText])).toEqual([
+      ['COMPANY', 'Madrid S.L.'],
+      ['ADDRESS', 'Calle Mayor 5, Madrid'],
+    ]);
+  });
+
+  it('masks a postal code with its city and nearby region and country', () => {
+    const { mappings, anonymizedText } = anonymize('36003 Pontevedra, Galicia, España ', []);
+    expect(mappings.map((mapping) => [mapping.category, mapping.originalText])).toEqual([
+      ['ADDRESS', '36003 Pontevedra'],
+      ['LOCATION', 'Galicia'],
+      ['LOCATION', 'España'],
+    ]);
+    expect(anonymizedText).toBe('[[ADDRESS_001]], [[LOCATION_001]], [[LOCATION_002]] ');
   });
 
   it('runs the deterministic + heuristic detectors when there are no rules', () => {
@@ -82,6 +102,14 @@ describe('anonymizeWithNer', () => {
     expect(nameMappings[0]).toMatchObject({ confidence: 0.98, source: 'ner' });
   });
 
+  it('uses model LOC and GPE entities as LOCATION mappings', () => {
+    const text = 'The office moved to Madrid.';
+    const entities = [entityFor('Madrid', text, 'LOC', 0.97)];
+    const { mappings } = anonymizeWithNer(text, [], entities);
+    expect(mappings).toHaveLength(1);
+    expect(mappings[0]).toMatchObject({ category: 'LOCATION', originalText: 'Madrid', source: 'ner', confidence: 0.97 });
+  });
+
   it('still loses to a shield — the model cannot know a run of words is a statute title', () => {
     const text = 'Se aplica la Ley de Prevención de Riesgos Laborales en este caso.';
     // A hypothetical over-eager NER false positive on the same citation text.
@@ -105,5 +133,21 @@ describe('anonymizeWithNer', () => {
     expect(nameMappings[0].variants).toEqual(
       expect.arrayContaining(['Laura Ferreiro', 'Laura Ferreiro Iglesias']),
     );
+  });
+});
+
+describe('reported postal address and company tax ID regression', () => {
+  it('sanitises every supplied value by default without downloading a model', () => {
+    const text = '36003 Pontevedra, Galicia, España \nCIF/NIF: ESB94165495';
+    const { anonymizedText, mappings } = anonymize(text, []);
+    for (const value of ['36003', 'Pontevedra', 'Galicia', 'España', 'ESB94165495']) {
+      expect(anonymizedText).not.toContain(value);
+    }
+    expect(mappings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ category: 'ADDRESS', originalText: '36003 Pontevedra', enabled: true }),
+      expect.objectContaining({ category: 'LOCATION', originalText: 'Galicia', enabled: true }),
+      expect.objectContaining({ category: 'LOCATION', originalText: 'España', enabled: true }),
+      expect.objectContaining({ category: 'VAT_NUMBER', originalText: 'ESB94165495', enabled: true }),
+    ]));
   });
 });

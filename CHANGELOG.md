@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.5 — 2026-10-13
+
+- Refresh sanitised output after local model loading, document edits and file imports; discard stale scan results.
+- Use model location predictions and add default offline detection for common cities, regions and countries.
+- Detect Spanish postal address fragments and EU VAT/company tax identifiers, including the reported Pontevedra address and CIF/NIF examples.
+
 ## 0.18.4 — 2026-10-12
 
 - Add spacing between the dark-mode toggle and adjacent app header controls.

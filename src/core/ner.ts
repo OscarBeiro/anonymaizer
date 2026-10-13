@@ -148,14 +148,13 @@ export const aggregateBioTokens = (tokens: RawNerToken[], text: string): NerEnti
   return entities;
 };
 
-// Only PER and ORG map onto this app's categories — they're what the two
-// heuristics NER is meant to supersede (NAME regex, ALL-CAPS COMPANY guess)
-// actually detect. LOC/MISC have no P1b heuristic equivalent to supersede and
-// no clear category home yet, so they're left for the ladder's other
-// detectors (ADDRESS, dictionary rules) rather than guessed at here.
-const ENTITY_GROUP_TO_CATEGORY: Record<string, 'NAME' | 'COMPANY' | undefined> = {
+// PER, ORG and LOC/GPE have category homes. MISC remains unmapped because it
+// combines unrelated entity kinds without a useful anonymization category.
+const ENTITY_GROUP_TO_CATEGORY: Record<string, 'NAME' | 'COMPANY' | 'LOCATION' | undefined> = {
   PER: 'NAME',
   ORG: 'COMPANY',
+  LOC: 'LOCATION',
+  GPE: 'LOCATION',
 };
 
 /**

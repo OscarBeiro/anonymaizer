@@ -19,6 +19,8 @@ const statusText = (status: NerStatus): string | null => {
       // returning user who already has it cached sees this too, briefly.
       // Claiming "downloading" every time would be a false alarm.
       return status.detail ? t('NerToggle.loading_model', { p0: status.detail }) : t('NerToggle.loading_model_2');
+    case 'scanning':
+      return t('NerToggle.scanning_document');
     case 'error':
       return t('NerToggle.ner_failed', { p0: status.message });
     default:
@@ -39,7 +41,7 @@ const statusText = (status: NerStatus): string | null => {
  * forces a full re-download next time — the two must never be conflated.
  */
 export const NerToggle = ({ enabled, longDocument, status, onToggle, onDeleteModel }: NerToggleProps) => {
-  const loading = status.state === 'loading';
+  const loading = status.state === 'loading' || status.state === 'scanning';
   const text = statusText(status);
   const modelDownloaded = status.state === 'ready';
 

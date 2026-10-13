@@ -8,7 +8,59 @@ import {
   detectNames,
   detectNie,
   detectPhones,
+  detectVatNumbers,
 } from './detectors';
+
+describe('detectVatNumbers', () => {
+  it('recognizes formatted EU VAT IDs and Spanish CIF/NIF company identifiers offline', () => {
+    const spans = detectVatNumbers('VAT: DE 136695976; ES B-5837843-1; FR 40303265045');
+    expect(spans.map((s) => [s.text, s.category])).toEqual([
+      ['DE 136695976', 'VAT_NUMBER'],
+      ['ES B-5837843-1', 'VAT_NUMBER'],
+      ['FR 40303265045', 'VAT_NUMBER'],
+    ]);
+  });
+
+  it('rejects malformed shapes and Spanish CIFs with an invalid control character', () => {
+    expect(detectVatNumbers('DE 12345; DE 1366959760; BE 234567890; ES B58378434')).toHaveLength(0);
+  });
+
+  it('accepts internal separators and extracts a candidate before following prose', () => {
+    expect(detectVatNumbers('DE 136 695 976 is registered')).toMatchObject([
+      { text: 'DE 136 695 976', confidence: 0.75 },
+    ]);
+  });
+
+  it('masks a CIF explicitly labeled as such even when its check character is wrong', () => {
+    expect(detectVatNumbers('CIF: B12345670')).toMatchObject([
+      { text: 'B12345670', category: 'VAT_NUMBER', confidence: 0.65 },
+    ]);
+    expect(detectVatNumbers('CIF: B12345674')).toMatchObject([
+      { text: 'B12345674', category: 'VAT_NUMBER', confidence: 0.9 },
+    ]);
+    expect(detectVatNumbers('CIF/NIF: ESB94165495')).toMatchObject([
+      { text: 'ESB94165495', category: 'VAT_NUMBER' },
+    ]);
+  });
+
+  it('does not mask a valid prefix of an overlong spaced VAT number', () => {
+    expect(detectVatNumbers('DE123456789 123')).toHaveLength(0);
+  });
+
+  it('finds adjacent VAT numbers independently', () => {
+    expect(detectVatNumbers('DE123456789 FR40303265045').map((span) => span.text)).toEqual([
+      'DE123456789', 'FR40303265045',
+    ]);
+  });
+
+  it('does not interpret lowercase Spanish prose before a DNI as the ES VAT prefix', () => {
+    expect(detectVatNumbers('El texto es 12.345.678-Z')).toHaveLength(0);
+  });
+
+  it('does not claim live VIES registration validation', () => {
+    expect(detectVatNumbers('NL 123456789B01')).toHaveLength(1);
+  });
+});
 
 describe('detectEmails', () => {
   it('finds an email', () => {

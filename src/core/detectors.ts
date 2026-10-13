@@ -2,6 +2,7 @@ import { GALICIAN_PACK } from './packs/gl';
 import type { DocumentLanguage } from './langDetect';
 import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { detectMoney } from './money';
+import { detectLocations, detectSpanishPostalAddressFragments } from './locations';
 import { RUNG, type DetectedSpan } from './types';
 import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
@@ -184,6 +185,117 @@ export const detectDni = (text: string): DetectedSpan[] =>
 export const detectNie = (text: string): DetectedSpan[] =>
   collect(new RegExp(NIE_REGEX), text, (m) => buildIdSpan(text, m, 'NIE'));
 
+// EU VAT identifiers (including Spain's NIF/CIF company identifiers). This
+// recognizes country-specific shapes offline; it does not query VIES or
+// establish that an identifier is currently registered. Separators commonly
+// used in documents are accepted and removed before validation.
+const VAT_PATTERNS: Record<string, RegExp> = {
+  AT: /U\d{8}/,
+  BE: /[01]\d{9}/,
+  BG: /\d{9,10}/,
+  CY: /\d{8}[A-Z]/,
+  CZ: /\d{8,10}/,
+  DE: /\d{9}/,
+  DK: /\d{8}/,
+  EE: /\d{9}/,
+  EL: /\d{9}/,
+  ES: /[ABCDEFGHJNPQRSUVWXYZ]\d{7}[A-Z0-9]|\d{8}[A-Z]/,
+  FI: /\d{8}/,
+  FR: /[A-HJ-NP-Z0-9]{2}\d{9}/,
+  HR: /\d{11}/,
+  HU: /\d{8}/,
+  IE: /\d{7}[A-W][A-I]?/,
+  IT: /\d{11}/,
+  LT: /(?:\d{9}|\d{12})/,
+  LU: /\d{8}/,
+  LV: /\d{11}/,
+  MT: /\d{8}/,
+  NL: /\d{9}B\d{2}/,
+  PL: /\d{10}/,
+  PT: /\d{9}/,
+  RO: /\d{2,10}/,
+  SE: /\d{12}/,
+  SI: /\d{8}/,
+  SK: /\d{10}/,
+};
+const VAT_PREFIXES = Object.keys(VAT_PATTERNS).join('|');
+const VAT_PREFIX_REGEX = new RegExp(`\\b(?:${VAT_PREFIXES})`, 'g');
+const ES_CIF_LABEL_REGEX = /\b(?:CIF(?:\/NIF)?|NIF(?:-IVA)?|VAT|IVA)\b[ \t:./-]*((?:ES)?[ABCDEFGHJNPQRSUVW]\d[\d \t./-]{5,10}[A-Z0-9])\b/giu;
+const VAT_BODY_CHARS = /^[A-Z0-9 \t./-]$/i;
+const VAT_MAX_BODY_LENGTH = 26;
+
+const isValidSpanishCif = (candidate: string): boolean => {
+  const normalized = candidate.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (!/^[ABCDEFGHJNPQRSUVW]\d{7}[A-Z0-9]$/.test(normalized)) return false;
+  const digits = normalized.slice(1, 8);
+  let sum = 0;
+  for (let i = 0; i < digits.length; i++) {
+    const n = Number(digits[i]);
+    if (i % 2 === 0) {
+      const doubled = n * 2;
+      sum += Math.floor(doubled / 10) + (doubled % 10);
+    } else sum += n;
+  }
+  const control = (10 - (sum % 10)) % 10;
+  const letters = 'JABCDEFGHI';
+  const initial = normalized[0];
+  const check = normalized[8];
+  const needsLetter = 'KPQRSNW'.includes(initial);
+  const needsDigit = 'ABEH'.includes(initial);
+  return (!needsLetter || check === letters[control]) && (!needsDigit || check === String(control)) &&
+    (needsLetter || needsDigit || check === letters[control] || check === String(control));
+};
+
+const isValidVatShape = (candidate: string): boolean => {
+  const normalized = candidate.toUpperCase().replace(/^[A-Z]{2}/, '').replace(/[^A-Z0-9]/g, '');
+  const country = candidate.slice(0, 2).toUpperCase();
+  const pattern = VAT_PATTERNS[country];
+  if (!pattern || !new RegExp(`^(?:${pattern.source})$`, pattern.flags.replace('g', '').replace('y', '')).test(normalized)) return false;
+  // Spanish CIF/NIF: verify the control character for the common 8-char CIF
+  // form. The remaining national formats are shape-checked only here.
+  if (country === 'ES' && /^[ABCDEFGHJNPQRSUVW]\d{7}[A-Z0-9]$/.test(normalized)) return isValidSpanishCif(normalized);
+  return true;
+};
+
+export const detectVatNumbers = (text: string): DetectedSpan[] => {
+  const spans: DetectedSpan[] = [];
+  const countryRegex = new RegExp(VAT_PREFIX_REGEX);
+  let match: RegExpExecArray | null;
+  while ((match = countryRegex.exec(text)) !== null) {
+    const bodyStart = match.index + match[0].length;
+    let bodyEnd = bodyStart;
+    while (bodyEnd < text.length && bodyEnd - bodyStart < VAT_MAX_BODY_LENGTH && VAT_BODY_CHARS.test(text[bodyEnd])) bodyEnd++;
+    const body = text.slice(bodyStart, bodyEnd);
+    for (let end = body.length; end > 0; end--) {
+      const candidate = `${match[0]}${body.slice(0, end)}`.replace(/[ \t./-]+$/, '');
+      const boundary = text[match.index + candidate.length];
+      if (/[A-Z0-9]/i.test(boundary ?? '')) continue;
+      // A space followed by digits continues a grouped identifier. Do not
+      // accept a valid-looking prefix from an overlong number such as
+      // "DE123456789 123".
+      if (/[ \t./-]/.test(boundary ?? '') && /^\s*\d/.test(text.slice(match.index + candidate.length))) continue;
+      if (!isValidVatShape(candidate)) continue;
+      spans.push({ start: match.index, end: match.index + candidate.length, text: candidate, category: 'VAT_NUMBER', confidence: 0.75, source: 'regex', rung: RUNG.ID_CODE });
+      break;
+    }
+    if (match[0].length === 0) countryRegex.lastIndex++;
+  }
+  const cifRegex = new RegExp(ES_CIF_LABEL_REGEX);
+  while ((match = cifRegex.exec(text)) !== null) {
+    const candidate = match[1];
+    const companyId = candidate.toUpperCase().replace(/^ES/, '');
+    const valid = isValidSpanishCif(companyId);
+    spans.push({ start: match.index + match[0].indexOf(candidate), end: match.index + match[0].indexOf(candidate) + candidate.length, text: candidate, category: 'VAT_NUMBER', confidence: valid ? 0.9 : 0.65, source: 'regex', rung: RUNG.ID_CODE });
+  }
+  const unique = new Map<string, DetectedSpan>();
+  for (const span of spans) {
+    const key = `${span.start}:${span.end}:${span.category}`;
+    const previous = unique.get(key);
+    if (!previous || span.confidence > previous.confidence) unique.set(key, span);
+  }
+  return [...unique.values()];
+};
+
 // Group width is 1-4, not a fixed 4: several countries' conventional
 // display grouping ends in a short trailing group (German IBANs, e.g.
 // "DE89 3704 0044 0532 0130 00", end in a 2-char group).
@@ -323,6 +435,7 @@ export const runDeterministicDetectors = (
 ): DetectedSpan[] => [
   ...gated(settings, ['EMAIL'], detectEmails, text),
   ...gated(settings, ['IBAN'], detectIbans, text),
+  ...gated(settings, ['VAT_NUMBER'], detectVatNumbers, text),
   ...gated(settings, ['CREDIT_CARD'], detectCreditCards, text),
   ...gated(settings, ['DNI', 'INVALID_ID'], detectDni, text),
   ...gated(settings, ['NIE', 'INVALID_ID'], detectNie, text),
@@ -330,7 +443,8 @@ export const runDeterministicDetectors = (
   ...gated(settings, ['ID_CODE'], detectIdCodes, text),
   ...gated(settings, ['PHONE'], detectPhones, text),
   ...gated(settings, ['MONEY'], detectMoney, text),
-  ...gated(settings, ['ADDRESS'], detectAddresses, text),
+  ...gated(settings, ['ADDRESS'], value => [...detectAddresses(value), ...detectSpanishPostalAddressFragments(value)], text),
+  ...gated(settings, ['LOCATION'], detectLocations, text),
 ];
 
 // Legal-form suffixes, longest/most-specific first so alternation doesn't
