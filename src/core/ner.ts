@@ -162,7 +162,7 @@ const ENTITY_GROUP_TO_CATEGORY: Record<string, 'NAME' | 'COMPANY' | 'LOCATION' |
  * already-run entities, so it can be tested (and is tested) without ever
  * loading transformers.js or an ONNX model.
  */
-export const mapNerEntitiesToSpans = (entities: NerEntity[]): DetectedSpan[] =>
+export const mapNerEntitiesToSpans = (entities: NerEntity[], model = 'Xenova/bert-base-NER'): DetectedSpan[] =>
   entities.flatMap((entity) => {
     const category = ENTITY_GROUP_TO_CATEGORY[entity.entityGroup];
     if (!category) return [];
@@ -176,6 +176,7 @@ export const mapNerEntitiesToSpans = (entities: NerEntity[]): DetectedSpan[] =>
       text: entity.text,
       confidence: entity.score,
       source: 'ner',
+      model,
       rung: RUNG.NER,
       enabled: entity.score >= NER_CONFIDENCE_THRESHOLD,
     }];

@@ -1,4 +1,5 @@
-import type { DocumentLanguage } from './langDetect';
+import type { DetectedLanguage } from './langDetect';
+import { DEFAULT_PROFILE, type DetectionProfile } from './packs/profile';
 import { DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { applyDictionary } from './dictionary';
 import { runAllDetectors } from './detectors';
@@ -25,9 +26,9 @@ export const anonymize = (
   rules: CustomDictionaryRule[],
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
   manualSpans: DetectedSpan[] = [],
-  languages: readonly DocumentLanguage[] = ['en', 'es'],
+  profile: DetectionProfile | readonly DetectedLanguage[] = DEFAULT_PROFILE,
 ): PipelineResult => {
-  const candidates = [...manualSpans, ...dictionarySpans(text, rules, settings), ...runAllDetectors(text, settings, languages)];
+  const candidates = [...manualSpans, ...dictionarySpans(text, rules, settings), ...runAllDetectors(text, settings, profile)];
   return runDetectionPipeline(text, candidates);
 };
 
@@ -44,13 +45,14 @@ export const anonymizeWithNer = (
   nerEntities: NerEntity[],
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
   manualSpans: DetectedSpan[] = [],
-  languages: readonly DocumentLanguage[] = ['en', 'es'],
+  profile: DetectionProfile | readonly DetectedLanguage[] = DEFAULT_PROFILE,
+  model = 'Xenova/bert-base-NER',
 ): PipelineResult => {
   const candidates = [
     ...manualSpans,
     ...dictionarySpans(text, rules, settings),
-    ...runAllDetectors(text, settings, languages),
-    ...mapNerEntitiesToSpans(nerEntities).filter((span) => isCategoryOn(settings, span.category)),
+    ...runAllDetectors(text, settings, profile),
+    ...mapNerEntitiesToSpans(nerEntities, model).filter((span) => isCategoryOn(settings, span.category)),
   ];
   return runDetectionPipeline(text, candidates);
 };

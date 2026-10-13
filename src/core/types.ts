@@ -71,6 +71,11 @@ export interface DetectedSpan {
   confidence: number;
   source: MappingItem['source'];
   rung: number;
+  /** Origin of rule evidence; merged language context can involve several packs. */
+  pack?: string;
+  packs?: readonly string[];
+  /** Model identity for NER evidence, independent of language/jurisdiction packs. */
+  model?: string;
   // Heuristics that must land disabled by default (ALL-CAPS COMPANY guess)
   // set this false; every other detector omits it and defaults to true.
   enabled?: boolean;
