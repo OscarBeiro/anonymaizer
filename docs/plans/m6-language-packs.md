@@ -143,7 +143,7 @@ P15 depends on P14 — there is nothing to upload until `en.json` exists.
 > `DEFAULT_PROFILE = { languages: ['es', 'en'], jurisdictions: ['ES'] }`. The
 > gate for this session: every existing test passes untouched.
 
-### [ ] P24 — `langDetect`
+### [x] P24 — `langDetect`
 
 > Tests first. `src/core/langDetect.ts` scores text against each pack's
 > `profileWords` (high-frequency function words) plus character hints (`ñ`,
@@ -151,6 +151,29 @@ P15 depends on P14 — there is nothing to upload until `en.json` exists.
 > and for each paragraph. Test samples: es, en, pt, gl, fr, it, a mixed es+pt
 > document (both reported), and short text (undetermined). The es/gl/pt split
 > is the hard case: `xa`, `non`, `unha`, `-ción` vs `-ção`.
+
+Implemented 2026-10-13. `langDetect(text)` exposes whole-document `ranked`
+and `paragraphs`, each with ranked scores, suggested languages and a status.
+Paragraphs are separated by blank lines (including CRLF); source `start`/`end`
+offsets refer to the original text. Wrapped lines stay in one paragraph. The
+full document is scored, with no silent character or paragraph truncation.
+
+Reusable `profileWords` and character hints live in
+`src/core/packs/languageProfiles.ts`: ES/EN/PT/GL/FR/IT, plus German for `ß`.
+These profiles provide language suggestions; full anonymization packs remain
+separate work. Shared words carry less weight, and character hints supplement
+word evidence. Spanish and Galician share `ñ` and singular `-ción`; those
+hints alone do not distinguish them. Scores are heuristic evidence weights,
+not confidence percentages. Fewer than 20 words or ambiguous evidence produces
+`undetermined`. Mixed paragraph winners survive tied document scores.
+`documentLanguages` continues to activate only implemented EN/ES/GL rules,
+with the existing fallback when no available rule language is suggested.
+
+Validation: tests written first; all 626 tests pass on Node 22.23.2;
+`npm run lint` and `npm run build:portable` pass. The document-language UI and
+its browser acceptance check remain in P26; P24 adds no runtime network calls
+or dependencies. These fixtures are regression checks, not a multilingual
+accuracy benchmark.
 
 ### [ ] P25 — Profile-gated detection pipeline
 
