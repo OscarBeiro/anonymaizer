@@ -112,6 +112,8 @@ export const RUNG = {
             // guess it supersedes, but not the checksum/shape detectors above
   NAME: 6,
   COMPANY_ACRONYM: 7, // ALL-CAPS heuristic, off by default
+  NER_LOW: 8, // model hit below its confidence threshold: offered for review,
+              // never allowed to displace an enabled detection
 } as const;
 
 export interface ExtractionCoverage {

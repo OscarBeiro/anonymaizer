@@ -35,6 +35,7 @@ import { linkProps } from './lib/router';
 import { SiteLinks } from './landing/SiteLinks';
 import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
+import { modelDownloadAllowed } from './lib/analytics';
 import { NerQueue } from './lib/nerQueue';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
@@ -239,9 +240,9 @@ function App() {
   }>(async ({ rawMarkdown, rules, settings, profile, revision }, isCurrent) => {
     nerClientRef.current ??= new NerClient();
     try {
-      const entities = await nerClientRef.current.runNer(rawMarkdown, (status) => {
+      const { entities } = await nerClientRef.current.runNer(rawMarkdown, (status) => {
         if (isCurrent() && revision === scanRevision.current) setNerStatus(status);
-      });
+      }, modelDownloadAllowed());
       if (!isCurrent() || revision !== scanRevision.current) return;
       const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings, [], profile);
       setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText, detectionProfile: profile }));

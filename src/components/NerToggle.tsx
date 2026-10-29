@@ -20,7 +20,9 @@ const statusText = (status: NerStatus): string | null => {
       // Claiming "downloading" every time would be a false alarm.
       return status.detail ? t('NerToggle.loading_model', { p0: status.detail }) : t('NerToggle.loading_model_2');
     case 'scanning':
-      return t('NerToggle.scanning_document');
+      return status.total && status.total > 1
+        ? t('NerToggle.scanning_progress', { p0: (status.done ?? 0) + 1, p1: status.total })
+        : t('NerToggle.scanning_document');
     case 'error':
       return t('NerToggle.ner_failed', { p0: status.message });
     default:
@@ -54,6 +56,13 @@ export const NerToggle = ({ enabled, longDocument, status, onToggle, onDeleteMod
           <label>
             <input type="checkbox" checked={enabled} onChange={(e) => onToggle(e.target.checked)} />
             {' '}{t('NerToggle.local_ai_detection_model_already_downloaded_re')}</label>
+        )}
+        {status.state === 'ready' && status.coverage && !status.coverage.complete && (
+          <p className="ner-long-note" role="alert">
+            {t('NerToggle.coverage_incomplete', { p0: status.coverage.coveredChars.toLocaleString(), p1: status.coverage.totalChars.toLocaleString() })}</p>
+        )}
+        {status.state === 'ready' && status.cacheWriteFailed && (
+          <p className="ner-long-note" role="note">{t('NerToggle.cache_write_failed')}</p>
         )}
         {enabled && longDocument && (
           <p className="ner-long-note" role="note">

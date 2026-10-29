@@ -224,7 +224,7 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > way `parseCategorySettings` does. All strings go through `t()`. Leave a slot
 > for the model tier line that P40 fills in.
 
-### [ ] P38 — Runtime, alignment and full-document coverage
+### [x] P38 — Runtime, alignment and full-document coverage
 
 > The repository already declares `@huggingface/transformers` ^4.3.0 and the
 > installed runtime registers ModernBERT token classification. Do not execute

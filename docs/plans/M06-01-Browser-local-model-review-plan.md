@@ -96,7 +96,7 @@ not wait for 1000-page optimization.
 
 ## Implementation and acceptance gates
 
-### [ ] A — Correct inference contract (M6 P38, M09 task 02)
+### [x] A — Correct inference contract (M6 P38, M09 task 02)
 
 Use tokenizer-derived or independently verified source alignment, including all
 relevant token positions and normalization provenance. Never infer offsets by
@@ -181,3 +181,18 @@ model outputs; no weights or real sensitive documents were used. Researched the
 linked publisher cards and artifact trees. No browser inference or speed/quality
 benchmark was run. The earlier full-suite attempt was incomplete due to missing
 local `marked` and `jsdom`; documentation changes do not resolve that environment.
+
+## P38 result (2026-10-29)
+
+Gate A and the offline half of gate B's runtime requirements are implemented:
+`src/core/nerWindows.ts` (token-budget windows with overlap, reconciliation,
+coverage), contiguity-anchored offsets and index-gap-aware BIO grouping in
+`src/core/ner.ts`, low-confidence hits on `RUNG.NER_LOW`, the worker retaining
+non-entity tokens and resetting a failed load, `allowDownload` passed per
+request (only `modelDownloadAllowed()` origins may fetch), the onnxruntime
+runtime served from `/ort/` (jsDelivr removed from CSP and privacy text),
+honest cache-write and blocked-delete reporting, and scan progress/coverage in
+the UI. Real-model check (Node, `Xenova/bert-base-NER` q8, 1,195-token document,
+sentinels at head, mid and tail): 3 windows, full coverage, all four sentinel
+entities found with exact offsets. Not yet done: browser-run offline cold/warm
+start with network denied (P39/P40 gate D).

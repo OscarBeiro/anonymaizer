@@ -1,4 +1,5 @@
-// L3: NER runs the ~104 MB model over the whole text, in chunks, and its cost
+// L3: NER runs the ~104 MB model over the whole text, in token windows
+// (src/core/nerWindows.ts), and its cost
 // grows with length — unlike the regex detectors, which L2 measured at
 // well under a second for 3 MB. It is already opt-in (off at load); above this
 // size the opt-in asks for confirmation first. 200 000 characters is about 70

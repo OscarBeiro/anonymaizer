@@ -60,24 +60,40 @@ export interface RawNerToken {
  * word is not thrown off by the miss.
  */
 export const computeTokenOffsets = (tokens: RawNerToken[], text: string): RawNerToken[] => {
-  const lowerText = text.toLowerCase();
+  // toLowerCase can change a string's length (e.g. 'İ'); only trust the
+  // case-insensitive copy when offsets still line up with the source.
+  const lowerText = text.toLowerCase().length === text.length ? text.toLowerCase() : text;
   let cursor = 0;
+  let previousIndex = Number.NEGATIVE_INFINITY;
 
   return tokens.map((token) => {
     const isContinuation = token.word.startsWith('##');
     const piece = isContinuation ? token.word.slice(2) : token.word;
     if (piece === '') return token;
 
-    let start: number;
-    if (isContinuation) {
-      const matches = text.startsWith(piece, cursor) || lowerText.startsWith(piece.toLowerCase(), cursor);
-      if (!matches) return token;
-      start = cursor;
-    } else {
-      const idx = text.indexOf(piece, cursor);
-      const idxInsensitive = idx >= 0 ? idx : lowerText.indexOf(piece.toLowerCase(), cursor);
-      if (idxInsensitive < 0) return token;
-      start = idxInsensitive;
+    // The previous token sits at the previous index, so this one follows it
+    // directly (after whitespace only): never search past text that holds
+    // another token, which is what pointed a repeated word at its first copy.
+    const contiguous = token.index === previousIndex + 1;
+    previousIndex = token.index;
+    let start = -1;
+    if (contiguous) {
+      let at = cursor;
+      if (!isContinuation) while (at < text.length && /\s/u.test(text[at])) at++;
+      if (text.startsWith(piece, at) || lowerText.startsWith(piece.toLowerCase(), at)) start = at;
+    }
+    if (start < 0) {
+      // No adjacent token to anchor on (dropped words, or a decode that does
+      // not match the source): search forward from the cursor.
+      if (isContinuation) {
+        const matches = text.startsWith(piece, cursor) || lowerText.startsWith(piece.toLowerCase(), cursor);
+        if (!matches) return token;
+        start = cursor;
+      } else {
+        const idx = text.indexOf(piece, cursor);
+        start = idx >= 0 ? idx : lowerText.indexOf(piece.toLowerCase(), cursor);
+        if (start < 0) return token;
+      }
     }
 
     const end = start + piece.length;
@@ -107,6 +123,7 @@ const WORD_CHAR = /[\p{L}\p{M}\p{N}]/u;
 export const aggregateBioTokens = (tokens: RawNerToken[], text: string): NerEntity[] => {
   const entities: NerEntity[] = [];
   let current: { type: string; start: number; end: number; scores: number[] } | null = null;
+  let previousIndex = Number.NEGATIVE_INFINITY;
 
   const flush = (): void => {
     if (!current) return;
@@ -132,10 +149,15 @@ export const aggregateBioTokens = (tokens: RawNerToken[], text: string): NerEnti
 
     if (token.start === undefined || token.end === undefined || !type) {
       flush();
+      previousIndex = token.index;
       continue;
     }
     const isContinuation = token.word.startsWith('##');
-    if ((prefix === 'I' || isContinuation) && current && current.type === type) {
+    // Tokens the pipeline dropped (non-entity words) leave a hole in the
+    // indices: an I- tag after a hole is a new entity, not a continuation.
+    const adjacent = token.index === previousIndex + 1;
+    previousIndex = token.index;
+    if ((prefix === 'I' || isContinuation) && current && current.type === type && adjacent) {
       current.end = token.end;
       current.scores.push(token.score);
     } else {
@@ -177,7 +199,9 @@ export const mapNerEntitiesToSpans = (entities: NerEntity[], model = 'Xenova/ber
       confidence: entity.score,
       source: 'ner',
       model,
-      rung: RUNG.NER,
+      // Below the threshold the hit starts disabled, and its rung keeps it
+      // from displacing an enabled heuristic it merely overlaps.
+      rung: entity.score >= NER_CONFIDENCE_THRESHOLD ? RUNG.NER : RUNG.NER_LOW,
       enabled: entity.score >= NER_CONFIDENCE_THRESHOLD,
     }];
   });
