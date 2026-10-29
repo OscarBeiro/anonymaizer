@@ -247,7 +247,7 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > choosing. Resolve all model labels explicitly; the current PER/ORG adapter
 > would discard most PII labels. Failing candidates remain experimental.
 
-### [ ] P40 — Validated model choice and provisioning UI
+### [~] P40 — Validated model choice and provisioning UI
 
 > Offer the selected compact model with its measured complete download size,
 > tested language coverage and initialization/scan progress. Offer a larger model

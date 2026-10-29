@@ -3,7 +3,7 @@ import { DEFAULT_PROFILE, type DetectionProfile } from './packs/profile';
 import { DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { applyDictionary } from './dictionary';
 import { runAllDetectors } from './detectors';
-import { mapNerEntitiesToSpans, type NerEntity } from './ner';
+import { BERT_LABEL_MAP, mapNerEntitiesToSpans, type NerEntity, type NerLabelMap } from './ner';
 import { runDetectionPipeline, type PipelineResult } from './pipeline';
 import type { CustomDictionaryRule, DetectedSpan } from './types';
 
@@ -46,13 +46,14 @@ export const anonymizeWithNer = (
   settings: CategorySettings = DEFAULT_CATEGORY_SETTINGS,
   manualSpans: DetectedSpan[] = [],
   profile: DetectionProfile | readonly DetectedLanguage[] = DEFAULT_PROFILE,
-  model = 'Xenova/bert-base-NER',
+  model: string | { id: string; labelMap: NerLabelMap; thresholds: Readonly<Record<string, number>> } = 'Xenova/bert-base-NER',
 ): PipelineResult => {
+  const spec = typeof model === 'string' ? { id: model, labelMap: BERT_LABEL_MAP, thresholds: {} } : model;
   const candidates = [
     ...manualSpans,
     ...dictionarySpans(text, rules, settings),
     ...runAllDetectors(text, settings, profile),
-    ...mapNerEntitiesToSpans(nerEntities, model).filter((span) => isCategoryOn(settings, span.category)),
+    ...mapNerEntitiesToSpans(nerEntities, spec.id, spec.labelMap, spec.thresholds, text).filter((span) => isCategoryOn(settings, span.category)),
   ];
   return runDetectionPipeline(text, candidates);
 };

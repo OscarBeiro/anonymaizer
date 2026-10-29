@@ -9,6 +9,8 @@ export interface NerModelFile {
   /** Path inside the repository at `revision`. */
   path: string;
   bytes: number;
+  /** Hex SHA-256 of the file, checked before an imported package is trusted. */
+  sha256: string;
 }
 
 export type NerModelStatus = 'default' | 'experimental';
@@ -16,9 +18,13 @@ export type BackendSupport = 'untested' | 'works' | 'fails';
 
 export interface NerModelSpec {
   id: string;
+  /** Short name shown in the interface. */
+  name: string;
   repo: string;
   /** Commit the artifacts were measured at; downloads are pinned to it. */
   revision: string;
+  /** Commit the measurements were taken at, when `revision` is a moving ref. */
+  measuredRevision?: string;
   license: string;
   status: NerModelStatus;
   /** Folder holding the quantized graph, when it is not the repository root. */
@@ -48,6 +54,22 @@ export interface NerModelSpec {
   /** What stops this model being a drop-in, if anything. */
   caveat?: string;
 }
+
+/** The URL transformers.js requests, which is also the key its cache stores the file under. */
+export const modelFileUrl = (model: NerModelSpec, path: string): string =>
+  `https://huggingface.co/${model.repo}/resolve/${encodeURIComponent(model.revision)}/${path}`;
+
+/**
+ * Every key a file must be stored under. transformers.js reads config.json
+ * from the moving `main` ref even when a revision is given, so that one file
+ * is also keyed there; its content is still checked against the pinned hash on
+ * import, but a hosted download of it is not pinned by the library.
+ */
+export const modelCacheKeys = (model: NerModelSpec, path: string): string[] => {
+  const keys = [modelFileUrl(model, path)];
+  if (path === 'config.json' || path.endsWith('/config.json')) keys.push(modelFileUrl({ ...model, revision: 'main' }, path));
+  return keys;
+};
 
 export const modelTotalBytes = (model: NerModelSpec): number => model.files.reduce((sum, file) => sum + file.bytes, 0);
 
@@ -115,12 +137,21 @@ const NYM_THRESHOLDS = Object.fromEntries(
 export const NER_MODELS: readonly NerModelSpec[] = [
   {
     id: 'bert-base-ner',
+    name: 'English names (standard)',
     repo: 'Xenova/bert-base-NER',
+    // Kept on 'main': pinning would change every existing user's cache key
+    // and force a second 109 MB download.
     revision: 'main',
+    measuredRevision: '8e892123e8b7c2c0c2bd1dcb598b7d244c4e53aa',
     license: 'MIT',
     status: 'default',
     dtype: 'q8',
-    files: [{ path: 'onnx/model_quantized.onnx', bytes: 108_000_000 }],
+    files: [
+      { path: 'config.json', bytes: 999, sha256: 'a73a2eccc921bbdea95a94b49a157d3694b5c2abbae7a6f3000e14404a9c31a8' },
+      { path: 'tokenizer.json', bytes: 668_923, sha256: '343989712a36cd8b253efeaf8baf6a08b9d2583f78e395e83832e8ee9f8d8ee1' },
+      { path: 'tokenizer_config.json', bytes: 385, sha256: '5be1a180e9badb4811a6c31502d70fb35a085af5457982937419c42d7530bae6' },
+      { path: 'onnx/model_quantized.onnx', bytes: 108_952_255, sha256: 'caaee70a5518ec7f9e46e5308fcc9263a8c227703a9ce46cf61c69a552349648' },
+    ],
     tokenizer: 'wordpiece',
     contextTokens: 512,
     windowTokens: 510,
@@ -133,6 +164,7 @@ export const NER_MODELS: readonly NerModelSpec[] = [
   },
   {
     id: 'nym-pii-small',
+    name: 'Multilingual PII (experimental)',
     repo: 'Wismut/nym-pii-multilingual-small',
     revision: '4348999cd3c2e20c49615e9af7c6bbb45b64cd85',
     license: 'MIT',
@@ -141,10 +173,10 @@ export const NER_MODELS: readonly NerModelSpec[] = [
     modelFileName: 'model_int8',
     dtype: 'fp32',
     files: [
-      { path: 'config.json', bytes: 5_688 },
-      { path: 'tokenizer.json', bytes: 12_389_891 },
-      { path: 'tokenizer_config.json', bytes: 573 },
-      { path: 'int8/model_int8.onnx', bytes: 138_730_982 },
+      { path: 'config.json', bytes: 5_688, sha256: '3f07065571e22bb73eba28ddb1fae4509c0cf703762e3bfa7a6ab2111cf7cb88' },
+      { path: 'tokenizer.json', bytes: 12_389_891, sha256: 'c299144e68dfec1dc536204a7ae3712710c5c6cade9269a83f5042250d47d8de' },
+      { path: 'tokenizer_config.json', bytes: 573, sha256: '02055b886266b1a475bc324da83e273fe96e4974002f9d970f26e94aa73e5885' },
+      { path: 'int8/model_int8.onnx', bytes: 138_730_982, sha256: '139006aea2cbd8e709d322f056232570de54661f624143be4893aaa387190286' },
     ],
     tokenizer: 'sentencepiece',
     contextTokens: 8192,
@@ -161,6 +193,7 @@ export const NER_MODELS: readonly NerModelSpec[] = [
   },
   {
     id: 'nym-pii-large',
+    name: 'Multilingual PII, large (not offered)',
     repo: 'Wismut/nym-pii-multilingual',
     revision: '0ed0242d67a30ca6a83e5f118506ff1e1daf83ca',
     license: 'MIT',
@@ -169,10 +202,10 @@ export const NER_MODELS: readonly NerModelSpec[] = [
     modelFileName: 'model_int8',
     dtype: 'fp32',
     files: [
-      { path: 'int8/config.json', bytes: 5_833 },
-      { path: 'int8/tokenizer.json', bytes: 12_389_891 },
-      { path: 'int8/tokenizer_config.json', bytes: 574 },
-      { path: 'int8/model_int8.onnx', bytes: 375_701_127 },
+      { path: 'int8/config.json', bytes: 5_833, sha256: 'f283bae16ce8051136612ad081d7cf429530a1a1ac51f85f0a67659f97a6a5dc' },
+      { path: 'int8/tokenizer.json', bytes: 12_389_891, sha256: 'c299144e68dfec1dc536204a7ae3712710c5c6cade9269a83f5042250d47d8de' },
+      { path: 'int8/tokenizer_config.json', bytes: 574, sha256: '14b147f2a4f939d9b12ab36e9633917040dd948fa78ce283b03402e4cf2c9cba' },
+      { path: 'int8/model_int8.onnx', bytes: 375_701_127, sha256: '07267f6072539bbf3ba67e4653274139fd2219f598befb5c48f237585cf876e3' },
     ],
     tokenizer: 'sentencepiece',
     contextTokens: 8192,
@@ -185,5 +218,8 @@ export const NER_MODELS: readonly NerModelSpec[] = [
     caveat: 'The int8 graph needs the pruned tokenizer in int8/; the stock loader reads the root 15 MB tokenizer and fails with an embedding index error. Runs only from a local package that supplies the matching tokenizer. Measured 2.4 s per 1,000 characters in WASM (target 2 s) and a 515 MB JS heap.',
   },
 ];
+
+/** Models the interface offers. The large model needs a custom package and is not justified by its results. */
+export const OFFERED_NER_MODEL_IDS: readonly string[] = ['bert-base-ner', 'nym-pii-small'];
 
 export const getNerModel = (id: string): NerModelSpec | undefined => NER_MODELS.find((model) => model.id === id);

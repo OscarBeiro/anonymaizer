@@ -13,11 +13,19 @@ done and its tests pass.
 
 1. **All logic runs client-side.** There is no backend and there never will be.
 2. **No network calls at runtime from the anonymization tool itself.** The two
-   exceptions are the opt-in M2 NER model download on the public HTTPS deployment (cached locally) and, on the
-   public hosted deployment only, consent-gated visit-only analytics through an audited browser transport. Existing third-party analytics scripts are removed; events are omitted until a compatible transport is selected. Any
+   exceptions are the opt-in NER model download on the public HTTPS deployment
+   (explicitly confirmed with its size, pinned to a commit, cached locally, and
+   fetched only from the model host) and, on the public hosted deployment only,
+   consent-gated visit-only analytics through an audited browser transport.
+   Existing third-party analytics scripts are removed; events are omitted until a
+   compatible transport is selected. The model runtime (onnxruntime wasm) is
+   served from the app's own origin under `/ort/`, never from a CDN. Any
    locally-installed copy — the portable build, a `file://` page, localhost, or
-   any self-hosted origin — makes no network call of any kind, ever. (Amended
-   by M5 `P21`; both gates live in `src/lib/analytics.ts#isPublicDeployment()`.)
+   any self-hosted origin — makes no network call of any kind, ever: it loads a
+   model only from a package the user imports, verified against the size and
+   SHA-256 recorded in `src/core/nerModels.ts`. (Amended by M5 `P21` and M6
+   `P40`; the gates live in `src/lib/analytics.ts#isPublicDeployment()` and
+   `modelDownloadAllowed()`.)
 3. **No dependency may make a network request.** Check this before adding one.
 4. **`src/core/` is pure TypeScript.** No React imports, no DOM APIs, no
    `window`/`document`/`fetch`. This rule is what makes the later Capacitor

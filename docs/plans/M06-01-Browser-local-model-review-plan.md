@@ -240,3 +240,19 @@ larger reviewed set. nym-large's extra recall (+1 point overall) does not justif
 it is not offered. Remaining for gates C/D: native-speaker review of the fixtures,
 a constrained-device run, WebGPU, and the offline cold/warm start with the network
 denied (P40).
+
+## P40 status (2026-10-29)
+
+Implemented: model chooser (size, measured languages, experimental flag), explicit
+remembered choice, hosted opt-in with size confirmation, offline package import
+verified by size and SHA-256, retry/cancel/delete (delete reports a blocked database
+honestly), coverage/cache/quota notices, CLAUDE.md rule 2 reconciled. The worker
+enforces "no network" with an `env.fetch` guard (transformers.js rejects both
+local and remote models being disabled).
+
+**Not yet verified:** gate D, the offline cold/warm browser run
+(`scripts/p40-browser.mjs`, network to other hosts blocked). It progressed through
+package import and the cold scan across several fixes but has not completed a
+full green run. P40 stays `[~]` until it does. Known limitation: transformers.js
+reads `config.json` from the moving `main` ref even when pinned, so a hosted
+download of that one file is not commit-pinned (imported copies are hash-checked).
