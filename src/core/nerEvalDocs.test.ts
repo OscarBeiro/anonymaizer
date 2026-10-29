@@ -13,10 +13,10 @@ describe('evaluation fixtures', () => {
     }
   });
 
-  it('keep tuning and acceptance data separate and cover ES, GL, PT and EN in both', () => {
+  it('keep tuning and acceptance data separate and cover ES, GL, PT, EN, CA and EU in both', () => {
     for (const split of ['tuning', 'acceptance'] as const) {
       const languages = new Set(NER_EVAL_DOCS.filter((d) => d.split === split).map((d) => d.language));
-      for (const language of ['es', 'gl', 'pt', 'en'] as const) expect(languages.has(language), `${split}/${language}`).toBe(true);
+      for (const language of ['es', 'gl', 'pt', 'en', 'ca', 'eu'] as const) expect(languages.has(language), `${split}/${language}`).toBe(true);
     }
   });
 });

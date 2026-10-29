@@ -100,7 +100,7 @@ export function LanguageRegionSetup({
                   onChange={event => toggleJurisdiction(jurisdiction, event.currentTarget.checked)}
                 />
                 <span>{t(`LanguageRegion.region_${jurisdiction.toLowerCase()}` as TranslationKey)}</span>
-                <small>{t('LanguageRegion.enabled_identity_checks')}</small>
+                <small>{t(`LanguageRegion.identity_checks_${jurisdiction.toLowerCase()}` as TranslationKey)}</small>
                 {isPinned && <span className="language-region-pinned">{t('LanguageRegion.pinned_badge')}</span>}
               </label>
             );

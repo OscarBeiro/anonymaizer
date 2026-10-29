@@ -16,8 +16,8 @@ describe('parsePinnedProfile', () => {
   });
 
   it('filters unknown IDs, deduplicates entries, and accepts explicit empty arrays', () => {
-    expect(parsePinnedProfile('{"languages":["es","es","xx",3],"jurisdictions":["ES","ES","PT",null]}'))
-      .toEqual({ languages: ['es'], jurisdictions: ['ES'] });
+    expect(parsePinnedProfile('{"languages":["es","es","xx",3],"jurisdictions":["ES","ES","PT","XX",null]}'))
+      .toEqual({ languages: ['es'], jurisdictions: ['ES', 'PT'] });
     expect(parsePinnedProfile('{"languages":[],"jurisdictions":[]}'))
       .toEqual({ languages: [], jurisdictions: [] });
   });
@@ -26,19 +26,21 @@ describe('parsePinnedProfile', () => {
 describe('suggestProfile', () => {
   it('combines mixed language detections and pins while deriving jurisdiction defaults', () => {
     expect(suggestProfile(detection(['es', 'pt']), null, 'en'))
-      .toEqual({ languages: ['es', 'pt'], jurisdictions: ['ES'] });
+      .toEqual({ languages: ['es', 'pt'], jurisdictions: ['ES', 'PT'] });
     expect(suggestProfile(detection(['es', 'pt']), { languages: ['en'], jurisdictions: [] }, 'en'))
-      .toEqual({ languages: ['es', 'pt', 'en'], jurisdictions: ['ES'] });
+      .toEqual({ languages: ['es', 'pt', 'en'], jurisdictions: ['ES', 'PT'] });
   });
 
-  it('maps Galician to ES jurisdiction and Portuguese alone to no jurisdiction', () => {
+  it('maps Galician, Catalan and Basque to the ES jurisdiction and Portuguese to PT', () => {
     expect(suggestProfile(detection(['gl']), null, 'pt')).toEqual({ languages: ['gl'], jurisdictions: ['ES'] });
-    expect(suggestProfile(detection(['pt']), null, 'es')).toEqual({ languages: ['pt'], jurisdictions: [] });
+    expect(suggestProfile(detection(['pt']), null, 'es')).toEqual({ languages: ['pt'], jurisdictions: ['PT'] });
+    expect(suggestProfile(detection(['ca']), null, 'en')).toEqual({ languages: ['ca'], jurisdictions: ['ES'] });
+    expect(suggestProfile(detection(['eu']), null, 'en')).toEqual({ languages: ['eu'], jurisdictions: ['ES'] });
   });
 
   it('uses detected languages, then pins, then locale for undetermined text', () => {
     expect(suggestProfile(detection([]), { languages: ['pt'], jurisdictions: [] }, 'es'))
-      .toEqual({ languages: ['pt'], jurisdictions: [] });
+      .toEqual({ languages: ['pt'], jurisdictions: ['PT'] });
     expect(suggestProfile(detection([]), { languages: [], jurisdictions: [] }, 'gl-ES'))
       .toEqual({ languages: ['gl'], jurisdictions: ['ES'] });
   });

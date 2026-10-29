@@ -269,7 +269,7 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > DNI in a Galician document still detects, and `langDetect` returns `gl`, not
 > `es`/`pt`.
 
-### [ ] P28 — Portuguese pack + PT jurisdiction
+### [x] P28 — Portuguese pack + PT jurisdiction
 
 > Add the `pt` language pack and the `PT` jurisdiction: NIF (mod-11 check
 > digit) and Cartão de Cidadão (check digit). This plan shows that adding a
@@ -277,6 +277,23 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 
 P27 and P28 size their name data by what P39's model already catches in that
 language, and add the language to the shared fixtures.
+
+### [x] P41 — Catalan and Basque packs
+
+> Added on request together with P28. `ca` and `eu` language packs
+> (`packs/ca.ts`, `packs/eu.ts`: greetings, weekdays/months, particles,
+> company/institution heads, titles, street words) and `langDetect` profiles.
+> Both sit under the ES jurisdiction (Spanish IDs apply) through
+> `JURISDICTION_PACKS.ES.defaultLanguages`. Basque puts institution words last
+> ("Donostiako Udala"), so those heads are company suffixes. **P28 result:** `pt`
+> pack plus the `PT` jurisdiction in `src/core/ptIds.ts` (NIF mod-11, Cartão de
+> Cidadão check, +351 phones, streets and `NNNN-NNN` postal codes; new categories
+> `NIF` and `CARTAO_CIDADAO`, preset-enabled with the region). Caveats: the word
+> lists were written by the P28/P41 author and are not native-speaker reviewed;
+> unlabelled 9-digit numbers are accepted as NIF only when the checksum passes
+> and the first digit is 1/3/5/6/8 (so mobile and landline numbers stay phones);
+> Catalan profile words avoid `el/que/no` because they are shared with Spanish
+> and made short Spanish text undetermined. Galician (P27) is still open.
 
 ## Model candidates
 

@@ -53,6 +53,7 @@ const click = async (name, parent = 'body') => {
 const paste = text => evaluate(`(() => { const area = document.querySelector('.ingest-step textarea'); const data = new DataTransfer(); data.setData('text/plain', ${JSON.stringify(text)}); area.select(); area.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: data })); })()`);
 const reload = async () => { await call('Page.reload'); await wait("!!document.querySelector('.ingest-step textarea')"); };
 const es = 'El informe es para nuestro equipo y el documento tiene la información que necesita. Por favor revise este documento con sus compañeros cuando tenga tiempo.';
+const fr = 'Le rapport est pour notre équipe et le document contient les informations dont vous avez besoin. Veuillez vérifier les données avec vos collègues et envoyer une réponse quand vous avez terminé.';
 const pt = 'O relatório é para a nossa equipa e o documento tem a informação necessária. Por favor confira os dados com os seus colegas e envie uma resposta quando não houver dúvidas.';
 
 try {
@@ -64,10 +65,11 @@ try {
   await evaluate("localStorage.clear(); localStorage.setItem('anonymaizer.uiLanguage', 'en')");
   await reload();
 
-  await paste(pt);
-  await wait("document.querySelector('.ingest-step .language-region-detected').textContent.includes('Portuguese')");
-  assert.equal(await evaluate(`(${chip('Portuguese')}).checked`), true);
-  assert.equal(await evaluate(`(${chip('Portuguese')}).disabled`), true);
+  // French has no rules yet: suggested and ticked, but not selectable.
+  await paste(fr);
+  await wait("document.querySelector('.ingest-step .language-region-detected').textContent.includes('French')");
+  assert.equal(await evaluate(`(${chip('French')}).checked`), true);
+  assert.equal(await evaluate(`(${chip('French')}).disabled`), true);
   assert.equal(await evaluate(`(${chip('Spain')}).checked`), false);
   assert.equal(await evaluate("!!document.querySelector('.ingest-step .language-region-warning')"), true);
 
@@ -85,7 +87,7 @@ try {
   await click('Pin selected packs', settingsSetup);
   const pins = await evaluate("JSON.parse(localStorage.getItem('anonymaizer.pinnedProfile'))");
   assert.deepEqual(new Set(pins.languages), new Set(['es', 'pt']));
-  assert.deepEqual(pins.jurisdictions, ['ES']);
+  assert.deepEqual(new Set(pins.jurisdictions), new Set(['ES', 'PT']));
   await reload();
   assert.equal(await evaluate(`(${chip('Spanish')}).checked`), true);
   assert.equal(await evaluate(`(${chip('Spain')}).checked`), true);
@@ -119,7 +121,7 @@ try {
   await writeFile('/tmp/p26-mobile.png', Buffer.from(mobile.data, 'base64'));
   assert.deepEqual(network, []);
   assert.deepEqual(errors, []);
-  console.log(JSON.stringify({ passed: ['Portuguese coverage notice', 'mixed suggestions', 'region gating and rescan', 'pin persistence', 'file import', 'clear pins', 'short-text pin fallback', 'Galician names and Spanish IDs', 'mobile layout', 'no runtime network requests'], screenshots: ['/tmp/p26-desktop.png', '/tmp/p26-mobile.png'] }, null, 2));
+  console.log(JSON.stringify({ passed: ['unsupported-language coverage notice', 'mixed suggestions', 'region gating and rescan', 'pin persistence', 'file import', 'clear pins', 'short-text pin fallback', 'Galician names and Spanish IDs', 'mobile layout', 'no runtime network requests'], screenshots: ['/tmp/p26-desktop.png', '/tmp/p26-mobile.png'] }, null, 2));
 } finally {
   socket.close();
   await fetch(endpoint + '/json/close/' + target.id);

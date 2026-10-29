@@ -256,3 +256,15 @@ package import and the cold scan across several fixes but has not completed a
 full green run. P40 stays `[~]` until it does. Known limitation: transformers.js
 reads `config.json` from the moving `main` ref even when pinned, so a hosted
 download of that one file is not commit-pinned (imported copies are hash-checked).
+
+## P41 addendum: Catalan and Basque (2026-10-29)
+
+Fixtures grew to 20 documents (one tuning and one acceptance each for CA and EU).
+Results are in [M06-01-evaluation-results.txt](M06-01-evaluation-results.txt)
+(BERT and nym-large rows for the earlier fixtures were not re-run). On the
+single acceptance document per language: Catalan, rules (new `ca` pack) 100 %,
++BERT 100 %, +nym-small 100 %. Basque, rules (new `eu` pack) 100 %, +BERT 93.3 %,
+**+nym-small 68.3 %** (two sensitive spans missed, 12.8 % extra characters
+masked). The multilingual model does not list Basque or Catalan among its
+languages, and for Basque it made results worse; the rules-only mode stays the
+dependable option there. One document per language is an anecdote, not a gate.

@@ -58,6 +58,22 @@ export const NER_EVAL_DOCS: readonly EvalDocument[] = [
     'Attendees:\n- {{NAME|Oliver Grant}}\n- {{NAME|Priya Natarajan}}\n- {{NAME|Dmitri Volkov}}\n\nMeeting held in {{LOCATION|Manchester}} at the offices of {{COMPANY|Harlow & Finch LLP}}.'),
   doc('en-ambiguous-1', 'en', 'ambiguous-names', 'tuning',
     'I spoke to {{NAME|Rose}} about the rose garden. {{NAME|April Stone}} said April would be wet, and {{NAME|Will Hart}} said he will visit the hart sanctuary.'),
+  // ---- Catalan
+  doc('ca-prose-1', 'ca', 'prose', 'tuning',
+    'Estimat {{NAME|Jordi Puig Ferrer}}: li escrivim des de {{COMPANY|Conserves del Delta S.L.}} per confirmar el lliurament a ' +
+    '{{ADDRESS|Carrer del Pi 14, 2n 1a}}, {{LOCATION|Girona}}. El seu telèfon de contacte és {{PHONE|972 555 013}} i el correu ' +
+    '{{EMAIL|jpuig@delta-demo.example}}. El seu DNI {{ID|12345678Z}} consta a l\'expedient.'),
+  doc('ca-list-1', 'ca', 'names-list', 'acceptance',
+    'Assistents:\n- {{NAME|Núria Casals}}\n- {{NAME|Oriol Vilaseca Mas}}\n- {{NAME|Mireia Soler}}\n\n' +
+    'La reunió va ser a {{LOCATION|Tarragona}}, a la seu de {{COMPANY|Cooperativa Camp Obert}}.'),
+  // ---- Basque
+  doc('eu-prose-1', 'eu', 'prose', 'tuning',
+    'Agur {{NAME|Mikel Etxeberria Goikoetxea}}. Mezu hau {{COMPANY|Arrantzale Kooperatiba}} enpresak bidaltzen dizu entrega baieztatzeko: ' +
+    '{{ADDRESS|Kale Nagusia 14, 2. ezk.}}, {{LOCATION|Donostia}}. Telefonoa {{PHONE|943 555 021}} eta posta {{EMAIL|metxeberria@arrantza-demo.example}}. ' +
+    'Zure NANa {{ID|12345678Z}} espedientean dago.'),
+  doc('eu-list-1', 'eu', 'names-list', 'acceptance',
+    'Bileraren partaideak:\n- {{NAME|Amaia Zubiria}}\n- {{NAME|Iker Aranburu Lasa}}\n- {{NAME|Leire Olaizola}}\n\n' +
+    'Bilera {{LOCATION|Gasteiz}}-en egin zen, {{COMPANY|Eroski Taldea}} egoitzan.'),
   doc('mixed-1', 'es', 'multilingual-paragraph', 'acceptance',
     'Resumen / Resumo / Summary. {{NAME|Carlos Vega}} (Madrid) escribió a {{NAME|Sara Neves}} em {{LOCATION|Lisboa}}; ' +
     'tamén copiaron a {{NAME|Martiño Lago}} in {{LOCATION|Vigo}}. Contact: {{EMAIL|c.vega@mixto-demo.example}}.'),

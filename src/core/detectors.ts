@@ -7,6 +7,7 @@ import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type Category
 import { detectMoney } from './money';
 import { detectLocations, detectSpanishPostalAddressFragments } from './locations';
 import { RUNG, type DetectedSpan } from './types';
+import { detectPtAddressFragments, detectPtCartaoCidadao, detectPtNif, detectPtPhones, detectPtStreets } from './ptIds';
 import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
 const collect = (
@@ -909,7 +910,7 @@ export const runShieldDetectors = (text: string): DetectedSpan[] => [...legacyLa
 /** Jurisdiction detectors stay separate from language context. */
 export const JURISDICTION_PACKS: Readonly<Record<string, JurisdictionPack>> = {
   ES: {
-    id: 'ES', defaultLanguages: ['es', 'gl'],
+    id: 'ES', defaultLanguages: ['es', 'gl', 'ca', 'eu'],
     categoryPreset: ['DNI', 'NIE', 'INVALID_ID', 'MASKED_ID', 'ID_CODE', 'PHONE', 'ADDRESS'],
     detectors: [
       { categories: ['DNI', 'INVALID_ID'], detect: detectDni },
@@ -918,6 +919,16 @@ export const JURISDICTION_PACKS: Readonly<Record<string, JurisdictionPack>> = {
       { categories: ['ID_CODE'], detect: detectIdCodes },
       { categories: ['PHONE'], detect: detectPhones },
       { categories: ['ADDRESS'], detect: value => [...detectAddresses(value), ...detectSpanishPostalAddressFragments(value)] },
+    ],
+  },
+  PT: {
+    id: 'PT', defaultLanguages: ['pt'],
+    categoryPreset: ['NIF', 'CARTAO_CIDADAO', 'PHONE', 'ADDRESS'],
+    detectors: [
+      { categories: ['NIF'], detect: detectPtNif },
+      { categories: ['CARTAO_CIDADAO'], detect: detectPtCartaoCidadao },
+      { categories: ['PHONE'], detect: detectPtPhones },
+      { categories: ['ADDRESS'], detect: value => [...detectPtStreets(value), ...detectPtAddressFragments(value)] },
     ],
   },
 };
