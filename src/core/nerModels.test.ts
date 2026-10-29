@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getNerModel, modelTotalBytes, NER_MODELS, NYM_LABEL_MAP } from './nerModels';
+import { getNerModel, modelFileUrl, modelTotalBytes, OFFERED_NER_MODEL_IDS, NER_MODELS, NYM_LABEL_MAP } from './nerModels';
 import { NER_EVAL_DOCS } from './__fixtures__/nerEvalDocs';
 import { mapNerEntitiesToSpans, type NerEntity } from './ner';
 
@@ -27,6 +27,22 @@ describe('model registry', () => {
       expect(model.status).toBe('experimental');
     }
     expect(NER_MODELS.filter((m) => m.status === 'default')).toHaveLength(1);
+  });
+
+  it('records a size and SHA-256 for every file, and offers only models that exist', () => {
+    for (const model of NER_MODELS) {
+      for (const file of model.files) {
+        expect(file.sha256, `${model.id}/${file.path}`).toMatch(/^[0-9a-f]{64}$/);
+        expect(file.bytes).toBeGreaterThan(0);
+      }
+    }
+    for (const id of OFFERED_NER_MODEL_IDS) expect(getNerModel(id)).toBeDefined();
+    expect(OFFERED_NER_MODEL_IDS).not.toContain('nym-pii-large');
+  });
+
+  it('builds the cache key transformers.js uses for a pinned file', () => {
+    expect(modelFileUrl(getNerModel('nym-pii-small')!, 'int8/model_int8.onnx'))
+      .toBe('https://huggingface.co/Wismut/nym-pii-multilingual-small/resolve/4348999cd3c2e20c49615e9af7c6bbb45b64cd85/int8/model_int8.onnx');
   });
 
   it('totals the complete download, tokenizer included', () => {

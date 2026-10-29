@@ -36,6 +36,10 @@ import { SiteLinks } from './landing/SiteLinks';
 import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { modelDownloadAllowed } from './lib/analytics';
+import { readNerChoice, saveNerChoice } from './lib/nerChoice';
+import { importModelPackage, isModelProvisioned } from './lib/nerPackage';
+import { getNerModel, modelTotalBytes, type NerModelSpec } from './core/nerModels';
+import { formatMegabytes } from './lib/formatBytes';
 import { NerQueue } from './lib/nerQueue';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
@@ -122,6 +126,21 @@ function App() {
   const nerClientRef = useRef<NerClient | null>(null);
   const [nerEnabled, setNerEnabled] = useState(false);
   const [nerStatus, setNerStatus] = useState<NerStatus>({ state: 'idle' });
+  const [nerModelId, setNerModelId] = useState(readNerChoice);
+  const [nerProvisioned, setNerProvisioned] = useState(false);
+  const [nerImportMessage, setNerImportMessage] = useState<string | undefined>();
+  const [nerRetry, setNerRetry] = useState(0);
+  const nerReady = nerStatus.state === 'ready';
+  const nerModel: NerModelSpec = getNerModel(nerModelId) ?? getNerModel('bert-base-ner')!;
+  // Which model a queued scan should use is read when it runs, so a changed
+  // choice never lets a stale closure scan with the old one.
+  const nerModelRef = useRef(nerModel);
+  nerModelRef.current = nerModel;
+  useEffect(() => {
+    let current = true;
+    void isModelProvisioned(nerModel).then((provisioned) => { if (current) setNerProvisioned(provisioned); });
+    return () => { current = false; };
+  }, [nerModel, nerReady, nerImportMessage]);
 
   // L1: false when the document is too large for localStorage; it then lives in memory only.
   const [sessionSaved, setSessionSaved] = useState(true);
@@ -242,9 +261,9 @@ function App() {
     try {
       const { entities } = await nerClientRef.current.runNer(rawMarkdown, (status) => {
         if (isCurrent() && revision === scanRevision.current) setNerStatus(status);
-      }, modelDownloadAllowed());
+      }, { allowDownload: modelDownloadAllowed(), modelId: nerModelRef.current.id });
       if (!isCurrent() || revision !== scanRevision.current) return;
-      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings, [], profile);
+      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings, [], profile, nerModelRef.current);
       setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText, detectionProfile: profile }));
     } catch (error) {
       if (isCurrent() && revision === scanRevision.current) setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'NER processing failed.' });
@@ -278,7 +297,7 @@ function App() {
         profile: activeProfile, revision: scanRevision.current });
     }
     return () => nerQueue.invalidate();
-  }, [nerEnabled, session.sessionId, session.rawMarkdown, dictionaryRules, categorySettings, activeProfile, nerQueue]);
+  }, [nerEnabled, nerRetry, nerModelId, session.sessionId, session.rawMarkdown, dictionaryRules, categorySettings, activeProfile, nerQueue]);
 
   const updateProfile = (profile: DetectionProfile) => {
     const settings = enableJurisdictionPresets(categorySettings, activeProfile, profile);
@@ -304,13 +323,47 @@ function App() {
     if (checked && isLongForNer(session.rawMarkdown) && !window.confirm(nerLongDocumentMessage(session.rawMarkdown.length))) {
       return;
     }
+    // Hosted: the checkbox is the opt-in, but the size and host are confirmed
+    // first — unless the model is already on this device.
+    if (checked && !nerProvisioned && modelDownloadAllowed()
+        && !window.confirm(t('NerToggle.download_confirm', { p0: nerModel.name, p1: formatMegabytes(modelTotalBytes(nerModel)) }))) {
+      return;
+    }
     setNerEnabled(checked);
     if (!checked) {
+      nerClientRef.current?.terminate();
+      nerClientRef.current = null;
+      setNerStatus({ state: 'idle' });
       nerQueue.invalidate();
       // Falls back to the instant M1/P7a-c heuristics — the model stays
       // loaded (in the worker and in IndexedDB) for a fast re-enable.
       runAnonymize(session.rawMarkdown, dictionaryRules);
     }
+  };
+
+  // The choice is remembered, applies from the next time the model is switched
+  // on, and never starts a download by itself.
+  const handleModelChange = (id: string) => {
+    saveNerChoice(id);
+    setNerModelId(id);
+    setNerImportMessage(undefined);
+    setNerStatus({ state: 'idle' });
+  };
+
+  const handleRetry = () => {
+    nerClientRef.current?.terminate();
+    nerClientRef.current = null;
+    setNerStatus({ state: 'idle' });
+    setNerRetry((count) => count + 1);
+  };
+
+  const handleImportPackage = (files: File[]) => {
+    void importModelPackage(nerModel, files).then((result) => {
+      setNerImportMessage(result.ok ? t('NerToggle.package_imported')
+        : result.reason === 'missing' ? t('NerToggle.package_missing', { p0: result.detail })
+        : result.reason === 'mismatch' ? t('NerToggle.package_mismatch', { p0: result.detail })
+        : t('NerToggle.package_storage', { p0: result.detail }));
+    });
   };
 
   // Distinct from handleNerToggle(false): turning off just stops using the
@@ -325,7 +378,9 @@ function App() {
     setNerEnabled(false);
     setNerStatus({ state: 'idle' });
     runAnonymize(session.rawMarkdown, dictionaryRules);
-    void deleteModelCache();
+    deleteModelCache()
+      .then(() => { setNerProvisioned(false); setNerImportMessage(undefined); })
+      .catch((error: unknown) => setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'Could not delete the model.' }));
   };
 
   const handleToggle = (id: string) => {
@@ -659,7 +714,14 @@ function App() {
               enabled={nerEnabled}
               longDocument={isLongForNer(session.rawMarkdown)}
               status={nerStatus}
+              modelId={nerModel.id}
+              downloadAllowed={modelDownloadAllowed()}
+              provisioned={nerProvisioned}
+              importMessage={nerImportMessage}
+              onModelChange={handleModelChange}
               onToggle={handleNerToggle}
+              onRetry={handleRetry}
+              onImportPackage={handleImportPackage}
               onDeleteModel={handleDeleteModel}
             />
           </>
