@@ -2,7 +2,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import { portableBuild } from './scripts/portableBuild.ts'
 import { createHash } from 'node:crypto'
-import { readFileSync, writeFileSync } from 'node:fs'
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import pkg from './package.json' with { type: 'json' }
 
@@ -105,11 +105,38 @@ const swVersion = (): Plugin => {
   }
 }
 
+// P38: the NER runtime (onnxruntime-web's wasm + loader) is served from this
+// origin under /ort/ — never from a CDN — so the only host the hosted app ever
+// contacts at runtime is the model host, and only after the user opts in.
+const ORT_FILES = ['ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm']
+const ortRuntime = (): Plugin => {
+  let outDir = 'dist'
+  const source = (file: string) => join('node_modules/onnxruntime-web/dist', file)
+  return {
+    name: 'anonymaizer-ort-runtime',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    configureServer(server) {
+      server.middlewares.use('/ort', (req, res, next) => {
+        const file = ORT_FILES.find((name) => req.url?.split('?')[0] === `/${name}`)
+        if (!file) return next()
+        res.setHeader('Content-Type', file.endsWith('.wasm') ? 'application/wasm' : 'text/javascript')
+        res.end(readFileSync(source(file)))
+      })
+    },
+    writeBundle() {
+      mkdirSync(join(outDir, 'ort'), { recursive: true })
+      for (const file of ORT_FILES) copyFileSync(source(file), join(outDir, 'ort', file))
+    },
+  }
+}
+
 // P22: dist/_headers for Cloudflare Pages, generated rather than static so the
 // CSP can carry the hash of index.html's inline theme script (P17) — no
 // 'unsafe-inline' for scripts — and so the analytics hosts are allowed only in
 // a build flagged for analytics (P21): a preview deploy's CSP forbids them.
-const NER_HOSTS = ['https://huggingface.co', 'https://*.huggingface.co', 'https://*.hf.co', 'https://cdn.jsdelivr.net']
+const NER_HOSTS = ['https://huggingface.co', 'https://*.huggingface.co', 'https://*.hf.co']
 const ANALYTICS_HOSTS = { script: [] as string[], connect: [] as string[], img: [] as string[] }
 const headersFile = (withAnalytics: boolean): Plugin => {
   let outDir = 'dist'
@@ -127,8 +154,8 @@ const headersFile = (withAnalytics: boolean): Plugin => {
       const a = withAnalytics ? ANALYTICS_HOSTS : { script: [], connect: [], img: [] }
       const csp = [
         "default-src 'self'",
-        // wasm-unsafe-eval + jsDelivr: the opt-in NER worker's onnxruntime.
-        ['script-src', "'self'", "'wasm-unsafe-eval'", ...hashes, 'https://cdn.jsdelivr.net', ...a.script].join(' '),
+        // wasm-unsafe-eval: the opt-in NER worker's onnxruntime, served from /ort/.
+        ['script-src', "'self'", "'wasm-unsafe-eval'", ...hashes, ...a.script].join(' '),
         ['connect-src', "'self'", ...NER_HOSTS, ...a.connect].join(' '),
         ['img-src', "'self'", 'data:', 'blob:', ...a.img].join(' '),
         // React renders a few style attributes; styles cannot run code.
@@ -169,7 +196,7 @@ const headersFile = (withAnalytics: boolean): Plugin => {
 export default defineConfig(({ mode }) => ({
   plugins: [
     react(),
-    ...(portable ? [portableBuild()] : [seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN), swVersion(), headersFile(analytics)]),
+    ...(portable ? [portableBuild()] : [ortRuntime(), seoFiles(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_ORIGIN), swVersion(), headersFile(analytics)]),
   ],
   build: portable ? {
     outDir: 'dist-portable',

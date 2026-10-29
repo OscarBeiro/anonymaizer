@@ -19,7 +19,7 @@ vi.mock('./components/IngestStep', () => ({ IngestStep: (props: ComponentProps<t
 vi.mock('./components/NerToggle', () => ({ NerToggle: (props: ComponentProps<typeof NerToggle>) => { state.ner = props; return null; } }));
 vi.mock('./components/SettingsMenu', () => ({ SettingsMenu: ({ detection }: { detection: React.ReactNode }) => detection }));
 vi.mock('./lib/nerClient', () => ({ NerClient: class {
-  runNer(text: string) { return new Promise<NerEntity[]>((resolve) => state.scans.push({ text, resolve })); }
+  runNer(text: string) { return new Promise<{ entities: NerEntity[] }>((resolve) => state.scans.push({ text, resolve: (entities) => resolve({ entities }) })); }
   terminate() {}
 } }));
 import App from './App';

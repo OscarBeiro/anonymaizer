@@ -24,7 +24,7 @@ it('separates worker replies by request ID and rejects cancellation once', async
   expect(status.mock.calls.at(-1)?.[0].state).toBe('loading');
   a.result(a.requests[0].requestId); // cancelled listener has been released
   b.result(b.requests[0].requestId);
-  await expect(second).resolves.toEqual([]);
+  await expect(second).resolves.toMatchObject({ entities: [] });
   client.terminate();
 });
 it('rejects an oversized model input before starting a worker', async () => {
