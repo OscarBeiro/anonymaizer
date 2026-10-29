@@ -108,7 +108,8 @@ const swVersion = (): Plugin => {
 // P38: the NER runtime (onnxruntime-web's wasm + loader) is served from this
 // origin under /ort/ — never from a CDN — so the only host the hosted app ever
 // contacts at runtime is the model host, and only after the user opts in.
-const ORT_FILES = ['ort-wasm-simd-threaded.mjs', 'ort-wasm-simd-threaded.wasm']
+// The asyncify build is what transformers.js itself selects for the wasm backend.
+const ORT_FILES = ['ort-wasm-simd-threaded.asyncify.mjs', 'ort-wasm-simd-threaded.asyncify.wasm']
 const ortRuntime = (): Plugin => {
   let outDir = 'dist'
   const source = (file: string) => join('node_modules/onnxruntime-web/dist', file)

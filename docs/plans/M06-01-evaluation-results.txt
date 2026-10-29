@@ -1,0 +1,55 @@
+config | split | lang | docs | sens-char recall | exact recall | exact precision | false merges | unmasked spans | extra-char % | review items
+rules-only | tuning | all | 8 | 68.0 | 52.4 | 81.5 | 0 | 20 | 1.2 | 27
+rules-only | tuning | es | 2 | 80.8 | 72.7 | 80.0 | 0 | 3 | 3.8 | 10
+rules-only | tuning | gl | 2 | 69.7 | 45.5 | 71.4 | 0 | 6 | 0.0 | 7
+rules-only | tuning | pt | 2 | 35.9 | 30.0 | 100.0 | 0 | 7 | 0.0 | 3
+rules-only | tuning | en | 2 | 83.8 | 60.0 | 85.7 | 0 | 4 | 0.0 | 7
+rules-only | acceptance | all | 8 | 65.8 | 54.3 | 78.1 | 0 | 20 | 3.6 | 32
+rules-only | acceptance | es | 3 | 68.8 | 55.0 | 73.3 | 0 | 9 | 3.4 | 15
+rules-only | acceptance | gl | 2 | 87.4 | 80.0 | 88.9 | 0 | 1 | 6.1 | 9
+rules-only | acceptance | pt | 2 | 34.5 | 27.3 | 75.0 | 0 | 8 | 0.0 | 4
+rules-only | acceptance | en | 1 | 72.6 | 60.0 | 75.0 | 0 | 2 | 0.0 | 4
+rules+bert | tuning | all | 8 | 79.7 | 59.5 | 64.1 | 0 | 17 | 8.3 | 39
+rules+bert | tuning | es | 2 | 89.1 | 72.7 | 72.7 | 0 | 3 | 3.5 | 11
+rules+bert | tuning | gl | 2 | 79.6 | 54.5 | 60.0 | 0 | 5 | 13.7 | 10
+rules+bert | tuning | pt | 2 | 59.3 | 30.0 | 37.5 | 0 | 7 | 18.9 | 8
+rules+bert | tuning | en | 2 | 89.6 | 80.0 | 80.0 | 0 | 2 | 0.0 | 10
+rules+bert | acceptance | all | 8 | 80.6 | 58.7 | 61.4 | 1 | 17 | 9.3 | 44
+rules+bert | acceptance | es | 3 | 74.0 | 55.0 | 57.9 | 0 | 9 | 13.1 | 19
+rules+bert | acceptance | gl | 2 | 99.4 | 70.0 | 77.8 | 1 | 1 | 6.5 | 9
+rules+bert | acceptance | pt | 2 | 72.3 | 54.5 | 54.5 | 0 | 5 | 10.1 | 11
+rules+bert | acceptance | en | 1 | 79.0 | 60.0 | 60.0 | 0 | 2 | 0.0 | 5
+rules+nym-small | tuning | all | 8 | 98.3 | 88.1 | 78.7 | 0 | 5 | 1.0 | 47
+rules+nym-small | tuning | es | 2 | 99.4 | 90.9 | 76.9 | 0 | 1 | 3.1 | 13
+rules+nym-small | tuning | gl | 2 | 96.5 | 81.8 | 81.8 | 0 | 2 | 0.0 | 11
+rules+nym-small | tuning | pt | 2 | 97.9 | 90.0 | 75.0 | 0 | 1 | 0.7 | 12
+rules+nym-small | tuning | en | 2 | 99.4 | 90.0 | 81.8 | 0 | 1 | 0.0 | 11
+rules+nym-small | acceptance | all | 8 | 94.3 | 73.9 | 66.7 | 0 | 7 | 1.8 | 51
+rules+nym-small | acceptance | es | 3 | 96.8 | 75.0 | 65.2 | 0 | 2 | 3.2 | 23
+rules+nym-small | acceptance | gl | 2 | 94.3 | 80.0 | 72.7 | 0 | 2 | 0.0 | 11
+rules+nym-small | acceptance | pt | 2 | 92.6 | 63.6 | 58.3 | 0 | 2 | 2.1 | 12
+rules+nym-small | acceptance | en | 1 | 88.7 | 80.0 | 80.0 | 0 | 1 | 0.0 | 5
+rules+nym-large | tuning | all | 8 | 98.3 | 90.5 | 80.9 | 0 | 4 | 0.8 | 47
+rules+nym-large | tuning | es | 2 | 99.4 | 90.9 | 76.9 | 0 | 1 | 3.1 | 13
+rules+nym-large | tuning | gl | 2 | 99.3 | 90.9 | 83.3 | 0 | 1 | 0.0 | 12
+rules+nym-large | tuning | pt | 2 | 95.2 | 90.0 | 81.8 | 0 | 1 | 0.0 | 11
+rules+nym-large | tuning | en | 2 | 99.4 | 90.0 | 81.8 | 0 | 1 | 0.0 | 11
+rules+nym-large | acceptance | all | 8 | 95.3 | 78.3 | 72.0 | 0 | 5 | 2.0 | 50
+rules+nym-large | acceptance | es | 3 | 95.6 | 80.0 | 72.7 | 0 | 2 | 3.2 | 22
+rules+nym-large | acceptance | gl | 2 | 100.0 | 90.0 | 81.8 | 0 | 0 | 0.0 | 11
+rules+nym-large | acceptance | pt | 2 | 92.6 | 63.6 | 58.3 | 0 | 2 | 2.8 | 12
+rules+nym-large | acceptance | en | 1 | 88.7 | 80.0 | 80.0 | 0 | 1 | 0.0 | 5
+
+per-category sensitive-char recall, acceptance, all languages:
+rules-only: NAME 80.6, LOCATION 40.6, PHONE 0.0, COMPANY 68.1, ADDRESS 0.0, ID 100.0, EMAIL 100.0
+rules+bert: NAME 80.2, LOCATION 81.3, PHONE 0.0, COMPANY 77.0, ADDRESS 93.2, ID 100.0, EMAIL 100.0
+rules+nym-small: NAME 93.2, LOCATION 100.0, PHONE 100.0, COMPANY 88.1, ADDRESS 100.0, ID 100.0, EMAIL 100.0
+rules+nym-large: NAME 97.1, LOCATION 100.0, PHONE 100.0, COMPANY 84.4, ADDRESS 100.0, ID 100.0, EMAIL 100.0
+
+unmasked sensitive spans (acceptance):
+rules-only: PHONE:"976 555 018"; LOCATION:"Bilbao"; PHONE:"944 555 071"; COMPANY:"Hortalizas del Ebro S.A."; NAME:"Mar1a Fern4ndez Gil"; ADDRESS:"Avda. de la Constituci0n 27"; NAME:"Dra. Beatriz Camacho"; COMPANY:"Clínica San Rafael S.A."; ADDRESS:"Praza da Constitución 1"; LOCATION:"Coimbra"; LOCATION:"Faro"; COMPANY:"Azeites do Alentejo S.A."; NAME:"J0ão Batista Rocha"; ADDRESS:"Travessa do Carmo 9"; LOCATION:"Braga"; COMPANY:"Clínica Santa Luzia Lda."; NAME:"Dra. Helena Gouveia"; LOCATION:"Manchester"; COMPANY:"Harlow & Finch LLP"; LOCATION:"Lisboa"
+rules+bert: PHONE:"976 555 018"; LOCATION:"Bilbao"; PHONE:"944 555 071"; COMPANY:"Hortalizas del Ebro S.A."; NAME:"Mar1a Fern4ndez Gil"; ADDRESS:"Avda. de la Constituci0n 27"; NAME:"Dra. Beatriz Camacho"; COMPANY:"Clínica San Rafael S.A."; ADDRESS:"Praza da Constitución 1"; NAME:"Margarida Sá Pinto"; COMPANY:"Azeites do Alentejo S.A."; ADDRESS:"Travessa do Carmo 9"; COMPANY:"Clínica Santa Luzia Lda."; NAME:"Dra. Helena Gouveia"; NAME:"Dmitri Volkov"; COMPANY:"Harlow & Finch LLP"; LOCATION:"Lisboa"
+rules+nym-small: NAME:"Dra. Beatriz Camacho"; NAME:"Lucía Paz Outeiro"; COMPANY:"Concello de Betanzos"; COMPANY:"Clínica Santa Luzia Lda."; NAME:"Dra. Helena Gouveia"; COMPANY:"Harlow & Finch LLP"; NAME:"Martiño Lago"
+rules+nym-large: NAME:"Dra. Beatriz Camacho"; COMPANY:"Clínica San Rafael S.A."; COMPANY:"Clínica Santa Luzia Lda."; NAME:"Dra. Helena Gouveia"; COMPANY:"Harlow & Finch LLP"
+
+node latency per document (ms): rules-only p50=0 max=0; rules+bert p50=16 max=26; rules+nym-small p50=20 max=64; rules+nym-large p50=41 max=82

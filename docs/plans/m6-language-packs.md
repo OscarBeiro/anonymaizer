@@ -235,7 +235,7 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > cache states. Coordinate lifecycle work with M09 task 02. Basic chunk coverage
 > belongs here; M7 still owns large-document optimization.
 
-### [ ] P39 — Model registry and browser comparison
+### [x] P39 — Model registry and browser comparison
 
 > Complete gates B–C in [M06-01](M06-01-Browser-local-model-review-plan.md).
 > Add a pure model registry with pinned revision/artifacts, total bytes,
