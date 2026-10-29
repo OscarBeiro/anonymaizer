@@ -68,8 +68,21 @@ export const computeTokenOffsets = (tokens: RawNerToken[], text: string): RawNer
 
   return tokens.map((token) => {
     const isContinuation = token.word.startsWith('##');
-    const piece = isContinuation ? token.word.slice(2) : token.word;
-    if (piece === '') return token;
+    // Sentencepiece-family tokenizers mark a word start with a leading space or
+    // '▁' instead of marking continuations with '##'.
+    const piece = isContinuation ? token.word.slice(2) : token.word.replace(/^[\s\u2581]+/u, '');
+    if (piece === '') {
+      // A whitespace-only token: give it the whitespace it stands for, so an
+      // entity that spans it (a street and its number) is not cut in two.
+      if (token.word === '') return token;
+      let end = cursor;
+      while (end < text.length && /\s/u.test(text[end]) && end - cursor < token.word.length) end++;
+      if (end === cursor) return token;
+      const spanned = { ...token, start: cursor, end };
+      cursor = end;
+      previousIndex = token.index;
+      return spanned;
+    }
 
     // The previous token sits at the previous index, so this one follows it
     // directly (after whitespace only): never search past text that holds
@@ -170,27 +183,52 @@ export const aggregateBioTokens = (tokens: RawNerToken[], text: string): NerEnti
   return entities;
 };
 
+// What a model's label type means to the anonymizer. A label is either mapped
+// to a category or explicitly ignored, with the reason; a label in neither
+// list is a bug (see nerModels.test.ts), never a silent drop.
+export type NerLabelPolicy = { category: string } | { ignored: string };
+export type NerLabelMap = Readonly<Record<string, NerLabelPolicy>>;
+
 // PER, ORG and LOC/GPE have category homes. MISC remains unmapped because it
 // combines unrelated entity kinds without a useful anonymization category.
-const ENTITY_GROUP_TO_CATEGORY: Record<string, 'NAME' | 'COMPANY' | 'LOCATION' | undefined> = {
-  PER: 'NAME',
-  ORG: 'COMPANY',
-  LOC: 'LOCATION',
-  GPE: 'LOCATION',
+export const BERT_LABEL_MAP: NerLabelMap = {
+  PER: { category: 'NAME' },
+  ORG: { category: 'COMPANY' },
+  LOC: { category: 'LOCATION' },
+  GPE: { category: 'LOCATION' },
+  MISC: { ignored: 'mixes unrelated entity kinds' },
 };
+
+// Categories whose neighbours form one thing: "María" + "Fernández López",
+// "Calle Mayor" + "12". Joined only across plain whitespace.
+const JOINABLE_CATEGORIES = new Set(['NAME', 'ADDRESS']);
 
 /**
  * Turns raw NER output into §4a candidate spans. Pure and model-free — takes
  * already-run entities, so it can be tested (and is tested) without ever
  * loading transformers.js or an ONNX model.
+ *
+ * `thresholds` lets a model set its own confidence cut per category; the
+ * default is the one 0.8 the BERT model was tuned with.
  */
-export const mapNerEntitiesToSpans = (entities: NerEntity[], model = 'Xenova/bert-base-NER'): DetectedSpan[] =>
-  entities.flatMap((entity) => {
-    const category = ENTITY_GROUP_TO_CATEGORY[entity.entityGroup];
-    if (!category) return [];
+export const mapNerEntitiesToSpans = (
+  entities: NerEntity[],
+  model = 'Xenova/bert-base-NER',
+  labelMap: NerLabelMap = BERT_LABEL_MAP,
+  thresholds: Readonly<Record<string, number>> = {},
+  text?: string,
+): DetectedSpan[] => {
+  const spans = entities.flatMap((entity): DetectedSpan[] => {
+    const policy = labelMap[entity.entityGroup];
+    if (!policy || !('category' in policy)) return [];
+    const category = policy.category;
     // D6: "G", "G.", "J. M." — no word of two or more letters, so nothing a
-    // placeholder could meaningfully stand for.
-    if (!/\p{L}{2,}/u.test(entity.text)) return [];
+    // placeholder could meaningfully stand for. Digit-led codes are exempt.
+    if (category === 'NAME' || category === 'COMPANY' || category === 'LOCATION') {
+      if (!/\p{L}{2,}/u.test(entity.text)) return [];
+    }
+    const threshold = thresholds[category] ?? NER_CONFIDENCE_THRESHOLD;
+    const confident = entity.score >= threshold;
     return [{
       start: entity.start,
       end: entity.end,
@@ -201,7 +239,24 @@ export const mapNerEntitiesToSpans = (entities: NerEntity[], model = 'Xenova/ber
       model,
       // Below the threshold the hit starts disabled, and its rung keeps it
       // from displacing an enabled heuristic it merely overlaps.
-      rung: entity.score >= NER_CONFIDENCE_THRESHOLD ? RUNG.NER : RUNG.NER_LOW,
-      enabled: entity.score >= NER_CONFIDENCE_THRESHOLD,
+      rung: confident ? RUNG.NER : RUNG.NER_LOW,
+      enabled: confident,
     }];
   });
+  return text === undefined ? spans : joinAdjacentSpans(spans, text);
+};
+
+const joinAdjacentSpans = (spans: DetectedSpan[], text: string): DetectedSpan[] => {
+  const sorted = [...spans].sort((a, b) => a.start - b.start);
+  const joined: DetectedSpan[] = [];
+  for (const span of sorted) {
+    const last = joined[joined.length - 1];
+    if (last && JOINABLE_CATEGORIES.has(span.category) && last.category === span.category
+        && last.enabled === span.enabled && /^[ \t]*$/u.test(text.slice(last.end, span.start))) {
+      last.end = span.end;
+      last.text = text.slice(last.start, last.end);
+      last.confidence = Math.min(last.confidence, span.confidence);
+    } else joined.push({ ...span });
+  }
+  return joined;
+};

@@ -286,3 +286,23 @@ describe('low-confidence arbitration', () => {
     expect(accepted).toHaveLength(1);
   });
 });
+
+describe('sentencepiece-style tokens', () => {
+  const tok = (word: string, entity: string, index: number): RawNerToken => ({ word, score: 0.95, entity, index });
+
+  it('aligns leading-space words and digit-by-digit identifiers', () => {
+    const text = 'Soy María Fernández, DNI 12345678Z.';
+    const tokens = [tok(' Soy', 'O', 1), tok(' María', 'B-GIVEN_NAME', 2), tok(' Fernández', 'B-SURNAME', 3), tok(',', 'O', 4), tok(' DNI', 'O', 5),
+      tok(' ', 'O', 6), tok('1', 'B-GOVERNMENT_ID', 7), tok('2', 'I-GOVERNMENT_ID', 8), tok('3', 'I-GOVERNMENT_ID', 9), tok('4', 'I-GOVERNMENT_ID', 10),
+      tok('5', 'I-GOVERNMENT_ID', 11), tok('6', 'I-GOVERNMENT_ID', 12), tok('7', 'I-GOVERNMENT_ID', 13), tok('8', 'I-GOVERNMENT_ID', 14), tok('Z', 'I-GOVERNMENT_ID', 15)];
+    const entities = aggregateBioTokens(computeTokenOffsets(tokens, text), text);
+    expect(entities.map((e) => [e.entityGroup, e.text])).toEqual([['GIVEN_NAME', 'María'], ['SURNAME', 'Fernández'], ['GOVERNMENT_ID', '12345678Z']]);
+  });
+
+  it('keeps an entity whole across a whitespace-only token', () => {
+    const text = 'Calle Mayor 12';
+    const tokens = [tok(' Calle', 'B-STREET_ADDRESS', 1), tok(' Mayor', 'I-STREET_ADDRESS', 2), tok(' ', 'I-STREET_ADDRESS', 3),
+      tok('1', 'I-STREET_ADDRESS', 4), tok('2', 'I-STREET_ADDRESS', 5)];
+    expect(aggregateBioTokens(computeTokenOffsets(tokens, text), text).map((e) => e.text)).toEqual(['Calle Mayor 12']);
+  });
+});

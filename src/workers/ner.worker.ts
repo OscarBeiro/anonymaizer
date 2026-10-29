@@ -33,7 +33,10 @@ env.customCache = createIndexedDbModelCache({ onWriteError: (key) => cacheWriteF
 // P38: the onnxruntime runtime is served from this origin (vite.config.ts
 // copies it to /ort/), never from a CDN. Runs single-threaded: the page is not
 // cross-origin isolated, so worker threads would not be available anyway.
-env.backends.onnx.wasm!.wasmPaths = `${import.meta.env.BASE_URL}ort/`;
+env.backends.onnx.wasm!.wasmPaths = {
+  mjs: `${import.meta.env.BASE_URL}ort/ort-wasm-simd-threaded.asyncify.mjs`,
+  wasm: `${import.meta.env.BASE_URL}ort/ort-wasm-simd-threaded.asyncify.wasm`,
+};
 env.backends.onnx.wasm!.numThreads = 1;
 
 // The BERT tokenizer reads 512 tokens, two of them [CLS] and [SEP].
