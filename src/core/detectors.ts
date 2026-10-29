@@ -910,6 +910,7 @@ export const runShieldDetectors = (text: string): DetectedSpan[] => [...legacyLa
 export const JURISDICTION_PACKS: Readonly<Record<string, JurisdictionPack>> = {
   ES: {
     id: 'ES', defaultLanguages: ['es', 'gl'],
+    categoryPreset: ['DNI', 'NIE', 'INVALID_ID', 'MASKED_ID', 'ID_CODE', 'PHONE', 'ADDRESS'],
     detectors: [
       { categories: ['DNI', 'INVALID_ID'], detect: detectDni },
       { categories: ['NIE', 'INVALID_ID'], detect: detectNie },

@@ -1,5 +1,9 @@
 import { LanguagePicker } from './components/LanguagePicker';
-import { t } from './i18n';
+import { t, useLocale } from './i18n';
+import { LanguageRegionSetup } from './components/LanguageRegionSetup';
+import { langDetect } from './core/langDetect';
+import { enableJurisdictionPresets, suggestProfile } from './core/profileSelection';
+import type { DetectionProfile } from './core/packs/profile';
 import { BrandName } from './components/BrandName';
 import { BetaBadge } from './components/BetaBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -40,6 +44,8 @@ import { QuickResult } from './components/QuickResult';
 import {
   clearLocalData,
   loadAppMode,
+  loadPinnedProfile,
+  savePinnedProfile,
   loadCategorySettings,
   loadDictionaryRules,
   loadMoneyRange,
@@ -78,6 +84,18 @@ const emptySession = (): MappingSession => ({
 
 function App() {
   const [session, setSession] = useState<MappingSession>(() => loadSession() ?? emptySession());
+  const locale = useLocale();
+  const [pinnedProfile, setPinnedProfile] = useState<DetectionProfile | null>(loadPinnedProfile);
+  const [documentProfile, setDocumentProfile] = useState<DetectionProfile | null>(() => session.detectionProfile ?? null);
+  const [profileSaved, setProfileSaved] = useState(true);
+  const languageDetection = useMemo(() => langDetect(session.rawMarkdown), [session.rawMarkdown]);
+  const activeProfile = useMemo(() => documentProfile ?? suggestProfile(languageDetection, pinnedProfile, locale),
+    [documentProfile, languageDetection, pinnedProfile, locale]);
+  const profileSignature = JSON.stringify(activeProfile);
+  const scannedProfile = useRef(session.detectionProfile ? JSON.stringify(session.detectionProfile) : null);
+  const scanRevision = useRef(0);
+  const profileForText = (text: string): DetectionProfile =>
+    documentProfile ?? suggestProfile(langDetect(text), pinnedProfile, locale);
   const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
   const [categorySettings, setCategorySettings] = useState<CategorySettings>(() =>
     loadCategorySettings(toggleableCategories(loadDictionaryRules())),
@@ -145,6 +163,9 @@ function App() {
   // file metadata, session id (so realistic output reseeds) and AI response.
   // Custom rules and settings belong to the user and are kept.
   const resetForNewDocument = (): void => {
+    scanRevision.current++;
+    scannedProfile.current = null;
+    setDocumentProfile(null);
     setSession(emptySession());
     setAiResponse('');
     setImportWarnings([]);
@@ -152,9 +173,11 @@ function App() {
     setRestoreSubStep('response');
   };
 
-  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings);
-    setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
+  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings, profile = profileForText(rawMarkdown)) => {
+    scanRevision.current++;
+    scannedProfile.current = JSON.stringify(profile);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings, [], profile);
+    setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText, detectionProfile: profile }));
   };
 
   const handleFileImport = (
@@ -165,7 +188,9 @@ function App() {
   ) => {
     resetForNewDocument();
     setImportWarnings(warnings);
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings);
+    const profile = suggestProfile(langDetect(rawMarkdown), pinnedProfile, locale);
+    scannedProfile.current = JSON.stringify(profile);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings, [], profile);
     setSession(() => ({
       ...emptySession(),
       rawMarkdown,
@@ -174,6 +199,7 @@ function App() {
       inputType: 'FILE',
       fileName,
       originalFormat: format,
+      detectionProfile: profile,
     }));
   };
 
@@ -184,7 +210,7 @@ function App() {
     if (!handoff) return;
     if (handoff.kind === 'text') {
       handleNewDocumentText(handoff.text);
-      setStep('review');
+      setStep('ingest');
       return;
     }
     void handoff.file
@@ -192,7 +218,7 @@ function App() {
       .then((bytes) => parseDocument(handoff.file.name, bytes))
       .then((parsed) => {
         handleFileImport(parsed.markdown, parsed.format, handoff.file.name, parsed.warnings ?? []);
-        setStep('review');
+        setStep('ingest');
       })
       .catch((e: unknown) => {
         setStep('ingest');
@@ -208,38 +234,68 @@ function App() {
     rawMarkdown: string;
     rules: CustomDictionaryRule[];
     settings: CategorySettings;
-  }>(async ({ rawMarkdown, rules, settings }, isCurrent) => {
+    profile: DetectionProfile;
+    revision: number;
+  }>(async ({ rawMarkdown, rules, settings, profile, revision }, isCurrent) => {
     nerClientRef.current ??= new NerClient();
     try {
       const entities = await nerClientRef.current.runNer(rawMarkdown, (status) => {
-        if (isCurrent()) setNerStatus(status);
+        if (isCurrent() && revision === scanRevision.current) setNerStatus(status);
       });
-      if (!isCurrent()) return;
-      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings);
-      setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText }));
+      if (!isCurrent() || revision !== scanRevision.current) return;
+      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings, [], profile);
+      setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText, detectionProfile: profile }));
     } catch (error) {
-      if (isCurrent()) setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'NER processing failed.' });
+      if (isCurrent() && revision === scanRevision.current) setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'NER processing failed.' });
     }
   }));
 
-  useEffect(() => {
-    if (nerEnabled) {
-      nerQueue.submit({ rawMarkdown: session.rawMarkdown, rules: dictionaryRules, settings: categorySettings });
-    }
-    return () => nerQueue.invalidate();
-  }, [nerEnabled, session.sessionId, session.rawMarkdown, dictionaryRules, categorySettings, nerQueue]);
-
-  const handlePasteChange = (rawMarkdown: string) => {
+  const handlePasteChange = (rawMarkdown: string, newDocument = false) => {
     // Editing the text by hand makes the imported document's warnings stale.
     setImportWarnings([]);
-    runAnonymize(rawMarkdown, dictionaryRules);
+    const profile = newDocument ? suggestProfile(langDetect(rawMarkdown), pinnedProfile, locale) : profileForText(rawMarkdown);
+    runAnonymize(rawMarkdown, dictionaryRules, categorySettings, profile);
   };
 
   // A paste that replaces the document (see PastePanel) or text from the
   // landing: start clean, then detect as usual.
   const handleNewDocumentText = (rawMarkdown: string) => {
     resetForNewDocument();
-    handlePasteChange(rawMarkdown);
+    handlePasteChange(rawMarkdown, true);
+  };
+
+  // Changes to pins or the locale fallback may change the automatic profile.
+  // Document edits already scanned by their handlers are skipped here.
+  useEffect(() => {
+    if (!session.rawMarkdown || scannedProfile.current === profileSignature) return;
+    runAnonymize(session.rawMarkdown, dictionaryRules, categorySettings, activeProfile);
+  }, [profileSignature, session.rawMarkdown, activeProfile, nerEnabled, dictionaryRules, categorySettings]);
+
+  useEffect(() => {
+    if (nerEnabled && session.rawMarkdown) {
+      nerQueue.submit({ rawMarkdown: session.rawMarkdown, rules: dictionaryRules, settings: categorySettings,
+        profile: activeProfile, revision: scanRevision.current });
+    }
+    return () => nerQueue.invalidate();
+  }, [nerEnabled, session.sessionId, session.rawMarkdown, dictionaryRules, categorySettings, activeProfile, nerQueue]);
+
+  const updateProfile = (profile: DetectionProfile) => {
+    const settings = enableJurisdictionPresets(categorySettings, activeProfile, profile);
+    setDocumentProfile(profile);
+    setCategorySettings(settings);
+    runAnonymize(session.rawMarkdown, dictionaryRules, settings, profile);
+  };
+
+  const pinProfile = () => {
+    setPinnedProfile(activeProfile);
+    setDocumentProfile(activeProfile);
+    setProfileSaved(savePinnedProfile(activeProfile));
+  };
+
+  const clearProfilePins = () => {
+    setPinnedProfile(null);
+    setDocumentProfile(null);
+    setProfileSaved(savePinnedProfile(null));
   };
 
   const handleNerToggle = (checked: boolean) => {
@@ -411,11 +467,7 @@ function App() {
         t('App.your_custom_rules_are_kept'),
     );
     if (!ok) return;
-    setSession(emptySession());
-    setAiResponse('');
-    setImportWarnings([]);
-    setReviewSubStep('placeholders');
-    setRestoreSubStep('response');
+    resetForNewDocument();
     setStep('ingest');
     setViewMode(defaultMode);
   };
@@ -444,6 +496,10 @@ function App() {
             doneMessage: t('App.copied_your_restored_text_is_on_the'),
           }
         : undefined;
+
+  const languageSetup = <LanguageRegionSetup detection={languageDetection} profile={activeProfile}
+    pinned={pinnedProfile} onChange={updateProfile} onPin={pinProfile} onClearPins={clearProfilePins}
+    onUseSuggestions={() => setDocumentProfile(null)} />;
 
   return (
     <div className="app-shell">
@@ -501,6 +557,7 @@ function App() {
             <p className="session-unsaved" role="alert">
               {t('App.this_document_is_too_large_to_survive')}</p>
           )}
+          {!profileSaved && <p className="session-unsaved" role="alert">{t('LanguageRegion.not_saved')}</p>}
 
           {step === 'ingest' && (
             <IngestStep
@@ -512,6 +569,7 @@ function App() {
               onFileImport={handleFileImport}
               defaultMode={defaultMode}
               onRun={runInMode}
+              setup={languageSetup}
             />
           )}
 
@@ -588,6 +646,7 @@ function App() {
         onDefaultModeChange={setDefaultMode}
         detection={
           <>
+            {languageSetup}
             <CategoryToggles
               settings={categorySettings}
               rules={dictionaryRules}

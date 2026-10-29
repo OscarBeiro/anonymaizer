@@ -1,4 +1,5 @@
 import type { MappingSnapshot, Revision } from './roundTrip';
+import type { DetectionProfile } from './packs/profile';
 export type KnownCategory =
   | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'LOCATION' | 'COMPANY'
   | 'DNI' | 'NIE' | 'INVALID_ID' | 'VAT_NUMBER' | 'IBAN' | 'CREDIT_CARD'
@@ -45,6 +46,7 @@ export interface MappingSession {
   mappings: MappingItem[];
   rawMarkdown: string;
   anonymizedMarkdown: string;
+  detectionProfile?: DetectionProfile;
   coverage?: ExtractionCoverage;
   snapshots?: MappingSnapshot[];
   identity?: Revision;

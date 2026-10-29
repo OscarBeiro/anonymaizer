@@ -215,7 +215,7 @@ The UI remains P26. P23 stays open for the remaining scaffold/pseudonym cleanup.
 
 Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 
-### [ ] P26 — "Language & region" setup step
+### [x] P26 — "Language & region" setup step
 
 > Show the detected languages as pre-ticked chips ("Suggested: Spanish,
 > Portuguese"). Default the jurisdiction checkboxes from `defaultLanguages`,
