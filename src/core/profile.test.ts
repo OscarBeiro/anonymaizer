@@ -24,10 +24,32 @@ it('preserves legacy mappings and substitution across the clinical fixture and m
   }
 });
 
-it('does not run Spanish ID or name heuristics for a PT-only profile', () => {
-  const spans = runAllDetectors('Paciente Mario Prieto. DNI 12345678A. Calle Mayor 12. Grupo Acme. a@b.com', undefined, pt);
-  expect(spans.map(span => span.category)).toEqual(['EMAIL']);
-  expect(spans[0].pack).toBe('common');
+it('does not run Spanish ID or address detectors for a PT-only profile', () => {
+  const spans = runAllDetectors('Paciente Mario Prieto. DNI 12345678A. Calle Mayor 12. a@b.com', undefined, pt);
+  const categories = spans.map(span => span.category);
+  expect(categories).toContain('EMAIL');
+  expect(categories).not.toContain('INVALID_ID');
+  expect(categories).not.toContain('ADDRESS');
+  expect(spans.find(span => span.category === 'EMAIL')?.pack).toBe('common');
+});
+
+it('runs the Portuguese jurisdiction: NIF, Cartão de Cidadão, phones and addresses', () => {
+  const text = 'NIF 123456789. CC 00000000 0 ZZ4. Tel 912 345 678. Rua das Flores 45, 4000-123 Porto.';
+  const spans = runAllDetectors(text, undefined, pt);
+  expect(spans.map(span => [span.category, span.text])).toEqual(expect.arrayContaining([
+    ['NIF', '123456789'], ['CARTAO_CIDADAO', '00000000 0 ZZ4'], ['PHONE', '912 345 678'],
+  ]));
+  expect(spans.some(span => span.category === 'ADDRESS' && span.text.startsWith('Rua das Flores'))).toBe(true);
+  expect(spans.filter(span => span.pack === 'PT').length).toBeGreaterThanOrEqual(4);
+});
+
+it.each([
+  ['ca', 'Estimat Joan Puig i Ferrer, de Ajuntament de Girona. Carrer Major 12. DNI 12345678Z.'],
+  ['eu', 'Kaixo Mikel Etxeberria Goikoetxea, Donostiako Udala. DNI 12345678Z.'],
+])('applies the Spanish jurisdiction to %s documents', (language, text) => {
+  const spans = runAllDetectors(text, undefined, { languages: [language as 'ca' | 'eu'], jurisdictions: ['ES'] });
+  expect(spans.map(span => span.category)).toContain('DNI');
+  expect(spans.some(span => span.category === 'NAME' || span.category === 'COMPANY')).toBe(true);
 });
 
 it('keeps checksummed IDs broad while gating invalid-ID guesses by jurisdiction', () => {

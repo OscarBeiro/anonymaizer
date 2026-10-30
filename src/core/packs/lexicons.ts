@@ -1,4 +1,7 @@
+import { BASQUE_LEXICON } from './eu';
+import { CATALAN_LEXICON } from './ca';
 import { GALICIAN_PACK } from './gl';
+import { PORTUGUESE_LEXICON } from './pt';
 
 export interface DetectorLexicon {
   readonly companySuffixes: readonly string[];
@@ -88,6 +91,9 @@ export const languageLexicon = (languages: readonly string[]): DetectorLexicon =
       case 'en': return [EN];
       case 'es': return [ES];
       case 'gl': return [GL];
+      case 'pt': return [PORTUGUESE_LEXICON];
+      case 'ca': return [CATALAN_LEXICON];
+      case 'eu': return [BASQUE_LEXICON];
       default: return [];
     }
   });

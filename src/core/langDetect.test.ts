@@ -4,6 +4,8 @@ const samples = {
   en: 'The report is for our team and the document has the information that you need. Please review this with your colleagues and send your response.',
   es: 'El informe es para nuestro equipo y el documento tiene la información que necesita. Por favor revise este documento con sus compañeros cuando tenga tiempo.',
   pt: 'O relatório é para a nossa equipa e o documento tem a informação necessária. Por favor confira os dados com os seus colegas e envie uma resposta quando não houver dúvidas.',
+  ca: 'L\'informe és per al nostre equip i el document té la informació que necessita. Si us plau, reviseu aquestes dades amb els vostres companys i envieu una resposta quan hagueu acabat, perquè també és molt important.',
+  eu: 'Txostena gure taldearentzat da eta dokumentuak behar duzun informazioa du. Mesedez, berrikusi datu hauek zure lankideekin eta bidali erantzun bat, baina ez ahaztu epea gaur bukatzen dela eta oso garrantzitsua da.',
   fr: 'Le rapport est pour notre équipe et le document contient les informations dont vous avez besoin. Veuillez vérifier les données avec vos collègues et envoyer une réponse quand vous avez terminé.',
   it: 'Il rapporto è per il nostro gruppo e il documento contiene le informazioni che sono necessarie. Si prega di controllare questi dati con i vostri colleghi e inviare una risposta quando avete finito.',
   de: 'Der Bericht ist für unser Team und das Dokument enthält die Informationen, die Sie benötigen. Bitte prüfen Sie diese Daten mit Ihren Kollegen und senden Sie anschließend eine Antwort.',
@@ -73,10 +75,13 @@ it('keeps empty, short, and unsupported paragraphs undetermined', () => {
   const result = langDetect(samples.pt + '\n\nOla Xoán');
   expect(result.paragraphs[1].status).toBe('undetermined');
 });
-it('suggests new languages without activating unavailable anonymization packs', () => {
+it('activates packs only for languages that have one', () => {
   expect(langDetect(samples.pt).languages).toEqual(['pt']);
-  expect(documentLanguages(samples.pt, 'auto')).toEqual(['en', 'es', 'gl']);
-  expect(documentLanguages(samples.pt + '\n\n' + samples.gl, 'auto')).toEqual(['gl']);
+  expect(documentLanguages(samples.pt, 'auto')).toEqual(['pt']);
+  expect(documentLanguages(samples.ca, 'auto')).toEqual(['ca']);
+  expect(documentLanguages(samples.eu, 'auto')).toEqual(['eu']);
+  expect(documentLanguages(samples.fr, 'auto')).toEqual(['en', 'es', 'gl']);
+  expect(documentLanguages(samples.pt + '\n\n' + samples.gl, 'auto')).toEqual(expect.arrayContaining(['gl', 'pt']));
 });
 
 it('does not treat shared Spanish/Galician suffixes as exclusive evidence', () => {

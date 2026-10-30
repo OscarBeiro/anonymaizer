@@ -16,7 +16,7 @@ export interface PredictedSpan {
 
 export interface EvalDocument {
   id: string;
-  language: 'es' | 'gl' | 'pt' | 'en';
+  language: 'es' | 'gl' | 'pt' | 'en' | 'ca' | 'eu';
   kind: string;
   /** Threshold tuning may use 'tuning' only; acceptance numbers come from 'acceptance'. */
   split: 'tuning' | 'acceptance';

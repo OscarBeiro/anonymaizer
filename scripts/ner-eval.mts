@@ -83,7 +83,7 @@ for (const config of configs) {
     }
   }
   for (const split of ['tuning', 'acceptance'] as const) {
-    for (const language of ['all', 'es', 'gl', 'pt', 'en'] as const) {
+    for (const language of ['all', 'es', 'gl', 'pt', 'en', 'ca', 'eu'] as const) {
       const scores = NER_EVAL_DOCS.filter((d) => d.split === split && (language === 'all' || d.language === language)).map((d) => perDoc.get(d.id)!);
       if (scores.length) rows.push({ config: config.name, split, language, score: aggregateScores(scores) });
     }
