@@ -60,9 +60,11 @@ share one language-code resolver. `P15` (Localazy) runs any time after `P14`.
   model. Keep the existing English BERT as an evaluation baseline.
 
 **Session order:** P14 → P15 (any time after P14) → P23 → P24 → P25 → P26 →
-P38 → P39 → P40 → P27 → P28. The model sessions come before the gl/pt packs:
-how well the model handles names decides how much name data those packs need.
-P38–P40 are numbered after M8 because P29–P37 were already taken.
+P38 → P39 → P40 → P28 → P41 → P42 → P27 → P43 → P44. The model sessions come
+before the gl/pt packs: how well the model handles names decides how much name
+data those packs need. P38–P40 are numbered after M8 because P29–P37 were already
+taken. P42–P44 were planned 2026-10-30: the NER length cap first, then Galician,
+then Italy, then a model re-evaluation over all the new languages.
 
 ---
 
@@ -268,6 +270,82 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > `Xunta`, `Consellería`, `Universidade`, moved out of the ES lists). Tests: a
 > DNI in a Galician document still detects, and `langDetect` returns `gl`, not
 > `es`/`pt`.
+
+Expanded 2026-10-30; runs after P42. P27 also does the shared groundwork, so
+that later packs are mostly data:
+
+- `languageLexicon` (`packs/lexicons.ts`) looks lexicons up in a
+  `Partial<Record<DetectedLanguage, DetectorLexicon>>` map instead of a `switch`.
+  GL gets its own `DetectorLexicon` instead of `{ ...ES }`: honorifics (`Sr.`,
+  `Sra.`, `Dna.`), titles (`Avogado/a`, `Médico/a`), structure heads (`Asunto`,
+  `Data`, `Enderezo`), legal heads (`Lei`, `Decreto`, `Orde`), institutions
+  (`Xunta`, `Concello`, `Deputación`, `Consellería`, `Valedora do Pobo`), streets
+  (`Rúa`, `Praza`, `Camiño`, `Estrada`, `Lugar`). `LEGACY_LEXICON` stays
+  byte-identical; the default-profile regression tests must pass unedited.
+- `DocumentLanguage` (`langDetect.ts`) and `PseudonymLang` (`pseudonymize.ts`)
+  come from the registries, not hand-written unions.
+- Pseudonym pools: `src/core/data/{gl,pt,ca,eu}/pseudonyms.ts` (P28/P41 shipped
+  none), so realistic mode stops falling back to Spanish names.
+- Tests also cover: day/month words are not NAMEs, `Rúa do Hórreo 12` is an
+  ADDRESS, and a GL-only profile has no Spanish-only stopword effects.
+
+### [ ] P42 — Lift the 100,000-character model limit
+
+Planned 2026-10-30. Long documents fail with "NER is limited to 100,000
+characters." The model is not what limits the length: the check is a guard in
+`src/lib/nerClient.ts`, and the worker already splits text into token windows
+(`planNerWindows`).
+
+> Replace the hard-coded limit with `PROCESSING_LIMITS.inputCharacters` from
+> `src/core/processingLimits.ts`, so one limit governs rules and the model.
+> Check that per-window progress stays responsive, that cancel works mid-scan
+> on a 1 MB text, and that partial coverage is reported through `nerCoverage`.
+> Leave the 100,000 caps in `session.ts` and `roundTrip.ts` alone: they bound
+> one mapping value, not the document. Tests: the client accepts 150k
+> characters and rejects text over the shared limit; window planning over a
+> 500k fixture reaches full coverage. Browser check: a document over 100k
+> characters scans with the model, with progress and cancel.
+
+M7 still owns large-document performance (streamed results, worker memory).
+
+### [ ] P43 — Italy: IT jurisdiction + `it` language pack
+
+Planned 2026-10-30. Italian has a `langDetect` profile but no pack and no
+jurisdiction.
+
+> Add `src/core/itIds.ts` with tests, modelled on `ptIds.ts`: codice fiscale
+> (16 characters, odd/even check-character tables, omocodia substitutions),
+> partita IVA (11 digits, check digit; also add the checksum to
+> `VAT_PATTERNS.IT`), carta d'identità elettronica (`CA00000AA` shape, no
+> checksum, so gated like `INVALID_ID`), +39 phones (mobile `3xx`, landline
+> `0x`), and CAP + `Via/Viale/Piazza/Corso/Largo/Vicolo` addresses. Register
+> `IT` in `JURISDICTION_PACKS` with `defaultLanguages: ['it']`, a category
+> preset and `LanguageRegion.region_it`. Checksummed codice fiscale stays broad
+> when IT is off, like DNI/NIF. Add `packs/it.ts`: greetings (`Gentile`,
+> `Egregio/a`, `Spett.le`, `Cordiali saluti`, `Distinti saluti`), weekdays and
+> months, honorifics (`Sig.`, `Sig.ra`, `Dott.`, `Dott.ssa`, `Avv.`, `Ing.`),
+> company forms (`S.r.l.`, `S.p.A.`, `S.n.c.`, `S.a.s.`), institutions (`Comune
+> di`, `Regione`, `Agenzia delle Entrate`, `INPS`, `Tribunale di`), particles
+> (`di`, `De`, `Della`, `Lo`), and `data/it/pseudonyms.ts`. Add Italian
+> documents to the shared NER fixtures.
+
+### [ ] P44 — Model re-evaluation for the new languages
+
+Planned 2026-10-30. The current comparison covers ES/GL/PT/EN, plus one Basque
+document.
+
+> Extend `src/core/__fixtures__/nerEvalDocs.ts` with tuning and acceptance
+> documents for gl (more than the current two), ca, eu and it. Get them
+> native-speaker reviewed where possible. Re-run `scripts/ner-eval.mts` and the
+> browser benchmark, then update `M06-01-evaluation-results.txt` and each
+> model's `languages.tested`/`caveat`. Make nym-small the default only if it no
+> longer regresses Galician or Basque against BERT/rules; otherwise it stays
+> opt-in. Better-model candidates, in order, each one gated on M06-01 gates B–C:
+> (1) per-language threshold/label-policy tuning of nym-small (no new
+> download); (2) a browser feasibility spike for `lBroth/nullpii` (GLiNER):
+> size, licence, tokenizer, and no network-calling dependency (hard rule 3);
+> (3) nym-large only as an imported local package. New candidates go into
+> `NER_MODELS` as `experimental` before `OFFERED_NER_MODEL_IDS` can change.
 
 ### [x] P28 — Portuguese pack + PT jurisdiction
 

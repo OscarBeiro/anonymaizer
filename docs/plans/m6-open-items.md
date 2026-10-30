@@ -22,7 +22,7 @@ None is merged; merge in that order.
 
 ## 2. Model and evaluation gaps (M06-01 gates B–D)
 
-- [ ] Galician regression: nym-small 94.3 % vs BERT 99.4 % on two acceptance
+- [ ] (P44) Galician regression: nym-small 94.3 % vs BERT 99.4 % on two acceptance
       documents; Basque 68.3 % vs 100 % rules-only on one. Needs a larger,
       native-reviewed GL/CA/EU/PT/ES fixture set before any default changes.
 - [ ] Native-speaker review of every fixture and of the pt/ca/eu word lists.
@@ -41,7 +41,8 @@ None is merged; merge in that order.
 
 ## 3. Language packs
 
-- [ ] P27 Galician pack is still open: move the Galician lists out of the ES
+- [ ] P27 Galician pack is still open (expanded 2026-10-30, now also covers the
+      lexicon map and pseudonym pools): move the Galician lists out of the ES
       lists, add tests that a DNI in a Galician document detects and `langDetect`
       returns `gl`.
 - [ ] Catalan/Basque/Portuguese: the interface has no `ca`/`eu`/`pt` UI
@@ -50,10 +51,16 @@ None is merged; merge in that order.
       heads in `companyPrefixes` are weak. Add inflection-aware matching if the
       reviewed fixtures show misses.
 - [ ] Pseudonym data (`src/core/data/*/pseudonyms.ts`) exists only for es/en;
-      pt/ca/eu documents get the generic replacements.
+      pt/ca/eu documents get the generic replacements. Planned in P27 (gl/pt/ca/eu)
+      and P43 (it).
 - [ ] Portuguese: NIF accepted unlabelled only for first digits 1/3/5/6/8;
       numbers starting 2 or 9 need a label. Revisit with real documents.
-- [ ] French, Italian and German still have detection profiles but no packs.
+- [ ] Portuguese: no NISS (social security, 11 digits with check digit), and
+      `VAT_PATTERNS.PT` checks only the shape, not the NIF mod-11 checksum.
+- [ ] French and German still have detection profiles but no packs. Italian
+      (pack + IT jurisdiction) is planned as P43.
+- [ ] NER rejects texts over 100,000 characters (`src/lib/nerClient.ts` guard,
+      not a model limit). Planned as P42, to run first.
 
 ## 4. Housekeeping
 
