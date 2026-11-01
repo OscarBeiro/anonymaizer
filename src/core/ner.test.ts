@@ -102,7 +102,7 @@ describe('mapNerEntitiesToSpans', () => {
     ];
     const spans = mapNerEntitiesToSpans(entities);
     expect(spans).toEqual([
-      { start: 10, end: 21, category: 'NAME', text: 'Clara Vance', confidence: 0.97, source: 'ner', rung: RUNG.NER, enabled: true },
+      { start: 10, end: 21, category: 'NAME', text: 'Clara Vance', confidence: 0.97, source: 'ner', model: 'Xenova/bert-base-NER', rung: RUNG.NER, enabled: true },
     ]);
   });
 
@@ -130,12 +130,14 @@ describe('mapNerEntitiesToSpans', () => {
     expect(mapNerEntitiesToSpans(entities)[0].enabled).toBe(true);
   });
 
-  it('drops an entity group with no category home (LOC, MISC)', () => {
+  it('maps LOC and GPE to LOCATION while dropping MISC', () => {
     const entities: NerEntity[] = [
       { entityGroup: 'LOC', score: 0.99, start: 0, end: 6, text: 'Madrid' },
-      { entityGroup: 'MISC', score: 0.99, start: 10, end: 15, text: 'Fiesta' },
+      { entityGroup: 'GPE', score: 0.99, start: 10, end: 15, text: 'Spain' },
+      { entityGroup: 'MISC', score: 0.99, start: 20, end: 26, text: 'Fiesta' },
     ];
-    expect(mapNerEntitiesToSpans(entities)).toHaveLength(0);
+    expect(mapNerEntitiesToSpans(entities).map(({ category, text }) => [category, text]))
+      .toEqual([['LOCATION', 'Madrid'], ['LOCATION', 'Spain']]);
   });
 });
 

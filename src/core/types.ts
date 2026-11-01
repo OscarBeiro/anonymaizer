@@ -1,7 +1,7 @@
 import type { MappingSnapshot, Revision } from './roundTrip';
 export type KnownCategory =
-  | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'COMPANY'
-  | 'DNI' | 'NIE' | 'INVALID_ID' | 'IBAN' | 'CREDIT_CARD'
+  | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'LOCATION' | 'COMPANY'
+  | 'DNI' | 'NIE' | 'INVALID_ID' | 'VAT_NUMBER' | 'IBAN' | 'CREDIT_CARD'
   | 'MASKED_ID' | 'ID_CODE' | 'MONEY'
   | 'CUSTOM' | 'REGEX';
 
@@ -71,6 +71,11 @@ export interface DetectedSpan {
   confidence: number;
   source: MappingItem['source'];
   rung: number;
+  /** Origin of rule evidence; merged language context can involve several packs. */
+  pack?: string;
+  packs?: readonly string[];
+  /** Model identity for NER evidence, independent of language/jurisdiction packs. */
+  model?: string;
   // Heuristics that must land disabled by default (ALL-CAPS COMPANY guess)
   // set this false; every other detector omits it and defaults to true.
   enabled?: boolean;
@@ -88,7 +93,7 @@ export interface DetectedSpan {
 export const RUNG = {
   DICTIONARY: 0,
   SHIELD: 1, // legal citations / professional titles / date-time — never minted
-  VALIDATED_REGEX: 2, // EMAIL / IBAN / CREDIT_CARD / DNI / NIE / PHONE / MASKED_ID
+  VALIDATED_REGEX: 2, // EMAIL / IBAN / CREDIT_CARD / DNI / NIE / PHONE / MASKED_ID / VAT_NUMBER
   ID_CODE: 3, // label-anchored codes (P7b), e.g. "Colegiada T-04250"
   INVALID_ID: 3.5, // D1: DNI/NIE shape whose check letter disagrees. Below
                    // ID_CODE on purpose — an explicit label ("Expediente
@@ -99,6 +104,7 @@ export const RUNG = {
               // inside an IBAN or card number never loses its span to an
               // amount; above ADDRESS.
   ADDRESS: 4,
+  LOCATION: 5.7, // below company/NER spans, above NAME guesses
   COMPANY: 5, // suffix and prefix forms
   NER: 5.5, // opt-in model (P7d) — outranks NAME and the ALL-CAPS COMPANY
             // guess it supersedes, but not the checksum/shape detectors above

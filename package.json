@@ -1,7 +1,7 @@
 {
   "name": "anonymaizer",
   "private": true,
-  "version": "0.18.4",
+  "version": "0.18.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -15,12 +15,12 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
-    "dompurify": "^3.4.16",
+    "dompurify": "^3.4.17",
     "jszip": "^3.10.2",
     "mammoth": "^1.12.3",
     "marked": "^18.0.14",
     "pdfjs-dist": "^6.3.289",
-    "postal-mime": "^3.0.0",
+    "postal-mime": "^4.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "turndown": "^7.2.4"
@@ -34,8 +34,8 @@
     "jsdom": "^30.1.0",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0",
-    "vitest": "^5.0.1"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   },
   "overrides": {
     "argparse": "2.0.1",
@@ -44,5 +44,9 @@
   },
   "engines": {
     "node": ">=24"
+  },
+  "allowScripts": {
+    "onnxruntime-node": false,
+    "protobufjs": false
   }
 }

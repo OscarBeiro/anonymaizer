@@ -143,7 +143,7 @@ P15 depends on P14 — there is nothing to upload until `en.json` exists.
 > `DEFAULT_PROFILE = { languages: ['es', 'en'], jurisdictions: ['ES'] }`. The
 > gate for this session: every existing test passes untouched.
 
-### [ ] P24 — `langDetect`
+### [x] P24 — `langDetect`
 
 > Tests first. `src/core/langDetect.ts` scores text against each pack's
 > `profileWords` (high-frequency function words) plus character hints (`ñ`,
@@ -152,7 +152,30 @@ P15 depends on P14 — there is nothing to upload until `en.json` exists.
 > document (both reported), and short text (undetermined). The es/gl/pt split
 > is the hard case: `xa`, `non`, `unha`, `-ción` vs `-ção`.
 
-### [ ] P25 — Profile-gated detection pipeline
+Implemented 2026-10-13. `langDetect(text)` exposes whole-document `ranked`
+and `paragraphs`, each with ranked scores, suggested languages and a status.
+Paragraphs are separated by blank lines (including CRLF); source `start`/`end`
+offsets refer to the original text. Wrapped lines stay in one paragraph. The
+full document is scored, with no silent character or paragraph truncation.
+
+Reusable `profileWords` and character hints live in
+`src/core/packs/languageProfiles.ts`: ES/EN/PT/GL/FR/IT, plus German for `ß`.
+These profiles provide language suggestions; full anonymization packs remain
+separate work. Shared words carry less weight, and character hints supplement
+word evidence. Spanish and Galician share `ñ` and singular `-ción`; those
+hints alone do not distinguish them. Scores are heuristic evidence weights,
+not confidence percentages. Fewer than 20 words or ambiguous evidence produces
+`undetermined`. Mixed paragraph winners survive tied document scores.
+`documentLanguages` continues to activate only implemented EN/ES/GL rules,
+with the existing fallback when no available rule language is suggested.
+
+Validation: tests written first; all 626 tests pass on Node 22.23.2;
+`npm run lint` and `npm run build:portable` pass. The document-language UI and
+its browser acceptance check remain in P26; P24 adds no runtime network calls
+or dependencies. These fixtures are regression checks, not a multilingual
+accuracy benchmark.
+
+### [x] P25 — Profile-gated detection pipeline
 
 > `runAllDetectors(text, settings, profile = DEFAULT_PROFILE)` (and
 > `anonymize`/`anonymizeWithNer`) iterates the active packs' detectors. The
@@ -162,6 +185,35 @@ P15 depends on P14 — there is nothing to upload until `en.json` exists.
 > contextual pack filtering of NER against recall; do not blanket-drop ambiguous names. Tests: with a
 > PT-only profile, no `INVALID_ID`/name heuristics from ES; a checksummed DNI
 > outranks an overlapping NER span; the default profile gives today's output.
+
+Implemented 2026-10-13. `DetectionProfile` separates `languages` from
+`jurisdictions`; the default remains ES/EN language context with the ES
+jurisdiction. `runAllDetectors`, `anonymize`, `anonymizeWithNer` and the detection
+worker accept the profile. Existing language-array callers retain the ES
+jurisdiction for compatibility. Category switches still gate each detector;
+shields remain untoggleable. Common EMAIL/IBAN/card/MONEY rules and timestamp
+shields are independent of the selected packs. The ES jurisdiction owns IDs,
+phones and address cues (including the existing English address forms).
+Checksum-valid DNI/NIE remain broad even without the ES jurisdiction; invalid
+ID guesses require ES. Category switches also gate these broad checks.
+
+Added the required pack types, lexical data and language registry from the
+unfinished P23 scaffold. A merged pass uses active EN/ES/GL lexical context,
+avoiding duplicate or partially overlapping names. PT/FR/IT/DE suggestions do
+not register unfinished rule packs; PT-only contributes no Spanish heuristics.
+Regex candidates record `pack` or contributing `packs`; NER candidates record
+the supplied model identity (current BERT by default). Shared technical acronym
+exclusions remain conservative across implemented language packs.
+
+Regression checks compare default mappings and substitutions with the legacy
+detector composition, including the clinical fixture. Profile tests cover
+independent GL/ES choices, PT-only isolation, category gates, duplicate packs,
+empty English shield vocabulary, checksum priority and retained NER names such
+as `Amparo Paz`. No blanket stopword filtering of NER was introduced; these
+checks protect specific recall cases rather than claiming a model benchmark.
+The UI remains P26. P23 stays open for the remaining scaffold/pseudonym cleanup.
+
+Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 
 ### [ ] P26 — "Language & region" setup step
 
