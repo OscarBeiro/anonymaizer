@@ -13,5 +13,6 @@ Internal technical record. Public, end-user entries live in `/CHANGELOG.md`.
   - `vitest` ^5.0.1 -> ^5.0.3 (lock 5.0.5): pulls `@vitest/mocker` 5.0.5, alerts #26-27 (dev-only).
   - `postal-mime` ^3.0.0 -> ^4.2.0: quadratic CPU on RFC 2047 headers (DoS, GHSA-f2hq-32vh-53cc). 4.x breaking changes: whitespace kept when unfolding headers, first-wins for duplicated single-value headers, `to`/`cc`/`bcc`/`replyTo` in document order. None broke the `.eml` tests, but 4.x now returns header-less plain text as `text` instead of an empty shell, so `src/lib/parsers/eml.ts` additionally rejects input with zero parsed headers (test "throws an error naming the file when the bytes are not a message").
   - `npm audit fix` for the remaining dev-only transitive advisories: `happy-dom` 21.0.4, `undici` 8.12.3 (via jsdom).
+- Move to Node 24: `.nvmrc` 24.22.2, `engines.node` >=24.0.0, CI `NODE_VERSION` 24, and the Podman dev image (`~/containers/anonymaizer`) to `node:24-alpine`. `npm ci`, test, lint, both builds and `npm audit` pass on 24.22.2.
 - postal-mime 4.2.0 source checked: no fetch/XHR/network code (hard rule 3).
 - Checks per step: `npm test`, `npm run lint`, `npm run build`; `build:portable` after dompurify and postal-mime. `npm audit`: 0 vulnerabilities.
