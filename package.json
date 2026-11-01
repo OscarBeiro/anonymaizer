@@ -20,7 +20,7 @@
     "mammoth": "^1.12.3",
     "marked": "^18.0.14",
     "pdfjs-dist": "^6.3.289",
-    "postal-mime": "^3.0.0",
+    "postal-mime": "^4.2.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "turndown": "^7.2.4"
