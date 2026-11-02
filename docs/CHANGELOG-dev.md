@@ -3,6 +3,17 @@
 
 Internal technical record. Public, end-user entries live in `/CHANGELOG.md`.
 
+## [0.19.0-dev] - unreleased
+
+### Features
+
+- TICGAL rebrand (design: Claude Design canvas, direction A "Veil" with the C "Swap" icon):
+  - Logo: TICGAL Azul `#658bc5` disc with white two-way arrows. `src/components/AppMark.tsx` replaces the "A" tile in the app header, site header and legal pages; `public/favicon.svg` (was Vite's placeholder) is the same drawing. New token `--color-on-brand`.
+  - Colours (`src/styles/tokens.css`): text is TICGAL Azul intenso `#2a5698` and darker shades (`--color-text` `#1f3f70`, `--color-text-muted` `#3f5f92`), accent `#2a5698`, borders Azul T `#a9c6e9`, new `--color-brand-light` (Azul C `#9bc9ed`). Dark theme accent is Azul C. `tokens.test.ts` AA checks pass unchanged.
+  - Type: bundled webfonts in `src/styles/fonts.css` from `@fontsource-variable/urbanist`, `@fontsource-variable/inter`, `@fontsource/ibm-plex-mono` (5.3.0; CSS and woff2 only, no install scripts or runtime code, so hard rule 3 holds). Urbanist (stand-in for Nexa) for h1–h3 and the wordmark via new `--font-display`; Inter for text (latin + latin-ext); IBM Plex Mono for placeholders (latin). Hosted build serves them same-origin (CSP `font-src 'self'` unchanged); portable build inlines all five as `data:` URIs (+~190 kB raw).
+  - `public/og-image.png` re-rendered in the new palette.
+- Checks: `npm test`, `npm run lint`, `npm run build`, `npm run build:portable` (no external font URL left); landing and `/app` screenshotted from `vite preview`.
+
 ## [0.18.6] - 2026-11-01
 
 ### Bugs
