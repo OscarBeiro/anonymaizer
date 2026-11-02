@@ -1,7 +1,7 @@
 # Changelog
 <!-- changelog-format: 2 -->
 
-## 0.18.7 — 2026-11-02
+## 0.19.0-dev — unreleased
 
 ### Features
 
