@@ -13,24 +13,30 @@
   --color-surface: #f5f8fc;
   --color-surface-raised: #fff;
   --color-surface-sunken: #eaf0f8;
-  --color-text: #4b5563;
-  --color-text-strong: #111827;
-  --color-text-muted: #5b6472;
-  --color-border: #dbe3ee;
-  --color-border-strong: #b7c5da;
+  /* TICGAL rebrand: text is Azul intenso #2a5698 and darker shades of it. */
+  --color-text: #1f3f70;
+  --color-text-strong: #2a5698;
+  --color-text-muted: #3f5f92;
+  --color-border: #d3e2f4;
+  /* TICGAL Azul T. */
+  --color-border-strong: #a9c6e9;
 
   /* Colour — accent. TICGAL Azul #658BC5 is only 3.5:1 on white, under AA for
-     text, so it is --color-brand (tints, borders, focus, decoration) and the
-     text/button accent is a darker shade of the same hue (5.5:1 on surface). */
+     text, so it is --color-brand (the logo, tints, borders, focus, decoration)
+     and the text/button accent is TICGAL Azul intenso #2a5698 (7.3:1 on white).
+     --color-brand-light is TICGAL Azul C, decoration only. */
   --color-brand: #658bc5;
-  --color-accent: #3e64a3;
-  --color-accent-hover: #355791;
-  --color-accent-active: #2c4a7c;
+  --color-brand-light: #9bc9ed;
+  /* The logo arrows: white on Azul in every theme. */
+  --color-on-brand: #fff;
+  --color-accent: #2a5698;
+  --color-accent-hover: #234a85;
+  --color-accent-active: #1e3f72;
   --color-accent-subtle: rgba(101, 139, 197, 0.14);
   --color-accent-border: rgba(101, 139, 197, 0.55);
   --color-on-accent: #fff;
   /* Placeholder <mark> text on the subtle tint. */
-  --color-mark-text: #2c4a7c;
+  --color-mark-text: #2a5698;
 
   /* Colour — semantic */
   --color-success: #1a7f37;
@@ -58,9 +64,11 @@
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
   --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 
-  /* Type — system stack only (hard rule 2: no webfonts) */
-  --font-sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: ui-monospace, Consolas, monospace;
+  /* Type — TICGAL rebrand: bundled webfonts (src/styles/fonts.css), never
+     fetched from a third party (hard rule 2). Urbanist for titles only. */
+  --font-display: 'Urbanist', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
   --text-xs: 0.75rem;
   --text-sm: 0.8rem;
   --text-md: 0.85rem;
@@ -86,11 +94,12 @@
     --color-border-strong: #454856;
 
     --color-brand: #658bc5;
-    --color-accent: #8fb0e0;
-    --color-accent-hover: #a9c3e8;
-    --color-accent-active: #c3d5f0;
-    --color-accent-subtle: rgba(143, 176, 224, 0.15);
-    --color-accent-border: rgba(143, 176, 224, 0.5);
+    --color-brand-light: #9bc9ed;
+    --color-accent: #9bc9ed;
+    --color-accent-hover: #a9c6e9;
+    --color-accent-active: #c6dcf3;
+    --color-accent-subtle: rgba(155, 201, 237, 0.15);
+    --color-accent-border: rgba(155, 201, 237, 0.5);
     --color-on-accent: #16171d;
 
     --color-success: #4ade80;
@@ -102,7 +111,7 @@
 
     --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
     --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
-    --color-mark-text: #c3d5f0;
+    --color-mark-text: #c6dcf3;
   }
 }
 
@@ -118,11 +127,12 @@
   --color-border-strong: #454856;
 
   --color-brand: #658bc5;
-  --color-accent: #8fb0e0;
-  --color-accent-hover: #a9c3e8;
-  --color-accent-active: #c3d5f0;
-  --color-accent-subtle: rgba(143, 176, 224, 0.15);
-  --color-accent-border: rgba(143, 176, 224, 0.5);
+  --color-brand-light: #9bc9ed;
+  --color-accent: #9bc9ed;
+  --color-accent-hover: #a9c6e9;
+  --color-accent-active: #c6dcf3;
+  --color-accent-subtle: rgba(155, 201, 237, 0.15);
+  --color-accent-border: rgba(155, 201, 237, 0.5);
   --color-on-accent: #16171d;
 
   --color-success: #4ade80;
@@ -134,5 +144,5 @@
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
-  --color-mark-text: #c3d5f0;
+  --color-mark-text: #c6dcf3;
 }

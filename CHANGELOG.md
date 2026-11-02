@@ -1,6 +1,12 @@
 # Changelog
 <!-- changelog-format: 2 -->
 
+## 0.18.7 — 2026-11-02
+
+### Features
+
+- New TICGAL look: a new logo, TICGAL blue colours, and new fonts for headings and text.
+
 ## 0.18.6 — 2026-11-01
 
 ### Bugs

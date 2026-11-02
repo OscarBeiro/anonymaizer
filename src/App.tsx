@@ -1,5 +1,6 @@
 import { LanguagePicker } from './components/LanguagePicker';
 import { t } from './i18n';
+import { AppMarkIcon } from './components/AppMark';
 import { BrandName } from './components/BrandName';
 import { BetaBadge } from './components/BetaBadge';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -450,9 +451,9 @@ function App() {
       <header className="app-header">
         {/* The portable build has no landing to go back to. */}
         {__PORTABLE__ ? (
-          <span className="app-mark" aria-hidden="true">A</span>
+          <span className="app-mark" aria-hidden="true"><AppMarkIcon /></span>
         ) : (
-          <a className="app-mark" aria-label={t('App.anonymaizer_home')} {...linkProps('/')}>A</a>
+          <a className="app-mark" aria-label={t('App.anonymaizer_home')} {...linkProps('/')}><AppMarkIcon /></a>
         )}
         <div className="app-title">
           <h1>
