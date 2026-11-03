@@ -1,7 +1,9 @@
 # Changelog
 <!-- changelog-format: 2 -->
 
-## 0.19.0-dev — unreleased
+## [Unreleased]
+
+_Working version: 0.19.0-dev._
 
 ### Features
 

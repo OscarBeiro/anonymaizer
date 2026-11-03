@@ -3,7 +3,9 @@
 
 Internal technical record. Public, end-user entries live in `/CHANGELOG.md`.
 
-## [0.19.0-dev] - unreleased
+## [0.19.0-dev] - 2026-11-02
+
+_Working version: 0.19.0-dev._
 
 ### Features
 
