@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { documentLanguages, langDetect } from './langDetect';
+import { autoDetectionProfile, documentLanguages, langDetect } from './langDetect';
 const samples = {
   en: 'The report is for our team and the document has the information that you need. Please review this with your colleagues and send your response.',
   es: 'El informe es para nuestro equipo y el documento tiene la información que necesita. Por favor revise este documento con sus compañeros cuando tenga tiempo.',
@@ -76,7 +76,7 @@ it('keeps empty, short, and unsupported paragraphs undetermined', () => {
 it('suggests new languages without activating unavailable anonymization packs', () => {
   expect(langDetect(samples.pt).languages).toEqual(['pt']);
   expect(documentLanguages(samples.pt, 'auto')).toEqual(['en', 'es', 'gl']);
-  expect(documentLanguages(samples.pt + '\n\n' + samples.gl, 'auto')).toEqual(['gl']);
+  expect(documentLanguages(samples.pt + '\n\n' + samples.gl, 'auto')).toEqual(['gl', 'es']);
 });
 
 it('does not treat shared Spanish/Galician suffixes as exclusive evidence', () => {
@@ -88,4 +88,15 @@ it('enforces the twenty-word boundary and keeps wrapped lines together', () => {
   const text = samples.es.replace(' y ', '\n');
   expect(langDetect(text).paragraphs).toHaveLength(1);
   expect(langDetect(text).languages).toEqual(['es']);
+});
+
+// M06-02: Galician and Spanish are confused easily and their rules are additive.
+it('turns on Spanish and Galician together', () => {
+  expect(documentLanguages(samples.gl, 'auto')).toEqual(expect.arrayContaining(['gl', 'es']));
+  expect(documentLanguages(samples.es, 'auto')).toEqual(expect.arrayContaining(['es', 'gl']));
+  expect(documentLanguages(samples.es, 'es')).toEqual(['es']);
+});
+
+it('builds the automatic detection profile with Spanish IDs', () => {
+  expect(autoDetectionProfile(samples.gl)).toEqual({ languages: documentLanguages(samples.gl, 'auto'), jurisdictions: ['ES'] });
 });

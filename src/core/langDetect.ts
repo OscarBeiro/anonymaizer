@@ -1,3 +1,4 @@
+import type { DetectionProfile } from './packs/profile';
 import { LANGUAGE_PROFILES } from './packs/languageProfiles';
 import type { DetectedLanguage } from './packs/languageProfiles';
 export type { DetectedLanguage } from './packs/languageProfiles';
@@ -105,5 +106,19 @@ export const documentLanguages = (text: string, choice: DocumentLanguageChoice):
   if (choice !== 'auto') return [choice];
   const detected = langDetect(text).languages.filter((lang): lang is DocumentLanguage =>
     lang === 'en' || lang === 'es' || lang === 'gl');
-  return detected.length ? detected : ['en', 'es', 'gl'];
+  if (!detected.length) return ['en', 'es', 'gl'];
+  // M06-02: Galician and Spanish share most of their profile words, so a
+  // Galician document is often scored as Spanish (or the reverse) and lost
+  // the other's rules. Their rules are additive (the Galician lexicon extends
+  // the Spanish one), so detecting either turns on both.
+  const iberian = detected.filter((lang) => lang === 'es' || lang === 'gl');
+  if (iberian.length === 1) detected.push(iberian[0] === 'es' ? 'gl' : 'es');
+  return detected;
 };
+
+/** M06-02: the profile the app detects with until the user can pick a
+ * language and region (M6 P26). Spanish IDs stay on, as before. */
+export const autoDetectionProfile = (text: string): DetectionProfile => ({
+  languages: documentLanguages(text, 'auto'),
+  jurisdictions: ['ES'],
+});

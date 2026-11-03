@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildPdf, buildPredefinedCMapPdf, twoColumnPage } from './__fixtures__/pdf';
-import { parse } from './pdf';
+import { joinWrappedLines, parse } from './pdf';
 
 describe('.pdf parser', () => {
   it('reflows a page into paragraphs, joining wrapped lines', async () => {
@@ -111,5 +111,18 @@ describe('.pdf parser', () => {
     const { markdown } = await parse(bytes, 'clinico.pdf');
     expect(markdown).toContain('45678912S');
     expect(markdown).toContain('mario.prieto@example.com');
+  });
+});
+
+// M06-02: a name hyphenated across lines leaked its tail ("[[NAME]]- guez").
+describe('joinWrappedLines', () => {
+  it.each([
+    [['Dona María Fernández Rodrí-', 'guez, con DNI'], 'Dona María Fernández Rodríguez, con DNI'],
+    [['un docu­', 'mento'], 'un documento'],
+    [['Dona Ana Castro-', 'Pérez asina'], 'Dona Ana Castro-Pérez asina'],
+    [['primeira liña', 'segunda liña'], 'primeira liña segunda liña'],
+    [['prezo: 10 -', 'pagado'], 'prezo: 10 - pagado'],
+  ])('joins %j', (lines, expected) => {
+    expect(joinWrappedLines(lines)).toBe(expected);
   });
 });

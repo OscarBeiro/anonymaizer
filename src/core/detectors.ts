@@ -6,6 +6,7 @@ import type { JurisdictionPack, PackDetector } from './packs/types';
 import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { detectMoney } from './money';
 import { detectLocations, detectSpanishPostalAddressFragments } from './locations';
+import { detectSalutationNames, propagateNameMentions } from './nameMentions';
 import { RUNG, type DetectedSpan } from './types';
 import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
@@ -67,12 +68,44 @@ const STREET_KEYWORDS = LEGACY_LEXICON.streetKeywords;
 // names are always single-line entities.
 const WS = '[ \\t]';
 
+// M06-02: the keyword form now takes the whole Iberian street address —
+// lower-case street type ("rúa do Progreso"), particles between the
+// capitalised words, a comma before the number, "km 4" or "s/n", the
+// floor/door tail ("2º esquerda", "5º B", "baixo") and a postcode with a
+// multi-word locality ("15702 Santiago de Compostela"). Before, only
+// "27001 Lugo" was caught and the street went out in clear.
+const STREET_TYPES = [
+  ...STREET_KEYWORDS,
+  'Avda\\.', 'Av\\.', 'Pza\\.', 'Camino', 'Estrada', 'Carretera', 'Ctra\\.', 'Lugar', 'Travesía', 'Travesia',
+  'Rolda', 'Ronda', 'Paseo', 'Pasaxe', 'Pasaje', 'Glorieta', 'Urbanización', 'Polígono', 'Barrio', 'Bairro',
+];
+// "Rúa" and "rúa": both cases of the first letter.
+const STREET_TYPE_RE = [...new Set(STREET_TYPES)]
+  .sort((a, b) => b.length - a.length)
+  .map((k) => `[${k[0].toUpperCase()}${k[0].toLowerCase()}]${k.slice(1).replace('/', '\\/')}`)
+  .join('|');
+const ADDRESS_PARTICLE = '(?:de|do|da|dos|das|del|la|las|los|el|o|a|os|as)';
+const ADDRESS_NAME = `\\p{Lu}\\p{L}*(?:${WS}+(?:${ADDRESS_PARTICLE}${WS}+)*\\p{Lu}\\p{L}*)*`;
+const LOCALITY = `\\p{Lu}\\p{L}*(?:${WS}+(?:${ADDRESS_PARTICLE}${WS}+)?\\p{Lu}\\p{L}*){0,3}`;
+const FLOOR_DOOR =
+  `(?:\\d{1,2}[ºª°](?:${WS}*(?:[A-Z]\\b|esquerda|dereita|izquierda|derecha|izda\\.?|dcha\\.?|centro|ext\\.?|int\\.?))?` +
+  `|baixo|bajo|entresuelo|entreplanta|ático|atico|planta${WS}+\\d+|porta${WS}+\\w+|puerta${WS}+\\w+|piso${WS}+\\w+)`;
 const ADDRESS_REGEX = new RegExp(
-  `(?:${STREET_KEYWORDS.map((k) => k.replace('/', '\\/')).join('|')})` +
-    `${WS}+\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*)*` +
-    `${WS}+\\d+[A-Za-z]?` +
-    `(?:,?${WS}*\\d{5})?` +
-    `(?:,?${WS}*\\p{Lu}\\p{L}*)?`,
+  `(?<!\\p{L})(?:${STREET_TYPE_RE})` +
+    `(?:${WS}+${ADDRESS_PARTICLE})*${WS}+${ADDRESS_NAME}` +
+    `,?${WS}*(?:(?:n[ºo°]\\.?${WS}*)?\\d+[A-Za-z]?\\b|km\\.?${WS}*\\d+(?:[.,]\\d+)?|s\\/n)` +
+    `(?:,?${WS}*${FLOOR_DOOR}){0,2}` +
+    `(?:,?${WS}*\\d{5}(?:${WS}+${LOCALITY})?|,${WS}*${LOCALITY})?`,
+  'gu',
+);
+
+// UK number-first address with a street-type suffix: "14 Elm Grove, Bristol
+// BS6 7JT". The suffix anchors it; town and postcode are optional.
+const UK_STREET = '(?:Street|St|Road|Rd|Lane|Ln|Avenue|Ave|Grove|Close|Drive|Dr|Way|Place|Terrace|Crescent|Gardens|Square|Court|Row|Hill|Walk|Mews)';
+const UK_ADDRESS_REGEX = new RegExp(
+  `\\b\\d+[A-Za-z]?${WS}+(?:\\p{Lu}\\p{L}*${WS}+){1,3}${UK_STREET}\\b` +
+    `(?:,${WS}*\\p{Lu}\\p{Ll}+(?:${WS}+\\p{Lu}\\p{Ll}+)?)?` +
+    `(?:,?${WS}*[A-Z]{1,2}\\d[A-Z\\d]?${WS}?\\d[A-Z]{2}\\b)?`,
   'gu',
 );
 
@@ -98,10 +131,10 @@ export const detectAddresses = (text: string): DetectedSpan[] => {
     source: 'regex',
     rung: RUNG.ADDRESS,
   });
-  return [
-    ...collect(new RegExp(ADDRESS_REGEX), text, build),
-    ...collect(new RegExp(US_ADDRESS_REGEX), text, build),
-  ];
+  const us = collect(new RegExp(US_ADDRESS_REGEX), text, build);
+  const uk = collect(new RegExp(UK_ADDRESS_REGEX), text, build)
+    .filter((u) => !us.some((a) => u.start < a.end && a.start < u.end));
+  return [...collect(new RegExp(ADDRESS_REGEX), text, build), ...us, ...uk];
 };
 
 const DNI_REGEX = /\b\d{2}\.?\d{3}\.?\d{3}-?[A-Za-z]\b/g;
@@ -397,7 +430,9 @@ export const detectIdCodes = (text: string): DetectedSpan[] => {
     // still anchors the match.
     const indices = (match as RegExpExecArray & { indices: Array<[number, number] | undefined> }).indices;
     const group = indices?.[1];
-    if (group) {
+    // M06-02: "Rexistro nº 2", "Xulgado nº 1" — a bare one- or two-digit
+    // number after the label is an ordinal, not an identifier.
+    if (group && !/^\d{1,2}$/.test(text.slice(group[0], group[1]))) {
       const [start, end] = group;
       spans.push({
         start,
@@ -561,7 +596,9 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
   const isLetteredItem = (match: string): boolean => {
     const words = match.split(/\s+/);
     if (!words.some((word) => INITIAL_TOKEN_RE.test(word))) return false;
-    return words.some((word) => LETTERED_CONTEXT_WORDS.has(word.toLowerCase()));
+    // M06-02: a numbered clause "I. Que …" — the initial is a roman numeral
+    // and the next word a stopword, never a "Juan G. Pérez".
+    return words.some((word) => LETTERED_CONTEXT_WORDS.has(word.toLowerCase()) || NAME_STOPWORDS_LOWER.has(word.toLowerCase()));
   };
 
   const isSentenceInitial = (text: string, index: number): boolean => {
@@ -594,6 +631,8 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
   // Peeling the particle lets the strip loop reach "Evaluación", another
   // structure head, and the heading collapses to one token and is rejected.
   const LEADING_PARTICLE_RE = new RegExp(`^(?:${alternatives(NAME_PARTICLES)})\\b${WS}*`, 'u');
+
+  const CAPS_LEADING_CONNECTIVE_RE = new RegExp(`^(?:DE|DEL|DA|DO|DAS|DOS|AL|LA|LAS|LOS|EL|Y|E)${WS}`, 'u');
 
   const STRUCTURE_HEAD_RE = new RegExp(
     `^(?:${alternatives([...STRUCTURE_HEADS].sort((a, b) => b.length - a.length))})\\b${WS}*`,
@@ -642,7 +681,11 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
   const containsStopword = (matchText: string, extra?: ReadonlySet<string>): boolean =>
     matchText.split(/\s+/).some((word) => NAME_STOPWORDS_LOWER.has(word.toLowerCase()) || extra?.has(word.toLowerCase()));
 
-  const isLabelColon = (text: string, endIndex: number): boolean => text[endIndex] === ':';
+  // M06-02: only a candidate that opens its line is a field label ("Nombre
+  // Completo: …"). Mid-sentence, "the emergency contact for Tom Ellis: his
+  // partner…" is a person followed by a colon.
+  const isLabelColon = (text: string, startIndex: number, endIndex: number): boolean =>
+    text[endIndex] === ':' && /(?:^|\n)[ \t\-*•·]*$/.test(text.slice(Math.max(0, startIndex - 40), startIndex));
 
   // Rejects a candidate that starts mid-token — right after a letter, digit, or
   // a masking character (*, ·, •). Without this, a NAME match can begin inside
@@ -718,6 +761,11 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
       if (isLetteredItem(m[0])) return null;
       const { text: matchText, start } = stripLeadingLabels(m[0], m.index, extraLabels);
       if (tokenCount(matchText) < 2) return null;
+      // M06-02: what is left of an ALL-CAPS heading once its head word is
+      // peeled ("CONTRATO DE ARRENDAMENTO DE VIVENDA" → "DE ARRENDAMENTO…",
+      // "AL JUZGADO DE PRIMERA INSTANCIA") starts with a capitalised
+      // connective. A person's name never does.
+      if (CAPS_LEADING_CONNECTIVE_RE.test(matchText)) return null;
       // A sentence-initial candidate is accepted, but only on the strength of
       // the candidate itself: no lowercase word precedes it, so the two-token
       // floor plus the leading strip above (stopwords, titles, structure heads)
@@ -744,7 +792,7 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
         };
       }
 
-      if (isLabelColon(text, start + matchText.length)) return null;
+      if (isLabelColon(text, start, start + matchText.length)) return null;
       return {
         start,
         end: start + matchText.length,
@@ -963,12 +1011,22 @@ export const runAllDetectors = (
   if (packs.length) {
     // One merged name pass keeps greetings/particles from every active language
     // consistent and avoids overlapping partial names from independent passes.
-    const detectors = createLanguageDetectors(languageLexicon(packs));
+    const lexicon = languageLexicon(packs);
+    const detectors = createLanguageDetectors(lexicon);
+    // M06-02: words that are never a person on their own, for the
+    // salutation/honorific and later-mention passes below.
+    const notNames = new Set([...lexicon.stopwords, ...lexicon.structureHeads, ...lexicon.titleLexemes, ...lexicon.nameParticles].map(w => w.toLowerCase()));
     candidates.push(...runPackDetectors(text, settings, [
       { categories: ['SHIELD'], detect: detectors.runShieldDetectors, shield: true },
       { categories: ['COMPANY'], detect: detectors.detectCompanies },
       { categories: ['NAME'], detect: detectors.detectNames },
+      { categories: ['NAME'], detect: value => detectSalutationNames(value, notNames) },
       { categories: ['COMPANY'], detect: detectors.detectCompanyAcronyms, switch: COMPANY_ACRONYM },
+    ], { packs }));
+    // Last: it reads the NAME candidates found above.
+    const found = [...candidates];
+    candidates.push(...runPackDetectors(text, settings, [
+      { categories: ['NAME'], detect: value => propagateNameMentions(value, found, notNames) },
     ], { packs }));
   }
   return candidates;
