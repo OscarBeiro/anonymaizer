@@ -8,6 +8,13 @@ _Working version: 0.19.0-dev._
 ### Features
 
 - New TICGAL look: a new logo, TICGAL blue colours, and new fonts for headings and text.
+- Better detection in Galician documents: whole street addresses, later mentions of a person and names after a greeting or title are now hidden.
+
+### Bugs
+
+- Stop hiding departments, schools, health centres, courts, banks, laws and document headings as if they were people.
+- Rejoin words split across lines in PDFs so the end of a hyphenated name is no longer left visible.
+- The local AI detection now reads the whole document instead of only its beginning.
 
 ## 0.18.6 — 2026-11-01
 

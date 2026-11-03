@@ -24,7 +24,7 @@ No accuracy measurement exists — `benchmark.test.ts` only times detectors.
 
 ## Tasks
 
-### [ ] 1 — Evaluation corpus and scorer
+### [x] 1 — Evaluation corpus and scorer
 - Hand-labelled documents (Galician first, then Spanish, English), inline
   markup `{CATEGORY|text}`, including PDF-shaped variants (hard wraps,
   hyphenated breaks).
@@ -34,12 +34,12 @@ No accuracy measurement exists — `benchmark.test.ts` only times detectors.
 - A test that prints the table and fails if a score drops below the recorded
   baseline (ratchet), so fixes are measured and regressions caught.
 
-### [ ] 2 — NER over the whole document
+### [x] 2 — NER over the whole document
 - Pure chunker in `src/core/ner.ts`: overlapping character windows split on
   whitespace, sized for the 512-token window; merge entities with offsets
   shifted and overlap duplicates resolved. Worker runs it per chunk.
 
-### [ ] 3 — Rule fixes, each measured against task 1
+### [x] 3 — Rule fixes, each measured against task 1
 - PDF parser rejoins words hyphenated across lines.
 - Galician street vocabulary in addresses (rúa, avenida, praza, estrada,
   camiño, lugar, travesía, rolda…), with number/floor/door tail.
@@ -51,6 +51,21 @@ No accuracy measurement exists — `benchmark.test.ts` only times detectors.
 ### [ ] 4 — Multilingual model (M6 P39/P40)
 Evaluate `Wismut/nym-pii-multilingual-small` against the corpus before switching.
 Not in this plan's PR.
+
+## Results (2026-11-03)
+
+Rules only, as the app runs them (caught/total · over-flags):
+
+| | Before (`main`) | After |
+| --- | --- | --- |
+| gl | 51/67 · 20 | 66/67 · 1 |
+| es | 18/24 · 6 | 23/24 · 0 |
+| en | 11/14 · 3 | 14/14 · 1 |
+
+Also found: the app never passed a language profile, so the Galician pack
+never ran (fixed: `autoDetectionProfile`). Remaining: bare given names in
+prose need a name lexicon or the multilingual model (task 4); NER chunking
+is unit-tested but not yet measured in a browser.
 
 ## Verification
 `npm test` (including the scorecard), `npm run lint`, `npm run build`,
