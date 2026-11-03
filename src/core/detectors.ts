@@ -67,12 +67,44 @@ const STREET_KEYWORDS = LEGACY_LEXICON.streetKeywords;
 // names are always single-line entities.
 const WS = '[ \\t]';
 
+// M06-02: the keyword form now takes the whole Iberian street address —
+// lower-case street type ("rúa do Progreso"), particles between the
+// capitalised words, a comma before the number, "km 4" or "s/n", the
+// floor/door tail ("2º esquerda", "5º B", "baixo") and a postcode with a
+// multi-word locality ("15702 Santiago de Compostela"). Before, only
+// "27001 Lugo" was caught and the street went out in clear.
+const STREET_TYPES = [
+  ...STREET_KEYWORDS,
+  'Avda\\.', 'Av\\.', 'Pza\\.', 'Camino', 'Estrada', 'Carretera', 'Ctra\\.', 'Lugar', 'Travesía', 'Travesia',
+  'Rolda', 'Ronda', 'Paseo', 'Pasaxe', 'Pasaje', 'Glorieta', 'Urbanización', 'Polígono', 'Barrio', 'Bairro',
+];
+// "Rúa" and "rúa": both cases of the first letter.
+const STREET_TYPE_RE = [...new Set(STREET_TYPES)]
+  .sort((a, b) => b.length - a.length)
+  .map((k) => `[${k[0].toUpperCase()}${k[0].toLowerCase()}]${k.slice(1).replace('/', '\\/')}`)
+  .join('|');
+const ADDRESS_PARTICLE = '(?:de|do|da|dos|das|del|la|las|los|el|o|a|os|as)';
+const ADDRESS_NAME = `\\p{Lu}\\p{L}*(?:${WS}+(?:${ADDRESS_PARTICLE}${WS}+)*\\p{Lu}\\p{L}*)*`;
+const LOCALITY = `\\p{Lu}\\p{L}*(?:${WS}+(?:${ADDRESS_PARTICLE}${WS}+)?\\p{Lu}\\p{L}*){0,3}`;
+const FLOOR_DOOR =
+  `(?:\\d{1,2}[ºª°](?:${WS}*(?:[A-Z]\\b|esquerda|dereita|izquierda|derecha|izda\\.?|dcha\\.?|centro|ext\\.?|int\\.?))?` +
+  `|baixo|bajo|entresuelo|entreplanta|ático|atico|planta${WS}+\\d+|porta${WS}+\\w+|puerta${WS}+\\w+|piso${WS}+\\w+)`;
 const ADDRESS_REGEX = new RegExp(
-  `(?:${STREET_KEYWORDS.map((k) => k.replace('/', '\\/')).join('|')})` +
-    `${WS}+\\p{Lu}\\p{L}*(?:${WS}+\\p{Lu}\\p{L}*)*` +
-    `${WS}+\\d+[A-Za-z]?` +
-    `(?:,?${WS}*\\d{5})?` +
-    `(?:,?${WS}*\\p{Lu}\\p{L}*)?`,
+  `(?<!\\p{L})(?:${STREET_TYPE_RE})` +
+    `(?:${WS}+${ADDRESS_PARTICLE})*${WS}+${ADDRESS_NAME}` +
+    `,?${WS}*(?:(?:n[ºo°]\\.?${WS}*)?\\d+[A-Za-z]?\\b|km\\.?${WS}*\\d+(?:[.,]\\d+)?|s\\/n)` +
+    `(?:,?${WS}*${FLOOR_DOOR}){0,2}` +
+    `(?:,?${WS}*\\d{5}(?:${WS}+${LOCALITY})?|,${WS}*${LOCALITY})?`,
+  'gu',
+);
+
+// UK number-first address with a street-type suffix: "14 Elm Grove, Bristol
+// BS6 7JT". The suffix anchors it; town and postcode are optional.
+const UK_STREET = '(?:Street|St|Road|Rd|Lane|Ln|Avenue|Ave|Grove|Close|Drive|Dr|Way|Place|Terrace|Crescent|Gardens|Square|Court|Row|Hill|Walk|Mews)';
+const UK_ADDRESS_REGEX = new RegExp(
+  `\\b\\d+[A-Za-z]?${WS}+(?:\\p{Lu}\\p{L}*${WS}+){1,3}${UK_STREET}\\b` +
+    `(?:,${WS}*\\p{Lu}\\p{Ll}+(?:${WS}+\\p{Lu}\\p{Ll}+)?)?` +
+    `(?:,?${WS}*[A-Z]{1,2}\\d[A-Z\\d]?${WS}?\\d[A-Z]{2}\\b)?`,
   'gu',
 );
 
@@ -98,10 +130,10 @@ export const detectAddresses = (text: string): DetectedSpan[] => {
     source: 'regex',
     rung: RUNG.ADDRESS,
   });
-  return [
-    ...collect(new RegExp(ADDRESS_REGEX), text, build),
-    ...collect(new RegExp(US_ADDRESS_REGEX), text, build),
-  ];
+  const us = collect(new RegExp(US_ADDRESS_REGEX), text, build);
+  const uk = collect(new RegExp(UK_ADDRESS_REGEX), text, build)
+    .filter((u) => !us.some((a) => u.start < a.end && a.start < u.end));
+  return [...collect(new RegExp(ADDRESS_REGEX), text, build), ...us, ...uk];
 };
 
 const DNI_REGEX = /\b\d{2}\.?\d{3}\.?\d{3}-?[A-Za-z]\b/g;

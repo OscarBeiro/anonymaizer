@@ -1,6 +1,6 @@
 ## gl
 category        total caught partial missed recall over-flags
-ADDRESS            10      0      10      0     0%          0
+ADDRESS            10     10       0      0   100%          0
 COMPANY             5      5       0      0   100%          1
 DNI                 4      4       0      0   100%          0
 EMAIL               2      2       0      0   100%          0
@@ -9,13 +9,13 @@ NAME               37     31       0      6    84%         17
 NIE                 1      1       0      0   100%          0
 PHONE               3      3       0      0   100%          0
 VAT_NUMBER          1      1       0      0   100%          0
-ALL                67     51      10      6    76%         21
+ALL                67     61       0      6    91%         21
 LOCATION            —                                       1
 ID_CODE             —                                       2
 
 ## es
 category        total caught partial missed recall over-flags
-ADDRESS             2      0       2      0     0%          0
+ADDRESS             2      2       0      0   100%          0
 COMPANY             1      1       0      0   100%          0
 DNI                 2      2       0      0   100%          0
 EMAIL               1      1       0      0   100%          0
@@ -24,43 +24,30 @@ NAME               12      8       0      4    67%          6
 NIE                 1      1       0      0   100%          0
 PHONE               2      2       0      0   100%          0
 VAT_NUMBER          1      1       0      0   100%          0
-ALL                24     18       2      4    75%          6
+ALL                24     20       0      4    83%          6
 
 ## en
 category        total caught partial missed recall over-flags
-ADDRESS             1      0       1      0     0%          0
+ADDRESS             1      1       0      0   100%          0
 COMPANY             2      2       0      0   100%          0
 EMAIL               1      1       0      0   100%          0
 NAME                8      6       0      2    75%          3
 PHONE               2      2       0      0   100%          0
-ALL                14     11       1      2    79%          3
+ALL                14     12       0      2    86%          3
 
 ## Leaks (required values not fully hidden)
-gl-servizos-sociais  ADDRESS partial: "rúa do Progreso, 14, 2º esquerda, 27001 Lugo"
 gl-servizos-sociais  NAME missed: "Fernández"
-gl-informe-clinico  ADDRESS partial: "Avenida de Lugo, 112, 5º B, 15702 Santiago de Compostela"
 gl-informe-clinico  NAME missed: "Suárez"
 gl-informe-clinico  NAME missed: "Antía"
-gl-contrato-arrendamento  ADDRESS partial: "praza de Compostela, 7, 3º, 36201 Vigo"
 gl-contrato-arrendamento  NAME missed: "Costas"
-gl-contrato-arrendamento  ADDRESS partial: "rúa de Urzaiz, 85, 4º D, 36204 Vigo"
 gl-correo  NAME missed: "Roi"
-gl-correo  ADDRESS partial: "Avenida de Madrid, 23, baixo, 15009 A Coruña"
-gl-acta-comunidade  ADDRESS partial: "Rúa da Raíña, 21, 15001 A Coruña"
 gl-acta-comunidade  NAME missed: "Bermúdez"
-gl-factura  ADDRESS partial: "Estrada de Santiago, km 4, 15895 Ames"
-gl-factura  ADDRESS partial: "Lugar de Bertamiráns, 33, 15220 Ames"
-gl-denuncia  ADDRESS partial: "Travesía de Vigo, 5, 2º, 32003 Ourense"
-gl-denuncia  ADDRESS partial: "camiño do Vao, 18, 32005 Ourense"
-es-demanda  ADDRESS partial: "calle de Alcalá, 214, 3º izquierda, 28028 Madrid"
 es-demanda  NAME missed: "Ortega"
 es-email-rrhh  NAME missed: "Marta"
-es-email-rrhh  ADDRESS partial: "avenida de la Constitución, 45, 1º C, 41001 Sevilla"
 es-email-rrhh  NAME missed: "Raúl"
 es-informe-clinico  NAME missed: "Herrera"
 en-hr-email  NAME missed: "Sarah"
 en-hr-email  NAME missed: "Tom Ellis"
-en-letter  ADDRESS partial: "14 Elm Grove, Bristol BS6 7JT"
 
 ## Over-flags (hidden but not personal)
 gl-servizos-sociais  NAME: "Departamento de Servizos Sociais"
