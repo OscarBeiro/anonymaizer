@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aggregateBioTokens, computeTokenOffsets, mapNerEntitiesToSpans, NER_CONFIDENCE_THRESHOLD, type NerEntity, type RawNerToken } from './ner';
+import { aggregateBioTokens, chunkText, computeTokenOffsets, mergeChunkEntities, mapNerEntitiesToSpans, NER_CONFIDENCE_THRESHOLD, type NerEntity, type RawNerToken } from './ner';
 import { RUNG } from './types';
 
 describe('aggregateBioTokens', () => {
@@ -246,5 +246,53 @@ describe('computeTokenOffsets', () => {
     const withOffsets = computeTokenOffsets(tokens, text);
     expect(withOffsets[0]).toMatchObject({ start: 0, end: 5 });
     expect(withOffsets[2]).toMatchObject({ start: 10, end: 15 });
+  });
+});
+
+// M06-02: the model only saw the first ~512 tokens of a document.
+describe('chunkText', () => {
+  const words = Array.from({ length: 600 }, (_, i) => `palabra${i}`).join(' ');
+
+  it('keeps short text whole', () => {
+    expect(chunkText('Ana Lema vive en Lugo.')).toEqual([{ start: 0, text: 'Ana Lema vive en Lugo.' }]);
+  });
+
+  it('covers every character with overlapping windows cut on whitespace', () => {
+    const chunks = chunkText(words, 800, 150);
+    expect(chunks.length).toBeGreaterThan(5);
+    for (const c of chunks) {
+      expect(c.text.length).toBeLessThanOrEqual(800);
+      expect(words.slice(c.start, c.start + c.text.length)).toBe(c.text);
+      expect(c.start === 0 || /\s/.test(words[c.start - 1])).toBe(true);
+    }
+    for (let i = 1; i < chunks.length; i++) {
+      expect(chunks[i].start).toBeLessThan(chunks[i - 1].start + chunks[i - 1].text.length);
+    }
+    const last = chunks.at(-1)!;
+    expect(last.start + last.text.length).toBe(words.length);
+  });
+
+  it('terminates on text without whitespace', () => {
+    const blob = 'x'.repeat(5000);
+    const chunks = chunkText(blob, 800, 150);
+    expect(chunks.map((c) => c.text).join('')).toBe(blob);
+  });
+});
+
+describe('mergeChunkEntities', () => {
+  const e = (start: number, end: number, score = 0.9, text = 'x'): NerEntity => ({ entityGroup: 'PER', score, start, end, text });
+
+  it('shifts offsets and keeps the longer of overlapping hits', () => {
+    const merged = mergeChunkEntities([
+      { start: 0, entities: [e(10, 14), e(790, 795)] },
+      { start: 650, entities: [e(140, 152), e(400, 410)] },
+    ]);
+    expect(merged.map((x) => [x.start, x.end])).toEqual([[10, 14], [790, 802], [1050, 1060]]);
+  });
+
+  it('keeps the higher score for the same span', () => {
+    const merged = mergeChunkEntities([{ start: 0, entities: [e(5, 9, 0.7)] }, { start: 0, entities: [e(5, 9, 0.95)] }]);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].score).toBe(0.95);
   });
 });

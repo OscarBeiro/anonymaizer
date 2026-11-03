@@ -181,3 +181,56 @@ export const mapNerEntitiesToSpans = (entities: NerEntity[], model = 'Xenova/ber
       enabled: entity.score >= NER_CONFIDENCE_THRESHOLD,
     }];
   });
+
+// --- M06-02: whole-document coverage ------------------------------------------
+//
+// bert-base-NER reads at most 512 WordPiece tokens and transformers.js
+// truncates longer input, so one call over a whole document only ever saw its
+// first page. The worker now runs the model over overlapping windows and
+// merges the hits. 800 characters stays under 512 tokens even for accented
+// Galician/Spanish text, which the English vocabulary splits into many pieces;
+// the overlap means an entity cut by one window's edge is whole in the next.
+export const NER_CHUNK_CHARS = 800;
+export const NER_CHUNK_OVERLAP = 150;
+
+export interface TextChunk {
+  start: number;
+  text: string;
+}
+
+/** Overlapping windows that end on whitespace, covering every character. */
+export const chunkText = (text: string, maxChars = NER_CHUNK_CHARS, overlap = NER_CHUNK_OVERLAP): TextChunk[] => {
+  if (text.length <= maxChars) return [{ start: 0, text }];
+  const chunks: TextChunk[] = [];
+  let start = 0;
+  while (start < text.length) {
+    let end = Math.min(text.length, start + maxChars);
+    if (end < text.length) {
+      // Back off to the last whitespace in the second half of the window.
+      const cut = text.slice(start + Math.floor(maxChars / 2), end).search(/\s\S*$/);
+      if (cut >= 0) end = start + Math.floor(maxChars / 2) + cut;
+    }
+    chunks.push({ start, text: text.slice(start, end) });
+    if (end >= text.length) break;
+    let next = end - overlap;
+    // Start the next window on a word boundary too.
+    while (next > start && !/\s/.test(text[next - 1])) next--;
+    start = next > start ? next : end;
+  }
+  return chunks;
+};
+
+/**
+ * Chunk-relative entities → document offsets, overlaps resolved. Where two
+ * hits overlap (the same entity seen from two windows, or one cut short by a
+ * window edge) the longer one wins, then the higher score.
+ */
+export const mergeChunkEntities = (chunks: readonly { start: number; entities: readonly NerEntity[] }[]): NerEntity[] => {
+  const all = chunks.flatMap((c) => c.entities.map((e) => ({ ...e, start: e.start + c.start, end: e.end + c.start })));
+  all.sort((a, b) => (b.end - b.start) - (a.end - a.start) || b.score - a.score || a.start - b.start);
+  const kept: NerEntity[] = [];
+  for (const e of all) {
+    if (!kept.some((k) => e.start < k.end && k.start < e.end)) kept.push(e);
+  }
+  return kept.sort((a, b) => a.start - b.start);
+};
