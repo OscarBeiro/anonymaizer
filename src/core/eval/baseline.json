@@ -1,0 +1,17 @@
+{
+  "gl": {
+    "caught": 51,
+    "total": 67,
+    "overflags": 21
+  },
+  "es": {
+    "caught": 18,
+    "total": 24,
+    "overflags": 6
+  },
+  "en": {
+    "caught": 11,
+    "total": 14,
+    "overflags": 3
+  }
+}
