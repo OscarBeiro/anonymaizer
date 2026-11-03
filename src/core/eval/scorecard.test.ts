@@ -2,12 +2,12 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { anonymize } from '../anonymize';
-import { documentLanguages } from '../langDetect';
+import { autoDetectionProfile } from '../langDetect';
 import { CORPUS } from './corpus';
 import { formatScorecard, parseLabelled, scoreDocument, summarize, type DocumentScore, type PredictedSpan } from './score';
 
-// M06-02: the detection scorecard. Runs the rules-only pipeline (as the app
-// does with the model off) over the labelled corpus, prints the table to
+// M06-02: the detection scorecard. Runs the rules-only pipeline exactly as the
+// app does with the model off (same automatic language profile) over the labelled corpus, prints the table to
 // report.txt and fails if any language's caught count drops or its
 // over-flag count rises compared with baseline.json (a ratchet).
 // After an improvement: EVAL_UPDATE=1 npx vitest run src/core/eval
@@ -18,8 +18,8 @@ interface Baseline { [lang: string]: { caught: number; total: number; overflags:
 
 const run = (markup: string): { score: DocumentScore } => {
   const doc = parseLabelled(markup);
-  const profile = { languages: documentLanguages(doc.text, 'auto'), jurisdictions: ['ES'] };
-  const { mappings } = anonymize(doc.text, [], undefined, [], profile);
+  // The same profile App.tsx passes.
+  const { mappings } = anonymize(doc.text, [], undefined, [], autoDetectionProfile(doc.text));
   const predicted: PredictedSpan[] = mappings
     .filter((m) => m.enabled !== false)
     .flatMap((m) => (m.occurrences ?? []).map((o) => ({ start: o.start, end: o.end, category: m.category })));

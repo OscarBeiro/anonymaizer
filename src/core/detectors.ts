@@ -6,6 +6,7 @@ import type { JurisdictionPack, PackDetector } from './packs/types';
 import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type CategorySettings } from './categories';
 import { detectMoney } from './money';
 import { detectLocations, detectSpanishPostalAddressFragments } from './locations';
+import { detectSalutationNames, propagateNameMentions } from './nameMentions';
 import { RUNG, type DetectedSpan } from './types';
 import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
@@ -429,7 +430,9 @@ export const detectIdCodes = (text: string): DetectedSpan[] => {
     // still anchors the match.
     const indices = (match as RegExpExecArray & { indices: Array<[number, number] | undefined> }).indices;
     const group = indices?.[1];
-    if (group) {
+    // M06-02: "Rexistro nº 2", "Xulgado nº 1" — a bare one- or two-digit
+    // number after the label is an ordinal, not an identifier.
+    if (group && !/^\d{1,2}$/.test(text.slice(group[0], group[1]))) {
       const [start, end] = group;
       spans.push({
         start,
@@ -593,7 +596,9 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
   const isLetteredItem = (match: string): boolean => {
     const words = match.split(/\s+/);
     if (!words.some((word) => INITIAL_TOKEN_RE.test(word))) return false;
-    return words.some((word) => LETTERED_CONTEXT_WORDS.has(word.toLowerCase()));
+    // M06-02: a numbered clause "I. Que …" — the initial is a roman numeral
+    // and the next word a stopword, never a "Juan G. Pérez".
+    return words.some((word) => LETTERED_CONTEXT_WORDS.has(word.toLowerCase()) || NAME_STOPWORDS_LOWER.has(word.toLowerCase()));
   };
 
   const isSentenceInitial = (text: string, index: number): boolean => {
@@ -626,6 +631,8 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
   // Peeling the particle lets the strip loop reach "Evaluación", another
   // structure head, and the heading collapses to one token and is rejected.
   const LEADING_PARTICLE_RE = new RegExp(`^(?:${alternatives(NAME_PARTICLES)})\\b${WS}*`, 'u');
+
+  const CAPS_LEADING_CONNECTIVE_RE = new RegExp(`^(?:DE|DEL|DA|DO|DAS|DOS|AL|LA|LAS|LOS|EL|Y|E)${WS}`, 'u');
 
   const STRUCTURE_HEAD_RE = new RegExp(
     `^(?:${alternatives([...STRUCTURE_HEADS].sort((a, b) => b.length - a.length))})\\b${WS}*`,
@@ -674,7 +681,11 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
   const containsStopword = (matchText: string, extra?: ReadonlySet<string>): boolean =>
     matchText.split(/\s+/).some((word) => NAME_STOPWORDS_LOWER.has(word.toLowerCase()) || extra?.has(word.toLowerCase()));
 
-  const isLabelColon = (text: string, endIndex: number): boolean => text[endIndex] === ':';
+  // M06-02: only a candidate that opens its line is a field label ("Nombre
+  // Completo: …"). Mid-sentence, "the emergency contact for Tom Ellis: his
+  // partner…" is a person followed by a colon.
+  const isLabelColon = (text: string, startIndex: number, endIndex: number): boolean =>
+    text[endIndex] === ':' && /(?:^|\n)[ \t\-*•·]*$/.test(text.slice(Math.max(0, startIndex - 40), startIndex));
 
   // Rejects a candidate that starts mid-token — right after a letter, digit, or
   // a masking character (*, ·, •). Without this, a NAME match can begin inside
@@ -750,6 +761,11 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
       if (isLetteredItem(m[0])) return null;
       const { text: matchText, start } = stripLeadingLabels(m[0], m.index, extraLabels);
       if (tokenCount(matchText) < 2) return null;
+      // M06-02: what is left of an ALL-CAPS heading once its head word is
+      // peeled ("CONTRATO DE ARRENDAMENTO DE VIVENDA" → "DE ARRENDAMENTO…",
+      // "AL JUZGADO DE PRIMERA INSTANCIA") starts with a capitalised
+      // connective. A person's name never does.
+      if (CAPS_LEADING_CONNECTIVE_RE.test(matchText)) return null;
       // A sentence-initial candidate is accepted, but only on the strength of
       // the candidate itself: no lowercase word precedes it, so the two-token
       // floor plus the leading strip above (stopwords, titles, structure heads)
@@ -776,7 +792,7 @@ const createLanguageDetectors = (lexicon: DetectorLexicon) => {
         };
       }
 
-      if (isLabelColon(text, start + matchText.length)) return null;
+      if (isLabelColon(text, start, start + matchText.length)) return null;
       return {
         start,
         end: start + matchText.length,
@@ -995,12 +1011,22 @@ export const runAllDetectors = (
   if (packs.length) {
     // One merged name pass keeps greetings/particles from every active language
     // consistent and avoids overlapping partial names from independent passes.
-    const detectors = createLanguageDetectors(languageLexicon(packs));
+    const lexicon = languageLexicon(packs);
+    const detectors = createLanguageDetectors(lexicon);
+    // M06-02: words that are never a person on their own, for the
+    // salutation/honorific and later-mention passes below.
+    const notNames = new Set([...lexicon.stopwords, ...lexicon.structureHeads, ...lexicon.titleLexemes, ...lexicon.nameParticles].map(w => w.toLowerCase()));
     candidates.push(...runPackDetectors(text, settings, [
       { categories: ['SHIELD'], detect: detectors.runShieldDetectors, shield: true },
       { categories: ['COMPANY'], detect: detectors.detectCompanies },
       { categories: ['NAME'], detect: detectors.detectNames },
+      { categories: ['NAME'], detect: value => detectSalutationNames(value, notNames) },
       { categories: ['COMPANY'], detect: detectors.detectCompanyAcronyms, switch: COMPANY_ACRONYM },
+    ], { packs }));
+    // Last: it reads the NAME candidates found above.
+    const found = [...candidates];
+    candidates.push(...runPackDetectors(text, settings, [
+      { categories: ['NAME'], detect: value => propagateNameMentions(value, found, notNames) },
     ], { packs }));
   }
   return candidates;

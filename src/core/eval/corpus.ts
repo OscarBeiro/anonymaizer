@@ -7,10 +7,12 @@
 //   first-name-only mentions; honorifics (Dona, Sr., Dr.) stay outside.
 // - ADDRESS: the whole street address (street, number, floor, door, postcode,
 //   town). LOCATION?: towns/regions mentioned on their own — optional.
-// - COMPANY: private companies a person deals with. Public bodies,
-//   departments, schools, hospitals and banks are NOT labelled: hiding them
-//   is an over-flag (they rarely identify anyone and hiding them hurts the
-//   text). Institutional emails/phones are optional (`?`).
+// - COMPANY: private companies a person deals with. Departments, schools,
+//   hospitals, courts and banks are NOT labelled: hiding them is an
+//   over-flag (they rarely identify anyone and hiding them hurts the text).
+//   Public bodies the app hides as COMPANY by design (Concello, Deputación,
+//   Universidade, Instituto…) are optional (`COMPANY?`), as are
+//   institutional emails/phones.
 // - MONEY?, ID_CODE?: optional — useful to hide, not personal on their own.
 // - Dates, laws and citations are never labelled.
 
@@ -78,7 +80,7 @@ EXPOÑEN
 
 I. Que o señor {NAME|Costas} é propietario da vivenda situada na {ADDRESS|rúa de Urzaiz, 85, 4º D, 36204 Vigo}, inscrita no Rexistro da Propiedade nº 2 de {LOCATION?|Vigo}.
 II. Que a renda mensual será de {MONEY?|650 euros}, que a arrendataria aboará mediante transferencia á conta {IBAN|ES7320800000123456789012}.
-III. Que a fianza, equivalente a unha mensualidade, depositarase no Instituto Galego da Vivenda e Solo segundo a Lei 29/1994, de arrendamentos urbanos.
+III. Que a fianza, equivalente a unha mensualidade, depositarase no {COMPANY?|Instituto Galego da Vivenda e Solo} segundo a Lei 29/1994, de arrendamentos urbanos.
 
 E en proba de conformidade, asinan {NAME|Ramón Costas Iglesias} e {NAME|Sabela Domínguez Vilas}.`,
   },

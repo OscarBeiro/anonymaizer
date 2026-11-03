@@ -30,10 +30,18 @@ export const LEGACY_LEXICON: DetectorLexicon = {
   structureHeads: ['Informe', 'Expediente', 'Evaluación', 'Evaluacion', 'Anexo', 'Apartado', 'Página', 'Pagina', 'Asunto', 'Fecha', 'Referencia', 'Documento', 'Capítulo', 'Capitulo', 'Sección', 'Seccion', 'Apellidos', 'Nombre', 'Teléfono', 'Telefono', 'Dirección', 'Direccion', 'Correo', 'Datos', 'Resumen', 'Conclusiones', 'Antecedentes', 'Observaciones', 'Motivo', 'Cliente', 'Paciente', 'Empresa', 'Proyecto', 'Factura', 'Contrato', 'Acta', 'Solicitud', 'Registro', 'Título', 'Titulo', 'Tabla', 'Figura', 'Firma', 'Psicológico', 'Psicologico', 'Psicológica', 'Psicologica', 'Clínico', 'Clinico', 'Clínica', 'Clinica', 'Final', 'Anual', 'Mensual', 'Previo', 'Subject', 'Date', 'From', 'Name', 'Phone', 'Address', 'Email', 'Invoice', 'Report', 'Page', 'Summary', 'Notes', 'Slide', 'Client', 'Patient', 'Company', 'Project', 'Contract', 'Reference', 'Title', 'Table', 'Figure'],
   letteredItemHeads: ['Punto', 'Opción', 'Opcion', 'Plan', 'Artículo', 'Articulo', 'Cláusula', 'Clausula', 'Epígrafe', 'Epigrafe', 'Letra', 'Grupo', 'Tipo', 'Modelo', 'Nivel', 'Fase', 'Zona', 'Bloque', 'Parte', 'Caso', 'Según', 'Segun', 'Option', 'Section', 'Clause', 'Article', 'Item', 'Point', 'Appendix', 'Annex'],
   honorifics: ['Dª', 'Da', 'Sra', 'Srta', 'Sr', 'Dra', 'Dr', 'Lic', 'Prof', 'Mrs', 'Mr', 'Ms', 'D'],
-  legalHeads: ['Ley Orgánica', 'Real Decreto Legislativo', 'Real Decreto', 'Reglamento', 'Directiva', 'Convenio', 'Convención', 'Texto Refundido', 'Estatuto', 'Orden', 'Resolución', 'Sentencia', 'Ley', 'artículo', 'art\\.'],
+  legalHeads: ['Ley Orgánica', 'Real Decreto Legislativo', 'Real Decreto', 'Reglamento', 'Directiva', 'Convenio', 'Convención', 'Texto Refundido', 'Estatuto', 'Orden', 'Resolución', 'Sentencia', 'Ley', 'artículo', 'art\\.',
+    'Decreto Legislativo', 'Decreto(?!\\p{L})', 'Código(?!\\p{L})'],
   legalContinuation: '(?:de|del|la|las|los|y|\\p{Lu}\\p{L}*|\\d+(?:\\/(?:\\d+|CE|UE))*)',
   titleQualifiers: ['General', 'Sanitaria', 'Sanitario', 'Clínica', 'Clínico', 'Forense', 'Laboral', 'Social', 'Titular', 'Superior'],
-  institutionHeads: ['Tesorería General', 'Seguridad Social', 'Agencia Tributaria', 'Hacienda', 'INSS', 'SEPE', 'INEM', 'Ministerio', 'Consellería', 'Consejería', 'Ayuntamiento', 'Diputación', 'Junta', 'Xunta', 'AEAT(?!\\p{L})', 'TGSS(?!\\p{L})', 'CNMV(?!\\p{L})', 'DGT(?!\\p{L})', 'CNMC(?!\\p{L})', 'AEPD(?!\\p{L})'],
+  institutionHeads: ['Tesorería General', 'Seguridad Social', 'Agencia Tributaria', 'Hacienda', 'INSS', 'SEPE', 'INEM', 'Ministerio', 'Consellería', 'Consejería', 'Ayuntamiento', 'Diputación', 'Junta', 'Xunta', 'AEAT(?!\\p{L})', 'TGSS(?!\\p{L})', 'CNMV(?!\\p{L})', 'DGT(?!\\p{L})', 'CNMC(?!\\p{L})', 'AEPD(?!\\p{L})',
+    // M06-02: departments, services, schools, health centres, courts, registries
+    // and savings banks read as capitalised runs, so NAME took them for people.
+    // Not Instituto/Universidad/Concello/Deputación: those stay COMPANY on
+    // purpose (companyPrefixes), as the multilanguage tests pin.
+    'Complejo Hospitalario', 'Centro de Salud', 'Departamento(?!\\p{L})', 'Servicio(?!\\p{L})', 'Hospital(?!\\p{L})', 'Colegio(?!\\p{L})', 'Escuela(?!\\p{L})',
+    'Juzgado(?!\\p{L})', 'Tribunal(?!\\p{L})', 'Audiencia(?!\\p{L})', 'Registro(?!\\p{L})', 'Policía(?!\\p{L})',
+    'Guardia Civil', 'Fiscalía(?!\\p{L})', 'Caja(?!\\p{L})', 'Comunidad(?!\\p{L})', 'CEIP(?!\\p{L})', 'IES(?!\\p{L})', 'CPI(?!\\p{L})', 'SERGAS(?!\\p{L})'],
   institutionContinuation: '(?:de|del|la|las|los|\\p{Lu}\\p{L}*|\\d+)',
   streetKeywords: ['Rúa', 'Rua', 'Calle', 'C/', 'Avenida', 'Avda', 'Plaza', 'Praza', 'Camiño', 'Street', 'Avenue', 'Road', 'Rd'],
 };
@@ -43,12 +51,14 @@ const EN: DetectorLexicon = {
   companySuffixes: ['Inc\\.', 'Inc', 'Ltd\\.', 'Ltd', 'LLC', 'LLP', 'Corp\\.', 'Corp', 'PLC', 'GmbH', 'AG', 'mbH', 'BV', 'NV', 'SAS', 'SARL', 'Oy', 'AB', 'A\\/S', 'Pty'],
   companyPrefixes: [],
   nameParticles: ['von der', 'van der', 'van', 'von', 'de la', 'del', 'de', 'du', 'des', 'le'],
-  stopwords: ['Dear', 'Hello', 'Hi', 'Regards', 'Sincerely', 'Best', 'Thanks', 'Yours'],
-  titleLexemes: [],
+  stopwords: ['Dear', 'Hello', 'Hi', 'Regards', 'Sincerely', 'Best', 'Thanks', 'Yours', 'The'],
+  titleLexemes: ['Manager', 'Director', 'Officer', 'Engineer', 'Assistant', 'Coordinator', 'Surveyor'],
   structureHeads: ['Subject', 'Date', 'From', 'Name', 'Phone', 'Address', 'Email', 'Invoice', 'Report', 'Page', 'Summary', 'Notes', 'Slide', 'Client', 'Patient', 'Company', 'Project', 'Contract', 'Reference', 'Title', 'Table', 'Figure'],
   letteredItemHeads: ['Option', 'Section', 'Clause', 'Article', 'Item', 'Point', 'Appendix', 'Annex'],
   honorifics: ['Mrs', 'Mr', 'Ms'],
-  legalHeads: [], legalContinuation: '', titleQualifiers: [], institutionHeads: [], institutionContinuation: '',
+  legalHeads: [], legalContinuation: '', titleQualifiers: [],
+  institutionHeads: ['Department(?!\\p{L})', 'Ministry(?!\\p{L})', 'Council(?!\\p{L})', 'Court(?!\\p{L})', 'Hospital(?!\\p{L})', 'University(?!\\p{L})'],
+  institutionContinuation: '(?:of|the|for|and|\\p{Lu}\\p{L}*)',
   streetKeywords: ['Street', 'Avenue', 'Road', 'Rd'],
 };
 
@@ -57,8 +67,8 @@ const ES: DetectorLexicon = {
   companySuffixes: ['S\\.L\\.U\\.', 'S\\.A\\.U\\.', 'S\\.Coop\\.', 'S\\.L\\.', 'S\\.A\\.', 'SLU', 'SAU', 'SCP', 'SL', 'SA', 'Lda', 'Ltda'],
   companyPrefixes: ['Grupo', 'Banco', 'Fundación', 'Asociación', 'Universidade', 'Universidad', 'Instituto', 'Consellería', 'Ayuntamiento', 'Concello'],
   nameParticles: ['de la', 'del', 'de', 'y', 'da', 'do', 'dos', 'das'],
-  stopwords: LEGACY_LEXICON.stopwords.slice(0, LEGACY_LEXICON.stopwords.indexOf('Dear')),
-  titleLexemes: LEGACY_LEXICON.titleLexemes,
+  stopwords: [...LEGACY_LEXICON.stopwords.slice(0, LEGACY_LEXICON.stopwords.indexOf('Dear')), 'Que', 'Qué', 'Primero', 'Segundo', 'Tercero', 'Hechos', 'Firmado'],
+  titleLexemes: [...LEGACY_LEXICON.titleLexemes, 'Alcalde', 'Alcaldesa', 'Procurador', 'Procuradora'],
   structureHeads: LEGACY_LEXICON.structureHeads.slice(0, LEGACY_LEXICON.structureHeads.indexOf('Subject')),
   letteredItemHeads: LEGACY_LEXICON.letteredItemHeads.slice(0, LEGACY_LEXICON.letteredItemHeads.indexOf('Option')),
   honorifics: ['Dª', 'Da', 'Sra', 'Srta', 'Sr', 'Dra', 'Dr', 'Lic', 'Prof', 'D'],
@@ -75,6 +85,12 @@ const GL: DetectorLexicon = {
   companyPrefixes: [...ES.companyPrefixes, ...GALICIAN_PACK.companyPrefixes],
   nameParticles: [...ES.nameParticles, ...GALICIAN_PACK.nameParticles],
   stopwords: [...ES.stopwords, ...GALICIAN_PACK.stopwords],
+  titleLexemes: [...ES.titleLexemes, ...GALICIAN_PACK.titleLexemes],
+  structureHeads: [...ES.structureHeads, ...GALICIAN_PACK.structureHeads],
+  legalHeads: [...GALICIAN_PACK.legalHeads, ...ES.legalHeads],
+  legalContinuation: GALICIAN_PACK.legalContinuation,
+  institutionHeads: [...ES.institutionHeads, ...GALICIAN_PACK.institutionHeads],
+  institutionContinuation: GALICIAN_PACK.institutionContinuation,
 };
 
 const unique = (values: readonly string[]): string[] => [...new Set(values)];

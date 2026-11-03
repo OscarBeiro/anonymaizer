@@ -21,6 +21,7 @@ import DOMPurify from 'dompurify';
 import { markdownToHtml, markdownToPlainText, type RestoreFormat } from './core/markdownRender';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
+import { autoDetectionProfile } from './core/langDetect';
 import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
 import { renderPseudonymized, type MoneyRange, type PseudonymLang } from './core/pseudonymize';
@@ -154,7 +155,7 @@ function App() {
   };
 
   const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings, [], autoDetectionProfile(rawMarkdown));
     setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
   };
 
@@ -166,7 +167,7 @@ function App() {
   ) => {
     resetForNewDocument();
     setImportWarnings(warnings);
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings, [], autoDetectionProfile(rawMarkdown));
     setSession(() => ({
       ...emptySession(),
       rawMarkdown,
@@ -216,7 +217,7 @@ function App() {
         if (isCurrent()) setNerStatus(status);
       });
       if (!isCurrent()) return;
-      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings);
+      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings, [], autoDetectionProfile(rawMarkdown));
       setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText }));
     } catch (error) {
       if (isCurrent()) setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'NER processing failed.' });
