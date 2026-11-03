@@ -168,8 +168,25 @@ const toParagraphs = (runs: Run[]): string[] => {
     else paragraphs.at(-1)?.push(lines[i].text);
   }
 
-  return paragraphs.map((lines) => lines.join(' '));
+  return paragraphs.map(joinWrappedLines);
 };
+
+/**
+ * M06-02: wrapped lines of one paragraph back into running text. A word the
+ * producer hyphenated at the line end ("Rodrí-" / "guez") is rejoined: joined
+ * with a space it reached detection as "Rodrí- guez", so a name was masked as
+ * "[[NAME]]- guez" and its tail leaked. A soft hyphen is always a break; a
+ * hard hyphen before a capital is kept as a compound ("Castro-" / "Pérez").
+ */
+export const joinWrappedLines = (lines: readonly string[]): string =>
+  lines.reduce((acc, line, i) => {
+    if (i === 0) return line;
+    const next = line.trimStart();
+    if (/\p{L}\u00AD$/u.test(acc)) return acc.slice(0, -1) + next;
+    if (/\p{L}-$/u.test(acc) && /^\p{Ll}/u.test(next)) return acc.slice(0, -1) + next;
+    if (/\p{L}-$/u.test(acc) && /^\p{Lu}/u.test(next)) return acc + next;
+    return `${acc} ${line}`;
+  }, '');
 
 const pageToParagraphs = (runs: Run[]): string[] => {
   const gutter = findColumnGutter(runs);
