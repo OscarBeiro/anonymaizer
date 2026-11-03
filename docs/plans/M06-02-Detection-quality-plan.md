@@ -26,8 +26,9 @@ No accuracy measurement exists — `benchmark.test.ts` only times detectors.
 
 ### [x] 1 — Evaluation corpus and scorer
 - Hand-labelled documents (Galician first, then Spanish, English), inline
-  markup `{CATEGORY|text}`, including PDF-shaped variants (hard wraps,
-  hyphenated breaks).
+  markup `{CATEGORY|text}`. Done: 8 gl, 3 es, 2 en. PDF-shaped variants were
+  not added to the corpus; the hyphenation fix is tested in the parser
+  (`joinWrappedLines`), since the parser already joins hard wraps.
 - Pure scorer in `src/core/eval/`: per category, gold spans caught (fully
   covered by any PII span) vs leaked (fully or partly), and predicted spans
   overlapping no gold span (over-flags).
@@ -45,7 +46,8 @@ No accuracy measurement exists — `benchmark.test.ts` only times detectors.
   camiño, lugar, travesía, rolda…), with number/floor/door tail.
 - Institution/department/bank shields (Departamento, Servizo, Consellería,
   Concello, CEIP/IES, Caixa, Banco…) so capitalised runs are not names.
-- No LOCATION inside legal citations.
+- No LOCATION inside legal citations. **Not done:** `… de servizos sociais de
+  Galicia` (lower-case words break the citation shield) is still hidden.
 - Later mentions of a detected name: honorific + surname, surname alone.
 
 ### [ ] 4 — Multilingual model (M6 P39/P40)
