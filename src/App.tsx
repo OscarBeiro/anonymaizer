@@ -17,13 +17,14 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { SettingsMenu, type SettingsSection } from './components/SettingsMenu';
 import { CategoryToggles } from './components/CategoryToggles';
 import { RulesEditor } from './components/RulesEditor';
-import DOMPurify from 'dompurify';
+import { sanitizeRenderedHtml } from './lib/sanitizeHtml';
 import { markdownToHtml, markdownToPlainText, type RestoreFormat } from './core/markdownRender';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
 import { autoDetectionProfile } from './core/langDetect';
 import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
+import { mergeMappings, splitMapping } from './core/mappingEdits';
 import { renderPseudonymized, type MoneyRange, type PseudonymLang } from './core/pseudonymize';
 import type { CustomDictionaryRule, DocumentFormat, MappingItem, MappingSession } from './core/types';
 import './lib/parsers';
@@ -283,65 +284,18 @@ function App() {
     });
   };
 
-  // The next free counter for a category, so a manual split/merge mints an
-  // id/placeholder that can't collide with one auto-detection already used.
-  const nextCounter = (mappings: MappingItem[], category: string): number => {
-    const used = mappings
-      .filter((m) => m.category === category)
-      .map((m) => Number(m.id.slice(m.id.lastIndexOf('_') + 1)))
-      .filter((n) => !Number.isNaN(n));
-    return (used.length ? Math.max(...used) : 0) + 1;
-  };
-
-  // P7c manual override: demotes a clustered NAME mapping back into one
-  // mapping per surface spelling. Session-level only, same as handleToggle —
-  // it doesn't feed back into the detector, so re-pasting the same text
-  // re-clusters from scratch.
-  const handleSplit = (id: string) => {
+  // P7c manual overrides (src/core/mappingEdits.ts): split a clustered entry
+  // into one per spelling, or fold several into one. Session-level only, same
+  // as handleToggle — re-pasting the same text re-clusters from scratch.
+  const editMappings = (edit: (mappings: MappingItem[]) => MappingItem[]) => {
     setSession((prev) => {
-      const target = prev.mappings.find((m) => m.id === id);
-      if (!target || target.variants.length <= 1) return prev;
-
-      const remaining = prev.mappings.filter((m) => m.id !== id);
-      let counter = nextCounter(prev.mappings, target.category);
-      const split: MappingItem[] = target.variants.map((variant) => ({
-        id: `${target.category}_${counter}`,
-        placeholder: `[[${target.category}_${String(counter++).padStart(3, '0')}]]`,
-        originalText: variant,
-        category: target.category,
-        confidence: target.confidence,
-        source: target.source,
-        enabled: target.enabled,
-        variants: [variant],
-      }));
-
-      const mappings = [...remaining, ...split];
-      const anonymizedMarkdown = applyEnabledMappings(prev.rawMarkdown, mappings);
-      return { ...prev, mappings, anonymizedMarkdown };
+      const mappings = edit(prev.mappings);
+      if (mappings === prev.mappings) return prev;
+      return { ...prev, mappings, anonymizedMarkdown: applyEnabledMappings(prev.rawMarkdown, mappings) };
     });
   };
-
-  // Mirror of handleSplit: folds two or more same-category mappings into one,
-  // keeping every variant from every mapping merged. The longest variant
-  // becomes canonical (originalText), matching entities.ts's own convention.
-  const handleMerge = (ids: string[]) => {
-    setSession((prev) => {
-      const targets = prev.mappings.filter((m) => ids.includes(m.id));
-      if (targets.length < 2) return prev;
-      if (targets.some((t) => t.category !== targets[0].category)) return prev;
-
-      const remaining = prev.mappings.filter((m) => !ids.includes(m.id));
-      const variants = [...new Set(targets.flatMap((t) => t.variants))].sort(
-        (a, b) => b.length - a.length,
-      );
-      const first = targets[0];
-      const merged: MappingItem = { ...first, originalText: variants[0], variants };
-
-      const mappings = [...remaining, merged];
-      const anonymizedMarkdown = applyEnabledMappings(prev.rawMarkdown, mappings);
-      return { ...prev, mappings, anonymizedMarkdown };
-    });
-  };
+  const handleSplit = (id: string) => editMappings((mappings) => splitMapping(mappings, id));
+  const handleMerge = (ids: string[]) => editMappings((mappings) => mergeMappings(mappings, ids));
 
   const updateRules = (rules: CustomDictionaryRule[]) => {
     setDictionaryRules(rules);
@@ -422,11 +376,12 @@ function App() {
     setViewMode(defaultMode);
   };
   const restored = aiResponse ? reverseText(aiResponse, session.mappings) : '';
-  // The AI reply is Markdown. The Markdown view renders it (sanitized here,
+  // The AI reply is Markdown. The Markdown view renders it (sanitized here —
+  // no script and nothing that loads a remote resource, see lib/sanitizeHtml —
   // once: both innerHTML and the clipboard's text/html use it); the HTML view
   // shows the same sanitized HTML as source.
   const restoredHtml = useMemo(
-    () => (restored && restoreFormat !== 'plain' ? DOMPurify.sanitize(markdownToHtml(restored)) : ''),
+    () => (restored && restoreFormat !== 'plain' ? sanitizeRenderedHtml(markdownToHtml(restored)) : ''),
     [restored, restoreFormat],
   );
   const restoredPlain = useMemo(

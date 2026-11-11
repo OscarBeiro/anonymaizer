@@ -14,13 +14,13 @@ browser.
 
 ## Tasks
 
-### [ ] 1 — Merge/split keep every occurrence hidden
+### [x] 1 — Merge/split keep every occurrence hidden
 `handleMerge` (`src/App.tsx`) kept only the first entry's `occurrences`;
 `applyEnabledMappings` replaces by occurrence, so the other merged values
 reappeared in the sanitized text. Move split and merge into a pure, tested
 `src/core/mappingEdits.ts`; both keep positions.
 
-### [ ] 2 — Restored view never loads a remote resource
+### [x] 2 — Restored view never loads a remote resource
 `DOMPurify.sanitize` kept `<img src="https://…">`, so an AI reply could make
 the browser request a URL carrying a restored value. Strip resource-loading
 elements when sanitizing; add a CSP `<meta>` to the portable build, which has
