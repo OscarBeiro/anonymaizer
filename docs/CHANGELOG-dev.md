@@ -26,6 +26,8 @@ _Working version: 0.19.0-dev._
   - New `src/core/nameMentions.ts`: salutation/honorific single names (`Ola Iria,`, `Dr. Suárez`, `o señor Costas`) and later standalone mentions of found names (one linear pass, confidence 0.5, `RUNG.NAME`).
   - PDF: `joinWrappedLines()` rejoins words hyphenated across lines (soft hyphen always; hard hyphen before lower case; kept before a capital as a compound surname).
   - NER: `chunkText()`/`mergeChunkEntities()` in `src/core/ner.ts`; the worker runs 800-char windows with 150-char overlap instead of one call that transformers.js truncated at 512 tokens. Not yet measured in a browser.
+  - Review follow-up: `propagateNameMentions` is seeded from `arbitrateSpans(candidates)`, not raw candidates, so a NAME candidate inside a shielded institution or a company no longer flags later words (`CEIP Rosalía de Castro` … `barrio de Castro`). `entities.ts` reads name particles from `LEGACY_LEXICON` instead of `detectors.ts`, which removes the `detectors → span → entities → detectors` import cycle this would have created.
+  - Review follow-up, NER limits: `nerClient.ts` refused text over 100,000 characters while `nerLimits.ts` only asked for confirmation above 200,000, so the confirmation offered a run that then failed. Now `NER_MAX_CHARS` 100,000 (shared) and `NER_LONG_DOCUMENT_CHARS` 25,000. The 180 s whole-run timeout (which included the model download and, since chunking, ~150 inferences) is an idle timeout: the worker posts a `chunk` message per window and the client rearms on every message (`NER_IDLE_TIMEOUT_MS`).
   - Known gaps: bare given names in prose (`Falei con Roi`), region inside a law title (`… de Galicia`), head-final English acts (`Tenant Act`).
 
 ## [0.18.6] - 2026-11-01

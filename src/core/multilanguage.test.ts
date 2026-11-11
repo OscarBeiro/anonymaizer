@@ -46,3 +46,13 @@ it('reads a numbered clause and a mid-sentence colon correctly', () => {
   const en = anonymize('Please update the contact for Tom Ellis: his partner.', [], DEFAULT_CATEGORY_SETTINGS, [], ['en']);
   expect(en.anonymizedText).not.toContain('Tom Ellis');
 });
+
+it('does not take later mentions from a name candidate that lost to a shield', () => {
+  // "Rosalía de Castro" inside the school name is not a person: the school is
+  // shielded, so a later "Castro" stays, while the real person is still hidden.
+  const raw = 'A alumna Uxía Lema Castiñeira asiste ao CEIP Rosalía de Castro.\nO barrio de Castro queda preto. Uxía chega ás nove.';
+  const result = anonymize(raw, [], DEFAULT_CATEGORY_SETTINGS, [], ['gl', 'es']);
+  expect(result.anonymizedText).toContain('CEIP Rosalía de Castro');
+  expect(result.anonymizedText).toContain('barrio de Castro');
+  expect(result.anonymizedText).not.toMatch(/Uxía/);
+});

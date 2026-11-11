@@ -36,6 +36,8 @@ export type NerWorkerRequest = { type: 'run'; requestId: number; text: string };
 
 export type NerWorkerResponse =
   | { type: 'scanning'; requestId: number }
+  // One per finished window: tells the client the scan is alive (idle timeout).
+  | { type: 'chunk'; requestId: number; done: number; total: number }
   | { type: 'progress'; requestId: number; status: string; progress?: number }
   | { type: 'result'; requestId: number; entities: NerEntity[] }
   | { type: 'error'; requestId: number; message: string };
@@ -75,12 +77,14 @@ self.onmessage = async (event: MessageEvent<NerWorkerRequest>) => {
     // M06-02: one call only ever saw the first ~512 tokens; run every
     // overlapping window and merge (chunkText/mergeChunkEntities, core/ner.ts).
     const results: { start: number; entities: NerEntity[] }[] = [];
-    for (const chunk of chunkText(event.data.text)) {
+    const chunks = chunkText(event.data.text);
+    for (const chunk of chunks) {
       if (currentRequestId !== event.data.requestId) return;
       const raw = (await extractor(chunk.text)) as unknown as RawNerToken[];
       // P8sec: v4 no longer returns start/end itself (see core/ner.ts).
       const withOffsets = computeTokenOffsets(raw, chunk.text);
       results.push({ start: chunk.start, entities: aggregateBioTokens(withOffsets, chunk.text) });
+      postMessage({ type: 'chunk', requestId: event.data.requestId, done: results.length, total: chunks.length } satisfies NerWorkerResponse);
     }
     const entities: NerEntity[] = mergeChunkEntities(results);
 

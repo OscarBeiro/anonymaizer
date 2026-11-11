@@ -7,6 +7,7 @@ import { COMPANY_ACRONYM, DEFAULT_CATEGORY_SETTINGS, isCategoryOn, type Category
 import { detectMoney } from './money';
 import { detectLocations, detectSpanishPostalAddressFragments } from './locations';
 import { detectSalutationNames, propagateNameMentions } from './nameMentions';
+import { arbitrateSpans } from './span';
 import { RUNG, type DetectedSpan } from './types';
 import { ibanCheck, inspectDniNie, luhnCheck } from './validators';
 
@@ -1023,8 +1024,11 @@ export const runAllDetectors = (
       { categories: ['NAME'], detect: value => detectSalutationNames(value, notNames) },
       { categories: ['COMPANY'], detect: detectors.detectCompanyAcronyms, switch: COMPANY_ACRONYM },
     ], { packs }));
-    // Last: it reads the NAME candidates found above.
-    const found = [...candidates];
+    // Last: it reads the names found above — only those that survive
+    // arbitration. A NAME candidate inside a shielded institution or a
+    // company ("CEIP Rosalía de Castro") is not a person, and seeding from
+    // it flagged every later "Castro".
+    const found = arbitrateSpans(candidates);
     candidates.push(...runPackDetectors(text, settings, [
       { categories: ['NAME'], detect: value => propagateNameMentions(value, found, notNames) },
     ], { packs }));

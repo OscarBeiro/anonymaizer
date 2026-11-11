@@ -1,9 +1,15 @@
-// L3: NER runs the ~104 MB model over the whole text, in chunks, and its cost
-// grows with length — unlike the regex detectors, which L2 measured at
-// well under a second for 3 MB. It is already opt-in (off at load); above this
-// size the opt-in asks for confirmation first. 200 000 characters is about 70
-// pages of dense text, a little under the PDF parser's 100-page warning.
-export const NER_LONG_DOCUMENT_CHARS = 200_000;
+// L3 / M06-02: NER runs the ~104 MB model over the whole text in overlapping
+// windows of about 800 characters (core/ner.ts), so its cost grows with
+// length — unlike the regex detectors, which L2 measured at well under a
+// second for 3 MB. It is already opt-in (off at load).
+//
+// Two limits, and the first must stay below the second or the confirmation
+// asks for something that then fails:
+// - above NER_LONG_DOCUMENT_CHARS (about 40 windows, roughly 10 pages) the
+//   opt-in asks for confirmation first;
+// - above NER_MAX_CHARS (about 150 windows) the model is not run at all.
+export const NER_LONG_DOCUMENT_CHARS = 25_000;
+export const NER_MAX_CHARS = 100_000;
 
 export const isLongForNer = (text: string): boolean => text.length > NER_LONG_DOCUMENT_CHARS;
 
