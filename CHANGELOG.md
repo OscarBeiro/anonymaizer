@@ -15,9 +15,6 @@ _Working version: 0.19.0-dev._
 - Stop hiding departments, schools, health centres, courts, banks, laws and document headings as if they were people.
 - Rejoin words split across lines in PDFs so the end of a hyphenated name is no longer left visible.
 - The local AI detection now reads the whole document instead of only its beginning.
-
-### Bugs
-
 - Your document and custom rules are saved in the browser again, so reloading the page no longer loses them.
 - Merging two entries in the review list no longer makes one of them visible again in the sanitized text.
 - The restored text no longer loads images or other remote content from an AI reply.
