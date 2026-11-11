@@ -35,6 +35,7 @@ import { SiteLinks } from './landing/SiteLinks';
 import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
 import { NerQueue } from './lib/nerQueue';
+import { modelDownloadAllowed } from './lib/analytics';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
@@ -246,6 +247,8 @@ function App() {
   };
 
   const handleNerToggle = (checked: boolean) => {
+    // Hard rule 2: no model download from a local copy.
+    if (checked && !modelDownloadAllowed()) return;
     // L3: NER is slow on a book-length text; the user may still turn it on.
     if (checked && isLongForNer(session.rawMarkdown) && !window.confirm(nerLongDocumentMessage(session.rawMarkdown.length))) {
       return;
@@ -552,13 +555,17 @@ function App() {
               onChange={updateCategorySettings}
               defaultOpen
             />
-            <NerToggle
-              enabled={nerEnabled}
-              longDocument={isLongForNer(session.rawMarkdown)}
-              status={nerStatus}
-              onToggle={handleNerToggle}
-              onDeleteModel={handleDeleteModel}
-            />
+            {modelDownloadAllowed() ? (
+              <NerToggle
+                enabled={nerEnabled}
+                longDocument={isLongForNer(session.rawMarkdown)}
+                status={nerStatus}
+                onToggle={handleNerToggle}
+                onDeleteModel={handleDeleteModel}
+              />
+            ) : (
+              <p className="panel-hint">{t('NerToggle.only_on_the_hosted_site')}</p>
+            )}
           </>
         }
         dictionary={<RulesEditor rules={dictionaryRules} onChange={updateRules} />}

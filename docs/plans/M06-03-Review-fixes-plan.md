@@ -33,7 +33,7 @@ nothing. **Open decision (user):** A — save by default again; B — keep
 nothing-saved as default, add "Remember on this device" switches and rewrite
 the texts.
 
-### [ ] 4 — No model download from a local copy (hard rule 2)
+### [x] 4 — No model download from a local copy (hard rule 2)
 `modelDownloadAllowed()` exists but nothing calls it. Offer the AI model only
 where it returns true; a dev-only override keeps it testable on localhost.
 
@@ -42,11 +42,11 @@ Consent banner, cookie and privacy pages name Google Analytics 4 and
 Metricool; `src/lib/analytics.ts` sends nothing. Rewrite in `en.json` and
 `gl.json`; drop the unused workflow variables.
 
-### [ ] 6 — CI on pull requests
+### [x] 6 — CI on pull requests
 `deploy.yml` is manual-only, so nothing runs lint or tests automatically. Add
 `.github/workflows/ci.yml`: lint, tests, both builds, no-analytics check.
 
-### [ ] 7 — Exported HTML uses the TICGAL palette
+### [x] 7 — Exported HTML uses the TICGAL palette
 `src/core/export/textExport.ts` still highlights placeholders in purple.
 
 ## Not in this plan (recorded for their owners)
