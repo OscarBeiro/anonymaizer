@@ -1,5 +1,6 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { NerClient } from './nerClient';
+import { NerClient, NER_IDLE_TIMEOUT_MS } from './nerClient';
+import { NER_LONG_DOCUMENT_CHARS, NER_MAX_CHARS } from './nerLimits';
 class FakeWorker extends EventTarget {
   static instances: FakeWorker[] = [];
   terminated = false;
@@ -9,7 +10,7 @@ class FakeWorker extends EventTarget {
   terminate() { this.terminated = true; }
   result(requestId: number) { this.dispatchEvent(new MessageEvent('message', { data: { type: 'result', requestId, entities: [] } })); }
 }
-afterEach(() => { vi.unstubAllGlobals(); FakeWorker.instances = []; });
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); FakeWorker.instances = []; });
 it('separates worker replies by request ID and rejects cancellation once', async () => {
   vi.stubGlobal('Worker', FakeWorker);
   const client = new NerClient(); const status = vi.fn();
@@ -29,6 +30,26 @@ it('separates worker replies by request ID and rejects cancellation once', async
 });
 it('rejects an oversized model input before starting a worker', async () => {
   vi.stubGlobal('Worker', FakeWorker);
-  await expect(new NerClient().runNer('x'.repeat(100001), vi.fn())).rejects.toThrow('limited');
+  await expect(new NerClient().runNer('x'.repeat(NER_MAX_CHARS + 1), vi.fn())).rejects.toThrow('limited');
   expect(FakeWorker.instances).toHaveLength(0);
+});
+it('asks for confirmation below the size it refuses', () => {
+  expect(NER_LONG_DOCUMENT_CHARS).toBeLessThan(NER_MAX_CHARS);
+});
+it('times out on silence, not on a long scan that keeps reporting windows', async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal('Worker', FakeWorker);
+  const client = new NerClient();
+  const run = client.runNer('A', vi.fn());
+  const settled = run.then(() => 'done', (e: Error) => e.message);
+  const worker = FakeWorker.instances[0];
+  const id = worker.requests[0].requestId;
+  for (let i = 1; i <= 5; i++) {
+    vi.advanceTimersByTime(NER_IDLE_TIMEOUT_MS - 1);
+    worker.dispatchEvent(new MessageEvent('message', { data: { type: 'chunk', requestId: id, done: i, total: 9 } }));
+  }
+  expect(worker.terminated).toBe(false);
+  vi.advanceTimersByTime(NER_IDLE_TIMEOUT_MS);
+  expect(worker.terminated).toBe(true);
+  await expect(settled).resolves.toMatch(/timed out/);
 });

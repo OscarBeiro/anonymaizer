@@ -9,7 +9,7 @@
 // src/core/ner.ts and is unit-tested there without ever touching this file
 // or the model.
 import { env, pipeline, type TokenClassificationPipeline } from '@huggingface/transformers';
-import { aggregateBioTokens, computeTokenOffsets, type NerEntity, type RawNerToken } from '../core/ner';
+import { aggregateBioTokens, chunkText, computeTokenOffsets, mergeChunkEntities, type NerEntity, type RawNerToken } from '../core/ner';
 import { createIndexedDbModelCache } from './nerModelCache';
 
 // Never look for a locally-bundled copy — the model is deliberately not part
@@ -36,6 +36,8 @@ export type NerWorkerRequest = { type: 'run'; requestId: number; text: string };
 
 export type NerWorkerResponse =
   | { type: 'scanning'; requestId: number }
+  // One per finished window: tells the client the scan is alive (idle timeout).
+  | { type: 'chunk'; requestId: number; done: number; total: number }
   | { type: 'progress'; requestId: number; status: string; progress?: number }
   | { type: 'result'; requestId: number; entities: NerEntity[] }
   | { type: 'error'; requestId: number; message: string };
@@ -72,10 +74,19 @@ self.onmessage = async (event: MessageEvent<NerWorkerRequest>) => {
     // B-/I- merging into whole entities ourselves rather than relying on
     // the library — that keeps the merge rules testable without a model.
     postMessage({ type: 'scanning', requestId: event.data.requestId } satisfies NerWorkerResponse);
-    const raw = (await extractor(event.data.text)) as unknown as RawNerToken[];
-    // P8sec: v4 no longer returns start/end itself (see core/ner.ts).
-    const withOffsets = computeTokenOffsets(raw, event.data.text);
-    const entities: NerEntity[] = aggregateBioTokens(withOffsets, event.data.text);
+    // M06-02: one call only ever saw the first ~512 tokens; run every
+    // overlapping window and merge (chunkText/mergeChunkEntities, core/ner.ts).
+    const results: { start: number; entities: NerEntity[] }[] = [];
+    const chunks = chunkText(event.data.text);
+    for (const chunk of chunks) {
+      if (currentRequestId !== event.data.requestId) return;
+      const raw = (await extractor(chunk.text)) as unknown as RawNerToken[];
+      // P8sec: v4 no longer returns start/end itself (see core/ner.ts).
+      const withOffsets = computeTokenOffsets(raw, chunk.text);
+      results.push({ start: chunk.start, entities: aggregateBioTokens(withOffsets, chunk.text) });
+      postMessage({ type: 'chunk', requestId: event.data.requestId, done: results.length, total: chunks.length } satisfies NerWorkerResponse);
+    }
+    const entities: NerEntity[] = mergeChunkEntities(results);
 
     const response: NerWorkerResponse = { type: 'result', requestId: event.data.requestId, entities };
     postMessage(response);

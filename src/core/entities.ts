@@ -1,4 +1,8 @@
-import { NAME_PARTICLES } from './detectors';
+// From the lexicon, not from detectors.ts: detectors.ts arbitrates spans
+// (span.ts → this file), so importing it here would be a cycle.
+import { LEGACY_LEXICON } from './packs/lexicons';
+
+const NAME_PARTICLES = LEGACY_LEXICON.nameParticles;
 
 // Honorifics that can precede a name mention without being part of it.
 // Stripped the same way NAME_PARTICLES are: they carry no identity of their

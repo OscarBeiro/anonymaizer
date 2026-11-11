@@ -112,6 +112,27 @@ describe('detectAddresses', () => {
     expect(spans[0].text).toBe('742 Evergreen Terrace, Springfield, OR 97477');
   });
 
+  // M06-02: whole Iberian addresses, not just the "27001 Lugo" tail.
+  it.each([
+    ['veciña da rúa do Progreso, 14, 2º esquerda, 27001 Lugo, presentou', 'rúa do Progreso, 14, 2º esquerda, 27001 Lugo'],
+    ['Enderezo: Avenida de Lugo, 112, 5º B, 15702 Santiago de Compostela', 'Avenida de Lugo, 112, 5º B, 15702 Santiago de Compostela'],
+    ['Avenida de Madrid, 23, baixo, 15009 A Coruña', 'Avenida de Madrid, 23, baixo, 15009 A Coruña'],
+    ['{Estrada de Santiago, km 4, 15895 Ames}', 'Estrada de Santiago, km 4, 15895 Ames'],
+    ['en Travesía de Vigo, 5, 2º, 32003 Ourense e', 'Travesía de Vigo, 5, 2º, 32003 Ourense'],
+    ['domicilio en calle de Alcalá, 214, 3º izquierda, 28028 Madrid, ante', 'calle de Alcalá, 214, 3º izquierda, 28028 Madrid'],
+    ['the property at 14 Elm Grove, Bristol BS6 7JT.', '14 Elm Grove, Bristol BS6 7JT'],
+  ])('takes the whole address in %j', (text, expected) => {
+    expect(detectAddresses(text).map((s) => s.text)).toEqual([expected]);
+  });
+
+  it.each([
+    'en lugar de Pedro, veu Ana',
+    'fixemos o camiño de Santiago en 2019',
+    'a ronda de Preguntas comeza ás 10',
+  ])('leaves %j alone', (text) => {
+    expect(detectAddresses(text)).toEqual([]);
+  });
+
   it('does not fire on an ordinary "<number> <Capitalized word>" sequence', () => {
     const spans = detectAddresses('We shipped 12 Widgets last week.');
     expect(spans).toHaveLength(0);
