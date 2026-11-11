@@ -2,7 +2,13 @@ const GENERATION = 'anonymaizer.storageGeneration';
 const DOCUMENT = 'anonymaizer.rememberDocument';
 const RULES = 'anonymaizer.rememberRules';
 const get = (key: string): string | null => { try { return localStorage.getItem(key); } catch { return null; } };
-export const remembered = (kind: 'document' | 'rules'): boolean => get(kind === 'document' ? DOCUMENT : RULES) === 'true';
+// M06-03: saved unless explicitly turned off. The M9 "nothing saved by default"
+// gate landed here without its "Remember on this device" switch (the frontend
+// was reverted to pre-M9), so nothing was ever saved: a reload lost the
+// document and every custom rule, while the app and its privacy text say a
+// reload loses nothing. Until that switch exists, `setRemembered(kind, false)`
+// is the only way to opt out, and M09-01 task 04/12 owns changing the default.
+export const remembered = (kind: 'document' | 'rules'): boolean => get(kind === 'document' ? DOCUMENT : RULES) !== 'false';
 export const generation = (): string | null => get(GENERATION);
 // Every sensitive writer captures its generation at module startup. A tab that
 // missed an event still fails closed before its next write.

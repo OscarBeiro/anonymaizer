@@ -30,14 +30,15 @@ export default defineConfig({
           name: 'core',
           environment: 'node',
           include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
-          exclude: ['**/node_modules/**', 'src/lib/parsers/**'],
+          exclude: ['**/node_modules/**', 'src/lib/parsers/**', 'src/lib/sanitizeHtml.test.ts'],
         },
       },
       {
         test: {
           name: 'parsers-dom',
           environment: 'jsdom',
-          include: ['src/lib/parsers/**/*.test.ts'],
+          // sanitizeHtml: DOMPurify needs a DOM and is a no-op without one.
+          include: ['src/lib/parsers/**/*.test.ts', 'src/lib/sanitizeHtml.test.ts'],
           exclude: ['**/node_modules/**'],
         },
         resolve: {

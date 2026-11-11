@@ -11,6 +11,11 @@ const state = vi.hoisted(() => ({
   ingest: null as ComponentProps<typeof IngestStep> | null,
   ner: null as ComponentProps<typeof NerToggle> | null,
   scans: [] as { text: string; resolve: (entities: NerEntity[]) => void }[],
+  modelAllowed: true,
+}));
+vi.mock('./lib/analytics', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./lib/analytics')>(),
+  modelDownloadAllowed: () => state.modelAllowed,
 }));
 vi.mock('./lib/parsers', () => ({}));
 vi.mock('./components/ThemeToggle', () => ({ ThemeToggle: () => null }));
@@ -34,11 +39,12 @@ let root: Root;
 beforeEach(async () => {
   localStorage.clear();
   state.scans = [];
+  state.ner = null;
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   root = createRoot(document.createElement('div'));
   await act(async () => root.render(createElement(App)));
 });
-afterEach(async () => { await act(async () => root.unmount()); });
+afterEach(async () => { await act(async () => root.unmount()); state.modelAllowed = true; });
 
 it('sanitises again when the downloaded model returns entities', async () => {
   await act(async () => state.ingest!.onChange('Zorvax'));
@@ -80,4 +86,15 @@ it('automatically scans files imported after the model is ready', async () => {
   expect(state.scans[1].text).toBe('Zorvax');
   await act(async () => state.scans[1].resolve([{ entityGroup: 'PER', text: 'Zorvax', start: 0, end: 6, score: 0.99 }]));
   expect(loadSession().anonymizedMarkdown).toBe('[[NAME_001]]');
+});
+
+it('does not offer the model where it may not be downloaded (hard rule 2)', async () => {
+  await act(async () => root.unmount());
+  state.modelAllowed = false;
+  state.ner = null;
+  root = createRoot(document.createElement('div'));
+  await act(async () => root.render(createElement(App)));
+  expect(state.ner).toBeNull();
+  await act(async () => state.ingest!.onChange('Zorvax'));
+  expect(state.scans).toHaveLength(0);
 });

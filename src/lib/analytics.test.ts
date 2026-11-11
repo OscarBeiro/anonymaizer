@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPublicDeploymentAt } from './analytics';
+import { isPublicDeploymentAt, modelDownloadAllowedAt } from './analytics';
 
 const PROD = 'anonymaizer.example.com';
 const at = (href: string) => {
@@ -39,4 +39,30 @@ it('allowlists constant routes and rejects queries, fragments and document-deriv
   expect(visitEvent('/app?file=private.pdf')).toBeNull();
   expect(visitEvent('/app#private')).toBeNull();
   expect(visitEvent('/private-document')).toBeNull();
+});
+
+describe('modelDownloadAllowedAt (hard rule 2)', () => {
+  it('allows the public HTTPS deployment only', () => {
+    expect(modelDownloadAllowedAt(at(`https://${PROD}/app`), false, PROD)).toBe(true);
+  });
+
+  it.each([
+    'http://localhost:5173/app',
+    'http://127.0.0.1:4173/app',
+    'file:///home/user/anonymaizer.html',
+    'https://self-hosted.example.org/app',
+    `http://${PROD}/app`,
+    `https://preview.${PROD}/app`,
+  ])('refuses %s', (href) => {
+    expect(modelDownloadAllowedAt(at(href), false, PROD)).toBe(false);
+  });
+
+  it('refuses the portable build everywhere, even with the dev override', () => {
+    expect(modelDownloadAllowedAt(at(`https://${PROD}/app`), true, PROD)).toBe(false);
+    expect(modelDownloadAllowedAt(at('http://localhost:5173/app'), true, PROD, true)).toBe(false);
+  });
+
+  it('the dev override allows a non-portable local dev server', () => {
+    expect(modelDownloadAllowedAt(at('http://localhost:5173/app'), false, PROD, true)).toBe(true);
+  });
 });

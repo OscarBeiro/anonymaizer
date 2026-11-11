@@ -164,8 +164,15 @@ describe('storage quota (L1)', () => {
 
   it('saveSession reports false and does not throw when the quota is exceeded', () => {
     vi.stubGlobal('localStorage', quotaStorage());
-    expect(saveSession(session)).toBe(true); // ephemeral mode performs no sensitive write
+    acceptGeneration();
+    expect(saveSession(session)).toBe(false);
+  });
 
+  it('with the document turned off nothing is written, so nothing can fail', () => {
+    const store = quotaStorage();
+    vi.stubGlobal('localStorage', { ...store, getItem: (k: string) => (k === 'anonymaizer.rememberDocument' ? 'false' : null) });
+    acceptGeneration();
+    expect(saveSession(session)).toBe(true);
   });
 
   it('a failed save drops the stale stored copy', () => {
