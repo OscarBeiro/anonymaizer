@@ -26,21 +26,31 @@ the browser request a URL carrying a restored value. Strip resource-loading
 elements when sanitizing; add a CSP `<meta>` to the portable build, which has
 no response headers.
 
-### [ ] 3 — Session and rule persistence match what the app says
-`saveSession`/`saveDictionaryRules` write only after an opt-in that has no UI,
+### [x] 3 — Session and rule persistence match what the app says
+`saveSession`/`saveDictionaryRules` wrote only after an opt-in that has no UI,
 while the landing, cookie and privacy pages promise that a reload loses
-nothing. **Open decision (user):** A — save by default again; B — keep
-nothing-saved as default, add "Remember on this device" switches and rewrite
-the texts.
+nothing. **Decided 2026-11-11 (user): save by default.** `remembered()` in
+`src/lib/retention.ts` is true unless explicitly set to `false`. The
+"Remember on this device" switches and any change of default stay with
+M09-01 tasks 04/12. Checked in headless Chrome: a document and its mappings
+survive a reload.
 
 ### [x] 4 — No model download from a local copy (hard rule 2)
 `modelDownloadAllowed()` exists but nothing calls it. Offer the AI model only
 where it returns true; a dev-only override keeps it testable on localhost.
 
-### [ ] 5 — Legal text matches the code
+### [-] 5 — Legal text matches the code — deferred to launch
 Consent banner, cookie and privacy pages name Google Analytics 4 and
-Metricool; `src/lib/analytics.ts` sends nothing. Rewrite in `en.json` and
-`gl.json`; drop the unused workflow variables.
+Metricool; `src/lib/analytics.ts` sends nothing. These pages are pre-launch
+drafts (`DRAFT FOR LEGAL REVIEW`, unfilled `{{…}}` placeholders, three
+languages) and the replacement analytics transport is not chosen.
+**Decided 2026-11-11 (user): do not rewrite now.** Launch checklist item:
+once the transport is decided, rewrite the banner, `src/legal/cookies.tsx`
+(cookie table), `src/legal/privacy.tsx` (processors, transfers, retention) and
+the `cookies.*`/`privacy.*`/`ConsentBanner.*` strings in every language, bump
+`CONSENT_POLICY_VERSION`, and drop `VITE_GA4_ID`/`VITE_METRICOOL_HASH` from
+`deploy.yml` and `src/vite-env.d.ts`. Nothing is deployed meanwhile
+(`deploy.yml` is manual-only).
 
 ### [x] 6 — CI on pull requests
 `deploy.yml` is manual-only, so nothing runs lint or tests automatically. Add

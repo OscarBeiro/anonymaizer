@@ -18,6 +18,7 @@ _Working version: 0.19.0-dev._
 
 ### Bugs
 
+- Your document and custom rules are saved in the browser again, so reloading the page no longer loses them.
 - Merging two entries in the review list no longer makes one of them visible again in the sanitized text.
 - The restored text no longer loads images or other remote content from an AI reply.
 - The portable version and local copies no longer offer the AI model download, which needs the internet.
