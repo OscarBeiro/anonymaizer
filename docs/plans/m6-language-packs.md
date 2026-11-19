@@ -70,6 +70,8 @@ then Italy, then a model re-evaluation over all the new languages.
 
 ### [ ] P14 — Extract strings + i18n layer
 
+Status 2026-11-19: `src/i18n.ts`, `src/locales/en.json` + `gl.json` (same 527 keys) and `LanguagePicker` exist, and the components call `t()`. Still open: no `es.json`, and `src/lib/nerClient.ts`, `src/lib/parserControl.ts` and `src/lib/parsers/*` still throw hard-coded English messages (the core-text audit is unfinished); see also [m6-ui-language-support.md](done/m6-ui-language-support.md).
+
 Moved here from M4b (2026-09-27; the full text moved with it on 2026-10-07).
 Extra constraint: export the locale resolver from a pure module so `P24`–`P26`
 reuse it rather than duplicating it.
@@ -113,6 +115,8 @@ Localazy's JSON format and keeps the file navigable.
 
 ### [ ] P15 — Localazy sync through GitHub Actions
 
+Status 2026-11-19: not started — no `localazy.json`, and `.github/workflows/` has only `ci.yml` and `deploy.yml`.
+
 Moved here from M4b (2026-10-07). Runs any time after `P14`.
 
 **Decided:** the official Localazy GitHub Actions with repository secrets — not
@@ -135,6 +139,8 @@ taken from the Localazy project's Integrations page after `localazy init`.
 P15 depends on P14 — there is nothing to upload until `en.json` exists.
 
 ### [ ] P23 — Pack scaffold, no behaviour change
+
+Status 2026-11-19: `src/core/packs/registry.ts`, `types.ts`, `profile.ts` and `lexicons.ts` exist (see P25). Still open: `src/core/data/es/pseudonyms.ts` is not under the ES pack, and the hard-coded lists are not fully moved out of `detectors.ts`.
 
 > Add `src/core/packs/` with `LanguagePack` (`id`, `stopwords`, `greetings`,
 > `nameParticles`, `companyPrefixes`, `shieldLexicon`, `profileWords`) and
@@ -219,6 +225,8 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 
 ### [x] P26 — "Language & region" setup step
 
+Evidence 2026-11-19: `src/core/profileSelection.ts`, `src/components/LanguageRegionSetup.tsx`, `scripts/p26-browser.mjs`.
+
 > Show the detected languages as pre-ticked chips ("Suggested: Spanish,
 > Portuguese"). Default the jurisdiction checkboxes from `defaultLanguages`,
 > and let the user pin packs. A jurisdiction pack carries a category preset
@@ -227,6 +235,8 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > for the model tier line that P40 fills in.
 
 ### [x] P38 — Runtime, alignment and full-document coverage
+
+Status 2026-11-19: evidence `src/core/ner.ts`, `src/lib/nerClient.ts`, `src/workers/ner.worker.ts`. The token-window chunker (`planNerWindows`/`reconcileNerEntities`) was removed when the M6 stack merged, in favour of `chunkText`/`mergeChunkEntities` from [M06-02](M06-02-Detection-quality-plan.md) task 2; the worker keeps a tokenizer-budget guard that shrinks the chunk size until every window fits the model's token budget. `src/core/nerWindows.ts` now holds only `nerCoverage`. Gate-D offline browser run is tracked in P40.
 
 > The repository already declares `@huggingface/transformers` ^4.3.0 and the
 > installed runtime registers ModernBERT token classification. Do not execute
@@ -238,6 +248,8 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > belongs here; M7 still owns large-document optimization.
 
 ### [x] P39 — Model registry and browser comparison
+
+Status 2026-11-19: evidence `src/core/nerModels.ts`, `src/core/nerEval.ts`, `scripts/ner-eval.mts`, `scripts/ner-bench.*`, `M06-01-evaluation-results.txt`. Gate C caveats (GL regression for nym-small, native-speaker review) are recorded in M06-01.
 
 > Complete gates B–C in [M06-01](M06-01-Browser-local-model-review-plan.md).
 > Add a pure model registry with pinned revision/artifacts, total bytes,
@@ -251,6 +263,8 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 
 ### [~] P40 — Validated model choice and provisioning UI
 
+Status 2026-11-19: `src/components/NerToggle.tsx` (chooser, remembered choice, hosted opt-in, package import), `src/lib/nerChoice.ts`, `src/lib/nerPackage.ts` exist. Gate D (offline cold/warm browser run, `scripts/p40-browser.mjs`) has no full green run, so P40 stays open.
+
 > Offer the selected compact model with its measured complete download size,
 > tested language coverage and initialization/scan progress. Offer a larger model
 > only when evaluation justifies its added resource cost. Remember explicit user
@@ -262,6 +276,8 @@ Validation: all 643 tests pass on Node 22.23.2; lint and portable build pass.
 > wording with this deployment policy during implementation. Run gate D of M06-01.
 
 ### [ ] P27 — Galician language pack
+
+Status 2026-11-19: `src/core/packs/gl.ts` (+ `gl.test.ts`) and a `GL` `DetectorLexicon` in `packs/lexicons.ts` exist, with M06-02 Galician rule fixes. Missing from the expanded scope: `src/core/data/{gl,pt,ca,eu}/pseudonyms.ts` (only `es` and `en` exist), registry-derived `DocumentLanguage`/`PseudonymLang`, and the listed tests.
 
 > A language pack only. The IDs are Spanish, so the ES jurisdiction stays on:
 > this plan shows that language and jurisdiction are separate. Data:
@@ -291,6 +307,8 @@ that later packs are mostly data:
 
 ### [ ] P42 — Lift the 100,000-character model limit
 
+Status 2026-11-19: not done — `src/lib/nerLimits.ts` still has `NER_MAX_CHARS = 100_000`, used by `nerClient.ts`. Note `planNerWindows` named below no longer exists (see P38); the worker chunks with `chunkText`.
+
 Planned 2026-10-30. Long documents fail with "NER is limited to 100,000
 characters." The model is not what limits the length: the check is a guard in
 `src/lib/nerClient.ts`, and the worker already splits text into token windows
@@ -309,6 +327,8 @@ characters." The model is not what limits the length: the check is a guard in
 M7 still owns large-document performance (streamed results, worker memory).
 
 ### [ ] P43 — Italy: IT jurisdiction + `it` language pack
+
+Status 2026-11-19: not started (no `itIds.ts`, no `packs/it.ts`).
 
 Planned 2026-10-30. Italian has a `langDetect` profile but no pack and no
 jurisdiction.
@@ -331,6 +351,8 @@ jurisdiction.
 
 ### [ ] P44 — Model re-evaluation for the new languages
 
+Status 2026-11-19: not started; fixtures cover one CA and one EU document each (P41).
+
 Planned 2026-10-30. The current comparison covers ES/GL/PT/EN, plus one Basque
 document.
 
@@ -349,6 +371,8 @@ document.
 
 ### [x] P28 — Portuguese pack + PT jurisdiction
 
+Evidence 2026-11-19: `src/core/packs/pt.ts`, `src/core/ptIds.ts`.
+
 > Add the `pt` language pack and the `PT` jurisdiction: NIF (mod-11 check
 > digit) and Cartão de Cidadão (check digit). This plan shows that adding a
 > country takes data plus one detector file with tests.
@@ -357,6 +381,8 @@ P27 and P28 size their name data by what P39's model already catches in that
 language, and add the language to the shared fixtures.
 
 ### [x] P41 — Catalan and Basque packs
+
+Evidence 2026-11-19: `src/core/packs/ca.ts`, `src/core/packs/eu.ts`.
 
 > Added on request together with P28. `ca` and `eu` language packs
 > (`packs/ca.ts`, `packs/eu.ts`: greetings, weekdays/months, particles,

@@ -98,6 +98,8 @@ not wait for 1000-page optimization.
 
 ### [x] A — Correct inference contract (M6 P38, M09 task 02)
 
+Status 2026-11-19: implemented (see P38 result). Token-window planning was later replaced by `chunkText`/`mergeChunkEntities` ([M06-02](M06-02-Detection-quality-plan.md) task 2) plus a tokenizer-budget guard in `src/workers/ner.worker.ts`.
+
 Use tokenizer-derived or independently verified source alignment, including all
 relevant token positions and normalization provenance. Never infer offsets by
 searching only entity words. If the runtime cannot expose reliable offsets, build
@@ -116,6 +118,8 @@ changes while running. Import, paste and rescan use the same orchestrator and
 expose whether the current document revision actually completed NER.
 
 ### [ ] B — Reproducible browser feasibility (M6 P39)
+
+Status 2026-11-19: partly done — pinned registry (`src/core/nerModels.ts`), WASM benchmark, local runtime assets and package import exist. Open: WebGPU untested, and the offline cold/warm start with network denied has no green run (gate D).
 
 Pin revision and complete artifact manifest before testing. Keep each compressed
 graph with its matching tokenizer/configuration; do not mix root and pruned
@@ -137,6 +141,8 @@ failed initialization for an explicit retry. Verify offline cold and warm starts
 with network denied and record browser/version/origin restrictions.
 
 ### [ ] C — Shared quality and usability evaluation
+
+Status 2026-11-19: partly done — 20 synthetic fixtures, `scripts/ner-eval.mts`, results in `M06-01-evaluation-results.txt`. Open: native-speaker review, constrained-device run, GL regression of nym-small vs BERT.
 
 Use held-out, reviewed synthetic ES/GL/PT/EN documents with prose, Markdown tables,
 HTML-derived text, names in lists, ambiguous common-word names, OCR corruption,
@@ -167,6 +173,8 @@ thresholds per model/category from evaluation, not the current universal 0.8.
 A model that fails stays experimental; keep an explicit rules-only mode.
 
 ### [ ] D — Evidence-backed selection and future server reuse
+
+Status 2026-11-19: open — BERT stays the default, nym-small is an experimental opt-in (P40); the offline cold/warm browser run is not green.
 
 Publish the evaluation matrix and select a default only after gates A–C. Do not
 ship all candidates or download two models by default. Preserve pure span/label
