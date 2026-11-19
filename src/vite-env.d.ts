@@ -6,6 +6,8 @@ declare const __PORTABLE__: boolean
 
 interface ImportMetaEnv {
   readonly VITE_SITE_ORIGIN: string
+  // Dev server only (.env.development): offer the AI model on localhost.
+  readonly VITE_ALLOW_MODEL_DOWNLOAD?: string
 }
 
 interface ImportMetaEnv {

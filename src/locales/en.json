@@ -66,6 +66,7 @@
   "NerToggle.turn_off": "Turn off ",
   "NerToggle.delete_model": "Delete model ",
   "NerToggle.smart_name_company_detection_local_ai_model": "Smart name/company detection (local AI model, ~104MB one-time download, opt-in — runs entirely in your browser, nothing is ever sent anywhere) ",
+  "NerToggle.only_on_the_hosted_site": "Local AI detection is only offered on the hosted site: this copy never connects to the internet, and the model has to be downloaded. The built-in detectors work here as usual.",
   "PastePanel.replace_the_current_document_with_the_pasted": "Replace the current document with the pasted text?\n\n",
   "PastePanel.cancel_inserts_the_pasted_text_into_the": "Cancel inserts the pasted text into the current document instead.",
   "PastePanel.1_paste_text": "1. Paste text",
