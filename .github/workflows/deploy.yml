@@ -42,7 +42,7 @@ concurrency:
 
 env:
   PROJECT_NAME: anonymaizer
-  NODE_VERSION: '22'
+  NODE_VERSION: '24'
 
 jobs:
   build-deploy:

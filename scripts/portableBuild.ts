@@ -31,6 +31,27 @@ export const inlinePortableHtml = (html: string, assets: Map<string, PortableAss
   return { html, inlined }
 }
 
+// The portable file is opened from file:// (or copied to any server), so it has
+// no response headers and, until this, no Content-Security-Policy at all: the
+// hosted build's `img-src 'self'` (vite.config.ts, headersFile) did not apply,
+// and anything rendered from an AI reply could load a remote resource.
+// A <meta> policy travels with the file. It names only the directives for
+// content that loads on render — nothing here restricts scripts or workers,
+// whose file:// behaviour differs between browsers and is not worth a blank
+// page. `file:` lets a sibling favicon load when opened from disk.
+export const PORTABLE_CSP = [
+  "img-src 'self' data: blob: file:",
+  "media-src 'none'",
+  "font-src 'self' data:",
+  "object-src 'none'",
+  "frame-src 'none'",
+  "form-action 'none'",
+  "base-uri 'none'",
+].join('; ')
+
+export const withPortableCsp = (html: string): string =>
+  html.replace(/<head>/i, `<head>\n    <meta http-equiv="Content-Security-Policy" content="${PORTABLE_CSP}" />`)
+
 export const portableBuild = (): Plugin => ({
   name: 'anonymaizer-portable-build',
   apply: 'build',
@@ -48,7 +69,7 @@ export const portableBuild = (): Plugin => ({
     for (const file of Object.values(bundle)) {
       if (file.type !== 'asset' || !file.fileName.endsWith('.html')) continue
       const result = inlinePortableHtml(String(file.source), assets)
-      file.source = result.html
+      file.source = withPortableCsp(result.html)
       result.inlined.forEach((name) => inlined.add(name))
     }
     for (const name of inlined) delete bundle[name]

@@ -1,0 +1,34 @@
+# Checks on every pull request and on main. Separate from deploy.yml, which is
+# paused and manual: without this nothing ran lint or the tests automatically.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - name: Hosted build must contain no analytics code
+        run: sh scripts/check-no-analytics.sh dist
+      - run: npm run build:portable
+      - name: Portable build must contain no analytics code
+        run: sh scripts/check-no-analytics.sh dist-portable

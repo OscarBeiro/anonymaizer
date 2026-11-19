@@ -22,6 +22,8 @@ session, because that is where the iteration happens.
 | M5 — Polish & public beta | [`m5-polish-beta.md`](done/m5-polish-beta.md) | done (launch checklist in P20/P22) |
 | M6 — Languages: i18n, detection packs and multilingual NER | [`m6-language-packs.md`](m6-language-packs.md) | in progress (P26, P28, P38–P41 done or pending a browser check; P42 → P27 → P43 → P44 next; open items in [`m6-open-items.md`](m6-open-items.md)) |
 | M6 model review — browser runtime and candidate selection | [`M06-01-Browser-local-model-review-plan.md`](M06-01-Browser-local-model-review-plan.md) | reviewed; implementation planned in P38–P40 |
+| M6 detection quality — evaluation corpus, NER coverage, Galician rule fixes | [`M06-02-Detection-quality-plan.md`](M06-02-Detection-quality-plan.md) | in progress |
+| M6 review fixes — merge leak, remote images, persistence, CI | [`M06-03-Review-fixes-plan.md`](M06-03-Review-fixes-plan.md) | in progress |
 | M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
 | M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
 | M09 — Safe document round trip and integration foundations | [`M09-01-Safe-document-round-trip-plan.md`](M09-01-Safe-document-round-trip-plan.md) | in progress (07 complete; implementation/evidence in [`../m9-acceptance.md`](../m9-acceptance.md); acceptance gates remain open) |

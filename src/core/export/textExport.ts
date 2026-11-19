@@ -27,6 +27,8 @@ const htmlBody = (text: string, highlight: boolean): string => {
 };
 
 // Self-contained: inline style, no fonts, links or scripts (hard rules 2 and 3).
+// Colours are the app's own (src/styles/tokens.css: --color-text,
+// --color-accent-subtle, --color-mark-text), copied because the file stands alone.
 const htmlDocument = (title: string, body: string): string => `<!doctype html>
 <html>
 <head>
@@ -34,12 +36,12 @@ const htmlDocument = (title: string, body: string): string => `<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${escapeHtml(title)}</title>
 <style>
-body { margin: 2rem auto; max-width: 50rem; padding: 0 1rem; font: 15px/1.6 system-ui, sans-serif; color: #1f2937; background: #fff; }
+body { margin: 2rem auto; max-width: 50rem; padding: 0 1rem; font: 15px/1.6 system-ui, sans-serif; color: #1f3f70; background: #fff; }
 pre { white-space: pre-wrap; word-wrap: break-word; font: inherit; margin: 0; }
-mark { background: #ede9fe; color: #6d28d9; border-radius: 3px; padding: 0 2px; font-family: ui-monospace, monospace; }
+mark { background: rgba(101, 139, 197, 0.14); color: #2a5698; border-radius: 3px; padding: 0 2px; font-family: ui-monospace, monospace; }
 @media (prefers-color-scheme: dark) {
   body { color: #d1d5db; background: #16171d; }
-  mark { background: #2e1f4d; color: #c4b5fd; }
+  mark { background: rgba(155, 201, 237, 0.15); color: #c6dcf3; }
 }
 </style>
 </head>

@@ -66,13 +66,12 @@ M9 release solely on the evidence below.
 ## Verification
 
 The shell defaults to Node 20.20.2 / npm 10.8.2; that runtime produces nine jsdom
-startup errors. Use installed Node 22.23.2 / npm 10.9.8 (`.nvmrc`), matching the
-previous lockfile-consistent baseline. No dependencies were added.
+startup errors. Use the Node 24 pinned in `.nvmrc`. No dependencies were added.
 
 Commands:
 
 ```
-export PATH=/home/oscar/.nvm/versions/node/v22.23.2/bin:$PATH
+export PATH=/home/oscar/.nvm/versions/node/v24.22.2/bin:$PATH
 npm test -- --reporter=dot
 npm run lint
 npm run build

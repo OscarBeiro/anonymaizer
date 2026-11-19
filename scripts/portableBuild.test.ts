@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { inlinePortableHtml } from './portableBuild'
+import { inlinePortableHtml, PORTABLE_CSP, withPortableCsp } from './portableBuild'
 
 describe('portable HTML inlining', () => {
   it('inlines exact entry and stylesheet references while preserving literal replacements', () => {
@@ -36,5 +36,14 @@ describe('portable HTML inlining', () => {
     ]))
     expect(result.html).toBe(html)
     expect(result.inlined.size).toBe(0)
+  })
+
+  it('adds a policy that blocks remote images and media but not scripts', () => {
+    const html = withPortableCsp('<!doctype html><html><head><title>x</title></head><body></body></html>')
+    expect(html).toContain(`<meta http-equiv="Content-Security-Policy" content="${PORTABLE_CSP}" />`)
+    expect(html.indexOf('Content-Security-Policy')).toBeLessThan(html.indexOf('<title>'))
+    expect(PORTABLE_CSP).toContain("img-src 'self' data: blob: file:")
+    expect(PORTABLE_CSP).toContain("media-src 'none'")
+    expect(PORTABLE_CSP).not.toMatch(/script-src|default-src|worker-src|connect-src/)
   })
 })

@@ -430,6 +430,11 @@ worker behavior before considering this phase complete.
 
 ### [ ] 12 — Complete retention policy and clearing across tabs
 
+> 2026-11-11 (M06-03): until the "Remember on this device" switches exist,
+> documents and rules are saved by default again — `remembered()` in
+> `src/lib/retention.ts` is true unless set to `false`. Making ephemeral the
+> default again must ship together with that UI and the legal-text changes.
+
 Extends task 04. Inventory documents, mappings/snapshots, responses, custom rule
 terms, review history, preferences and model assets. Separate non-sensitive
 preferences/model caching from sensitive content retention. New custom rules in

@@ -5,7 +5,7 @@ import { convertHtmlToMarkdown } from '../htmlToMarkdown';
 // .eml via postal-mime (M3/P8g).
 //
 // **Not letterparser or eml-parse-js**, which the plan named: letterparser was
-// last published in 2024 and eml-parse-js is on a beta. postal-mime 3.0.0 is
+// last published in 2024 and eml-parse-js is on a beta. postal-mime is
 // current (2026), has **zero dependencies**, audits clean, ships types, is
 // written for the browser, and contains no `fetch`/`XMLHttpRequest`/`Worker`
 // anywhere in its tree — checked, because hard rule 3 says a dependency may
@@ -64,9 +64,13 @@ export const parse = async (bytes: ArrayBuffer, fileName: string): Promise<Parse
   }
 
   // postal-mime accepts almost anything and returns an empty shell rather than
-  // throwing, so "not an email" has to be judged from the result: no headers
-  // and no body means the file was never a message.
-  if (!email.from && !email.subject && !email.text && !email.html && (email.to ?? []).length === 0) {
+  // throwing, so "not an email" has to be judged from the result. Since 4.x it
+  // also treats header-less plain text as a body, so a message with no parsed
+  // headers at all was never a message either.
+  if (
+    (email.headers ?? []).length === 0 ||
+    (!email.from && !email.subject && !email.text && !email.html && (email.to ?? []).length === 0)
+  ) {
     throw new Error(`Could not read "${fileName}" — it does not look like an email message.`);
   }
 

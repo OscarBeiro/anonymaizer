@@ -1,0 +1,43 @@
+## gl
+category        total caught partial missed recall over-flags
+ADDRESS            10     10       0      0   100%          0
+COMPANY             5      5       0      0   100%          0
+DNI                 4      4       0      0   100%          0
+EMAIL               2      2       0      0   100%          0
+IBAN                4      4       0      0   100%          0
+NAME               37     36       0      1    97%          0
+NIE                 1      1       0      0   100%          0
+PHONE               3      3       0      0   100%          0
+VAT_NUMBER          1      1       0      0   100%          0
+ALL                67     66       0      1    99%          1
+LOCATION            —                                       1
+
+## es
+category        total caught partial missed recall over-flags
+ADDRESS             2      2       0      0   100%          0
+COMPANY             1      1       0      0   100%          0
+DNI                 2      2       0      0   100%          0
+EMAIL               1      1       0      0   100%          0
+IBAN                2      2       0      0   100%          0
+NAME               12     11       0      1    92%          0
+NIE                 1      1       0      0   100%          0
+PHONE               2      2       0      0   100%          0
+VAT_NUMBER          1      1       0      0   100%          0
+ALL                24     23       0      1    96%          0
+
+## en
+category        total caught partial missed recall over-flags
+ADDRESS             1      1       0      0   100%          0
+COMPANY             2      2       0      0   100%          0
+EMAIL               1      1       0      0   100%          0
+NAME                8      8       0      0   100%          1
+PHONE               2      2       0      0   100%          0
+ALL                14     14       0      0   100%          1
+
+## Leaks (required values not fully hidden)
+gl-correo  NAME missed: "Roi"
+es-email-rrhh  NAME missed: "Raúl"
+
+## Over-flags (hidden but not personal)
+gl-servizos-sociais  LOCATION: "Galicia"
+en-letter  NAME: "Tenant Act"

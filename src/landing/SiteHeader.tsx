@@ -1,5 +1,6 @@
 import { LanguagePicker } from '../components/LanguagePicker';
 import { t } from '../i18n';
+import { AppMarkIcon } from '../components/AppMark';
 import { BrandName } from '../components/BrandName';
 import { BetaBadge } from '../components/BetaBadge';
 import { useEffect, useState } from 'react';
@@ -22,7 +23,7 @@ export function SiteHeader() {
   return (
     <header className="landing-nav">
       <a className="landing-brand" {...linkProps('/')}>
-        <span className="app-mark" aria-hidden="true">A</span> <BrandName /> <BetaBadge />
+        <span className="app-mark" aria-hidden="true"><AppMarkIcon /></span> <BrandName /> <BetaBadge />
       </a>
       <nav aria-label={t('SiteHeader.main')}>
         <a {...linkProps('/#how')}>{t('SiteHeader.how_it_works')}</a>

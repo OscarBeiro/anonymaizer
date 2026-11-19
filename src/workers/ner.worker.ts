@@ -10,8 +10,8 @@
 // or the model.
 import { env, pipeline, type TokenClassificationPipeline } from '@huggingface/transformers';
 import { getNerModel, type NerModelSpec } from '../core/nerModels';
-import { aggregateBioTokens, computeTokenOffsets, type NerEntity, type RawNerToken } from '../core/ner';
-import { nerCoverage, offsetNerEntities, planNerWindows, reconcileNerEntities, type NerCoverage } from '../core/nerWindows';
+import { aggregateBioTokens, chunkText, computeTokenOffsets, mergeChunkEntities, NER_CHUNK_CHARS, NER_CHUNK_OVERLAP, type NerEntity, type RawNerToken, type TextChunk } from '../core/ner';
+import { nerCoverage, type NerCoverage } from '../core/nerWindows';
 import { createIndexedDbModelCache } from './nerModelCache';
 
 // Never look for a locally-bundled copy — the model is deliberately not part
@@ -42,12 +42,14 @@ env.backends.onnx.wasm!.numThreads = 1;
 
 // Room for the special tokens ([CLS]/[SEP] or their equivalents) in every window.
 const SPECIAL_TOKENS = 2;
-const WINDOW_OVERLAP_CHARS = 200;
+const MIN_CHUNK_CHARS = 100;
 
 export type NerWorkerRequest = { type: 'run'; requestId: number; text: string; allowDownload: boolean; modelId: string };
 
 export type NerWorkerResponse =
-  | { type: 'scanning'; requestId: number; done: number; total: number }
+  | { type: 'scanning'; requestId: number }
+  // One per finished window: tells the client the scan is alive (idle timeout).
+  | { type: 'chunk'; requestId: number; done: number; total: number }
   | { type: 'progress'; requestId: number; status: string; progress?: number }
   | { type: 'result'; requestId: number; entities: NerEntity[]; coverage: NerCoverage; cacheWriteFailed?: 'quota' | 'other'; modelId: string }
   | { type: 'error'; requestId: number; message: string };
@@ -117,21 +119,29 @@ self.onmessage = async (event: MessageEvent<NerWorkerRequest>) => {
     const extractor = await getExtractor(spec);
     const countTokens = (chunk: string): number =>
       (extractor.tokenizer(chunk, { add_special_tokens: false }) as { input_ids: { size: number } }).input_ids.size;
-    const windows = planNerWindows(text, countTokens, {
-      maxTokens: spec.windowTokens - SPECIAL_TOKENS,
-      overlapChars: WINDOW_OVERLAP_CHARS,
-    });
-    const found: NerEntity[] = [];
-    for (const [done, window] of windows.entries()) {
-      postMessage({ type: 'scanning', requestId, done, total: windows.length } satisfies NerWorkerResponse);
-      const chunk = text.slice(window.start, window.end);
+    postMessage({ type: 'scanning', requestId } satisfies NerWorkerResponse);
+    // M06-02 chunking (chunkText/mergeChunkEntities, core/ner.ts) is the only
+    // chunker. P38 adds a guard from the model's own tokenizer: the 800-character
+    // window is shrunk until every window fits the model's token budget, so
+    // models whose tokenizer splits text into many pieces are never truncated.
+    const budget = spec.windowTokens - SPECIAL_TOKENS;
+    let chunks: TextChunk[] = chunkText(text);
+    for (let maxChars = NER_CHUNK_CHARS; maxChars > MIN_CHUNK_CHARS && chunks.some((c) => countTokens(c.text) > budget);) {
+      maxChars = Math.max(MIN_CHUNK_CHARS, Math.floor(maxChars * 0.7));
+      chunks = chunkText(text, maxChars, Math.min(NER_CHUNK_OVERLAP, Math.floor(maxChars / 4)));
+    }
+    const results: { start: number; entities: NerEntity[] }[] = [];
+    for (const chunk of chunks) {
+      if (currentRequestId !== requestId) return;
       // ignore_labels: [] keeps the non-entity tokens, so every token has a
       // neighbour to anchor its offset on (see computeTokenOffsets).
-      const raw = (await extractor(chunk, { ignore_labels: [] })) as unknown as RawNerToken[];
-      const withOffsets = computeTokenOffsets(raw, chunk);
-      found.push(...offsetNerEntities(aggregateBioTokens(withOffsets, chunk), window.start));
+      const raw = (await extractor(chunk.text, { ignore_labels: [] })) as unknown as RawNerToken[];
+      const withOffsets = computeTokenOffsets(raw, chunk.text);
+      results.push({ start: chunk.start, entities: aggregateBioTokens(withOffsets, chunk.text) });
+      postMessage({ type: 'chunk', requestId, done: results.length, total: chunks.length } satisfies NerWorkerResponse);
     }
-    const entities = reconcileNerEntities(text, found);
+    const entities: NerEntity[] = mergeChunkEntities(results);
+    const windows = chunks.map((c) => ({ start: c.start, end: c.start + c.text.length }));
 
     const response: NerWorkerResponse = {
       type: 'result', requestId, entities,

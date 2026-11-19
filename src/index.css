@@ -1,4 +1,5 @@
 @import './styles/tokens.css';
+@import './styles/fonts.css';
 
 :root {
   font: 18px/145% var(--font-sans);
@@ -31,9 +32,15 @@ body {
 }
 
 h1,
+h2,
+h3,
+.brand-name {
+  font-family: var(--font-display);
+}
+
+h1,
 h2 {
-  font-family: var(--font-sans);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-bold);
   color: var(--color-text-strong);
 }
 
@@ -127,12 +134,24 @@ input[type='radio'] {
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: var(--color-on-accent);
-  font-weight: var(--weight-bold);
-  font-size: var(--text-lg);
+  border-radius: 50%;
   text-decoration: none;
+}
+
+.app-mark-icon {
+  display: block;
+}
+
+.app-mark-disc {
+  fill: var(--color-brand);
+}
+
+.app-mark-arrows {
+  fill: none;
+  stroke: var(--color-on-brand);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* P21: consent banner — shared by the landing and the wizard. Reject and
