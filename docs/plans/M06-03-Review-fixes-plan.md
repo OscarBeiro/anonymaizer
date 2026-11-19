@@ -75,3 +75,11 @@ the `cookies.*`/`privacy.*`/`ConsentBanner.*` strings in every language, bump
 ## Verification
 `npm test`, `npm run lint`, `npm run build`, `npm run build:portable`; browser
 checks listed in the PR description.
+
+Browser checks, 2026-11-19 (headless Chrome 157 through Playwright, throwaway
+scripts outside the repo): merge and split of names and email addresses leave
+no original value in the sanitized text (task 1); the restored view requests
+nothing for a reply with a placeholder inside twelve resource-loading
+constructs, on `vite preview` and on the portable build from `file://`
+(task 2). Not checked: the HTML and plain-text formats of the restored view;
+the AI model.
