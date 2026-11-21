@@ -27,6 +27,8 @@ export const TOGGLEABLE_CATEGORIES = [
   'LOCATION',
   'DNI',
   'NIE',
+  'NIF',
+  'CARTAO_CIDADAO',
   'INVALID_ID',
   'VAT_NUMBER',
   'IBAN',

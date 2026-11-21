@@ -20,6 +20,10 @@ import {
   saveStep,
   saveTheme,
   THEME_KEY,
+  loadPinnedProfile,
+  savePinnedProfile,
+  PINNED_PROFILE_KEY,
+  loadSession,
 } from './session';
 
 const memoryStorage = () => {
@@ -35,6 +39,35 @@ const memoryStorage = () => {
     },
   };
 };
+
+describe('pinned detection profiles', () => {
+  beforeEach(() => { vi.stubGlobal('localStorage', memoryStorage()); acceptGeneration(); });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('round-trips pins, clears them, and ignores malformed stored preferences', () => {
+    expect(loadPinnedProfile()).toBeNull();
+    const profile = { languages: ['gl'] as const, jurisdictions: ['ES'] };
+    expect(savePinnedProfile(profile)).toBe(true);
+    expect(loadPinnedProfile()).toEqual(profile);
+    expect(savePinnedProfile(null)).toBe(true);
+    expect(loadPinnedProfile()).toBeNull();
+    localStorage.setItem(PINNED_PROFILE_KEY, '{bad');
+    expect(loadPinnedProfile()).toBeNull();
+  });
+
+  it('reports blocked storage instead of claiming pins were saved', () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => { throw new Error('blocked'); } });
+    expect(savePinnedProfile({ languages: ['es'], jurisdictions: ['ES'] })).toBe(false);
+  });
+
+  it('keeps a retained document associated with the profile that produced its mappings', () => {
+    localStorage.setItem('anonymaizer.rememberDocument', 'true');
+    const session = { sessionId: 's', createdAt: '', inputType: 'PASTE' as const, originalFormat: 'raw_text' as const,
+      mappings: [], rawMarkdown: 'short', anonymizedMarkdown: 'short', detectionProfile: { languages: ['pt'] as const, jurisdictions: [] } };
+    expect(saveSession(session)).toBe(true);
+    expect(loadSession()?.detectionProfile).toEqual(session.detectionProfile);
+  });
+});
 
 describe('theme preference', () => {
   beforeEach(() => { vi.stubGlobal('localStorage', memoryStorage()); acceptGeneration(); });

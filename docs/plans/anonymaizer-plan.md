@@ -20,13 +20,17 @@ session, because that is where the iteration happens.
 | M4a — Export & detection control | [`m4a-export-control.md`](done/m4a-export-control.md) | done |
 | M4b — Pseudonymization & localization | [`m4b-pseudonym-i18n.md`](done/m4b-pseudonym-i18n.md) | done (P12–P13); P14–P15 moved to M6 |
 | M5 — Polish & public beta | [`m5-polish-beta.md`](done/m5-polish-beta.md) | done (launch checklist in P20/P22) |
-| M6 — Languages: i18n, detection packs and multilingual NER | [`m6-language-packs.md`](m6-language-packs.md) | planned (P14–P15, P23–P28, P38–P40) |
-| M6 model review — browser runtime and candidate selection | [`M06-01-Browser-local-model-review-plan.md`](M06-01-Browser-local-model-review-plan.md) | reviewed; implementation planned in P38–P40 |
-| M6 detection quality — evaluation corpus, NER coverage, Galician rule fixes | [`M06-02-Detection-quality-plan.md`](M06-02-Detection-quality-plan.md) | in progress |
-| M6 review fixes — merge leak, remote images, persistence, CI | [`M06-03-Review-fixes-plan.md`](M06-03-Review-fixes-plan.md) | in progress |
-| M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32) |
+| M6 — Languages: i18n, detection packs and multilingual NER | [`m6-language-packs.md`](m6-language-packs.md) | in progress (2026-11-19: P24–P26, P28, P38, P39, P41 done; P40 pending its offline browser run (gate D); P14, P15, P23, P27, P42–P44 open; open items in [`m6-open-items.md`](m6-open-items.md)) |
+| M6 model review — browser runtime and candidate selection | [`M06-01-Browser-local-model-review-plan.md`](M06-01-Browser-local-model-review-plan.md) | in progress (gate A done; B and C partly done; D open: offline cold/warm browser run not green) |
+| M6 detection quality — evaluation corpus, NER coverage, Galician rule fixes | [`M06-02-Detection-quality-plan.md`](M06-02-Detection-quality-plan.md) | tasks 1–3 done; task 4 (model) open, tracked in P39/P40 |
+| M6 transformers correction and lockfile audit | [`08-m6-transformers-correction.md`](done/08-m6-transformers-correction.md) | done (version bump obsolete under 0.19.0-dev) |
+| M6 review fixes — merge leak, remote images, persistence, CI | [`M06-03-Review-fixes-plan.md`](done/M06-03-Review-fixes-plan.md) | done (task 5 deferred to launch, see below) |
+| M6 UI language foundation | [`m6-ui-language-support.md`](done/m6-ui-language-support.md) | done (en/gl catalogs and language picker) |
+| M7 — Large-document scale | [`m7-scale.md`](m7-scale.md) | planned (P29–P32); P29 code exists but is not wired into the UI |
 | M8 — Batch processing | [`m8-batch.md`](m8-batch.md) | planned (P33–P37) |
-| M09 — Safe document round trip and integration foundations | [`M09-01-Safe-document-round-trip-plan.md`](M09-01-Safe-document-round-trip-plan.md) | in progress (07 complete; implementation/evidence in [`../m9-acceptance.md`](../m9-acceptance.md); acceptance gates remain open) |
+| M09 — Safe document round trip and integration foundations | [`M09-01-Safe-document-round-trip-plan.md`](M09-01-Safe-document-round-trip-plan.md) | in progress (07 complete; implementation/evidence in [`../m9-acceptance.md`](../m9-acceptance.md); acceptance gates remain open; UI wiring undecided, see its 2026-11-19 note) |
+
+**Launch checklist (deferred):** M06-03 task 5 — once the replacement analytics transport is chosen, rewrite the consent banner and the cookie/privacy pages to match the code ([`done/M06-03-Review-fixes-plan.md`](done/M06-03-Review-fixes-plan.md), task 5).
 
 **2026-10-12 review:** M6 P38 now covers inference correctness rather than a
 library upgrade. Its candidate selection is conditional on browser measurements;

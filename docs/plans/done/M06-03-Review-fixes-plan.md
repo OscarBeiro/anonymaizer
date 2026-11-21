@@ -1,8 +1,10 @@
 # M06-03 — Fixes from the full project review
 
+Archived 2026-11-19: tasks 1–4, 6, 7 done; task 5 deferred to launch (legal text vs analytics transport; see the launch item in the [index](../anonymaizer-plan.md)).
+
 Milestone: M06 · GitHub milestone `0.19.0` · Started 2026-11-11.
-Related: [M09-01](M09-01-Safe-document-round-trip-plan.md) (owns the unwired
-round-trip code), [M06-02](M06-02-Detection-quality-plan.md) (PR #18; its two
+Related: [M09-01](../M09-01-Safe-document-round-trip-plan.md) (owns the unwired
+round-trip code), [M06-02](../M06-02-Detection-quality-plan.md) (PR #18; its two
 review items were fixed there).
 
 ## Why

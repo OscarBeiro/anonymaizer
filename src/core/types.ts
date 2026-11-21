@@ -1,4 +1,5 @@
 import type { MappingSnapshot, Revision } from './roundTrip';
+import type { DetectionProfile } from './packs/profile';
 export type KnownCategory =
   | 'NAME' | 'EMAIL' | 'PHONE' | 'ADDRESS' | 'LOCATION' | 'COMPANY'
   | 'DNI' | 'NIE' | 'INVALID_ID' | 'VAT_NUMBER' | 'IBAN' | 'CREDIT_CARD'
@@ -45,6 +46,7 @@ export interface MappingSession {
   mappings: MappingItem[];
   rawMarkdown: string;
   anonymizedMarkdown: string;
+  detectionProfile?: DetectionProfile;
   coverage?: ExtractionCoverage;
   snapshots?: MappingSnapshot[];
   identity?: Revision;
@@ -110,6 +112,8 @@ export const RUNG = {
             // guess it supersedes, but not the checksum/shape detectors above
   NAME: 6,
   COMPANY_ACRONYM: 7, // ALL-CAPS heuristic, off by default
+  NER_LOW: 8, // model hit below its confidence threshold: offered for review,
+              // never allowed to displace an enabled detection
 } as const;
 
 export interface ExtractionCoverage {

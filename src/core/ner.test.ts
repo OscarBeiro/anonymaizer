@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { aggregateBioTokens, chunkText, computeTokenOffsets, mergeChunkEntities, mapNerEntitiesToSpans, NER_CONFIDENCE_THRESHOLD, type NerEntity, type RawNerToken } from './ner';
 import { RUNG } from './types';
+import { arbitrateSpans } from './span';
 
 describe('aggregateBioTokens', () => {
   it('merges a B-/I- run of the same type into one entity', () => {
@@ -246,6 +247,63 @@ describe('computeTokenOffsets', () => {
     const withOffsets = computeTokenOffsets(tokens, text);
     expect(withOffsets[0]).toMatchObject({ start: 0, end: 5 });
     expect(withOffsets[2]).toMatchObject({ start: 10, end: 15 });
+  });
+});
+
+describe('token alignment with retained non-entity tokens', () => {
+  const tok = (word: string, entity: string, index: number): RawNerToken => ({ word, score: 0.95, entity, index });
+
+  it('anchors a repeated word to its own occurrence', () => {
+    const text = 'May is a month. May arrived.';
+    const tokens = [tok('May', 'O', 1), tok('is', 'O', 2), tok('a', 'O', 3), tok('month', 'O', 4), tok('.', 'O', 5),
+      tok('May', 'B-PER', 6), tok('arrived', 'O', 7), tok('.', 'O', 8)];
+    const entities = aggregateBioTokens(computeTokenOffsets(tokens, text), text);
+    expect(entities).toMatchObject([{ entityGroup: 'PER', start: 16, end: 19 }]);
+  });
+
+  it('does not join entities separated by skipped tokens', () => {
+    const text = 'Alice met Bob';
+    const tokens = [tok('Alice', 'B-PER', 1), tok('Bob', 'I-PER', 4)];
+    const entities = aggregateBioTokens(computeTokenOffsets(tokens, text), text);
+    expect(entities.map((entity) => entity.text)).toEqual(['Alice', 'Bob']);
+  });
+
+  it('keeps accented and combining-mark words aligned', () => {
+    const text = 'Señor Núñez vive en Málaga';
+    const tokens = [tok('Señor', 'O', 1), tok('Núñez', 'B-PER', 2), tok('vive', 'O', 3), tok('en', 'O', 4), tok('Málaga', 'B-LOC', 5)];
+    const entities = aggregateBioTokens(computeTokenOffsets(tokens, text), text);
+    expect(entities.map((entity) => entity.text)).toEqual(['Núñez', 'Málaga']);
+  });
+});
+
+describe('low-confidence arbitration', () => {
+  it('lets an enabled heuristic keep a span a low-confidence model hit overlaps', () => {
+    const text = 'Contact Mario Rossi now';
+    const model = mapNerEntitiesToSpans([{ entityGroup: 'ORG', score: 0.3, start: 8, end: 13, text: 'Mario' }]);
+    const heuristic = { start: 8, end: 19, category: 'NAME' as const, text: 'Mario Rossi', confidence: 0.7, source: 'regex' as const, rung: RUNG.NAME };
+    const accepted = arbitrateSpans([...model, heuristic]);
+    expect(text.slice(accepted[0].start, accepted[0].end)).toBe('Mario Rossi');
+    expect(accepted).toHaveLength(1);
+  });
+});
+
+describe('sentencepiece-style tokens', () => {
+  const tok = (word: string, entity: string, index: number): RawNerToken => ({ word, score: 0.95, entity, index });
+
+  it('aligns leading-space words and digit-by-digit identifiers', () => {
+    const text = 'Soy María Fernández, DNI 12345678Z.';
+    const tokens = [tok(' Soy', 'O', 1), tok(' María', 'B-GIVEN_NAME', 2), tok(' Fernández', 'B-SURNAME', 3), tok(',', 'O', 4), tok(' DNI', 'O', 5),
+      tok(' ', 'O', 6), tok('1', 'B-GOVERNMENT_ID', 7), tok('2', 'I-GOVERNMENT_ID', 8), tok('3', 'I-GOVERNMENT_ID', 9), tok('4', 'I-GOVERNMENT_ID', 10),
+      tok('5', 'I-GOVERNMENT_ID', 11), tok('6', 'I-GOVERNMENT_ID', 12), tok('7', 'I-GOVERNMENT_ID', 13), tok('8', 'I-GOVERNMENT_ID', 14), tok('Z', 'I-GOVERNMENT_ID', 15)];
+    const entities = aggregateBioTokens(computeTokenOffsets(tokens, text), text);
+    expect(entities.map((e) => [e.entityGroup, e.text])).toEqual([['GIVEN_NAME', 'María'], ['SURNAME', 'Fernández'], ['GOVERNMENT_ID', '12345678Z']]);
+  });
+
+  it('keeps an entity whole across a whitespace-only token', () => {
+    const text = 'Calle Mayor 12';
+    const tokens = [tok(' Calle', 'B-STREET_ADDRESS', 1), tok(' Mayor', 'I-STREET_ADDRESS', 2), tok(' ', 'I-STREET_ADDRESS', 3),
+      tok('1', 'I-STREET_ADDRESS', 4), tok('2', 'I-STREET_ADDRESS', 5)];
+    expect(aggregateBioTokens(computeTokenOffsets(tokens, text), text).map((e) => e.text)).toEqual(['Calle Mayor 12']);
   });
 });
 

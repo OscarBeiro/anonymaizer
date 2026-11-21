@@ -96,7 +96,9 @@ not wait for 1000-page optimization.
 
 ## Implementation and acceptance gates
 
-### [ ] A — Correct inference contract (M6 P38, M09 task 02)
+### [x] A — Correct inference contract (M6 P38, M09 task 02)
+
+Status 2026-11-19: implemented (see P38 result). Token-window planning was later replaced by `chunkText`/`mergeChunkEntities` ([M06-02](M06-02-Detection-quality-plan.md) task 2) plus a tokenizer-budget guard in `src/workers/ner.worker.ts`.
 
 Use tokenizer-derived or independently verified source alignment, including all
 relevant token positions and normalization provenance. Never infer offsets by
@@ -116,6 +118,8 @@ changes while running. Import, paste and rescan use the same orchestrator and
 expose whether the current document revision actually completed NER.
 
 ### [ ] B — Reproducible browser feasibility (M6 P39)
+
+Status 2026-11-19: partly done — pinned registry (`src/core/nerModels.ts`), WASM benchmark, local runtime assets and package import exist. Open: WebGPU untested, and the offline cold/warm start with network denied has no green run (gate D).
 
 Pin revision and complete artifact manifest before testing. Keep each compressed
 graph with its matching tokenizer/configuration; do not mix root and pruned
@@ -137,6 +141,8 @@ failed initialization for an explicit retry. Verify offline cold and warm starts
 with network denied and record browser/version/origin restrictions.
 
 ### [ ] C — Shared quality and usability evaluation
+
+Status 2026-11-19: partly done — 20 synthetic fixtures, `scripts/ner-eval.mts`, results in `M06-01-evaluation-results.txt`. Open: native-speaker review, constrained-device run, GL regression of nym-small vs BERT.
 
 Use held-out, reviewed synthetic ES/GL/PT/EN documents with prose, Markdown tables,
 HTML-derived text, names in lists, ambiguous common-word names, OCR corruption,
@@ -168,6 +174,8 @@ A model that fails stays experimental; keep an explicit rules-only mode.
 
 ### [ ] D — Evidence-backed selection and future server reuse
 
+Status 2026-11-19: open — BERT stays the default, nym-small is an experimental opt-in (P40); the offline cold/warm browser run is not green.
+
 Publish the evaluation matrix and select a default only after gates A–C. Do not
 ship all candidates or download two models by default. Preserve pure span/label
 contracts so a future server adapter can reuse policies and tests without browser
@@ -181,3 +189,90 @@ model outputs; no weights or real sensitive documents were used. Researched the
 linked publisher cards and artifact trees. No browser inference or speed/quality
 benchmark was run. The earlier full-suite attempt was incomplete due to missing
 local `marked` and `jsdom`; documentation changes do not resolve that environment.
+
+## P38 result (2026-10-29)
+
+Gate A and the offline half of gate B's runtime requirements are implemented:
+`src/core/nerWindows.ts` (token-budget windows with overlap, reconciliation,
+coverage), contiguity-anchored offsets and index-gap-aware BIO grouping in
+`src/core/ner.ts`, low-confidence hits on `RUNG.NER_LOW`, the worker retaining
+non-entity tokens and resetting a failed load, `allowDownload` passed per
+request (only `modelDownloadAllowed()` origins may fetch), the onnxruntime
+runtime served from `/ort/` (jsDelivr removed from CSP and privacy text),
+honest cache-write and blocked-delete reporting, and scan progress/coverage in
+the UI. Real-model check (Node, `Xenova/bert-base-NER` q8, 1,195-token document,
+sentinels at head, mid and tail): 3 windows, full coverage, all four sentinel
+entities found with exact offsets. Not yet done: browser-run offline cold/warm
+start with network denied (P39/P40 gate D).
+
+## P39 results (2026-10-29)
+
+Code: `src/core/nerModels.ts` (registry: pinned revisions, complete file manifests,
+label policies for all 40 nym labels, thresholds), `src/core/nerEval.ts` and
+`src/core/__fixtures__/nerEvalDocs.ts` (metrics, 16 synthetic ES/GL/PT/EN documents,
+8 tuning / 8 acceptance), `scripts/ner-eval.mts` (quality comparison, Node),
+`scripts/ner-bench.*` (browser WASM harness driven over CDP). Full table:
+[M06-01-evaluation-results.txt](M06-01-evaluation-results.txt).
+
+**Findings**
+
+- `Wismut/nym-pii-multilingual-small` `int8/` loads with the stock transformers.js
+  loader (config, tokenizer and tokenizer_config come from the repository root;
+  only the graph comes from `int8/`). Complete download 151,127,134 bytes.
+  Tokenizer is sentencepiece-style (leading-space words, digit-by-digit numbers,
+  whitespace tokens), which `computeTokenOffsets` now aligns.
+- `Wismut/nym-pii-multilingual` `int8/` **fails** with the stock loader: the root
+  tokenizer (15 MB) is not the pruned one the int8 graph was exported with
+  (`indices element out of data bounds`). It runs only from a local package that
+  supplies `int8/tokenizer.json`.
+- Thresholds chosen on tuning documents only: 0.5 for both nym models.
+- Acceptance fixtures, sensitive-character recall (rules always on):
+  rules only 65.8 %; + BERT (0.8) 80.6 %; + nym-small 94.3 %; + nym-large 95.3 %.
+  Per category (acceptance): ADDRESS BERT 93.2 / small 100 / large 100,
+  COMPANY 77.0 / 88.1 / 84.4, NAME 80.2 / 93.2 / 97.1, LOCATION 81.3 / 100 / 100.
+  By language, small vs BERT: ES 96.8 vs 74.0, PT 92.6 vs 72.3, EN 88.7 vs 79.0,
+  **GL 94.3 vs 99.4** — a regression on two documents, so the "no hidden category
+  or language regression" gate is not strictly met. BERT's GL figure comes with
+  one false merge and 6.5 % extra characters masked.
+- Browser (headless Chrome, WASM, single thread, one development machine, 1,000
+  characters, main-thread harness): BERT init 0.8 s, warm p50 0.78 s; nym-small
+  first load 6.0 s including the download, warm p50 0.71 s, JS heap 120 MB;
+  nym-large (local package) warm p50 **2.39 s** (target 2 s), JS heap 515 MB.
+  WebGPU: no adapter in headless Chrome, untested. WASM linear memory is not
+  included in the heap figures.
+
+**Decision.** nym-small is the compact candidate to offer (P40) as an explicit,
+experimental opt-in; BERT stays the default until Galician is re-evaluated on a
+larger reviewed set. nym-large's extra recall (+1 point overall) does not justify
+2.5× the download, 3× the latency and 4× the heap, and it needs a custom package:
+it is not offered. Remaining for gates C/D: native-speaker review of the fixtures,
+a constrained-device run, WebGPU, and the offline cold/warm start with the network
+denied (P40).
+
+## P40 status (2026-10-29)
+
+Implemented: model chooser (size, measured languages, experimental flag), explicit
+remembered choice, hosted opt-in with size confirmation, offline package import
+verified by size and SHA-256, retry/cancel/delete (delete reports a blocked database
+honestly), coverage/cache/quota notices, CLAUDE.md rule 2 reconciled. The worker
+enforces "no network" with an `env.fetch` guard (transformers.js rejects both
+local and remote models being disabled).
+
+**Not yet verified:** gate D, the offline cold/warm browser run
+(`scripts/p40-browser.mjs`, network to other hosts blocked). It progressed through
+package import and the cold scan across several fixes but has not completed a
+full green run. P40 stays `[~]` until it does. Known limitation: transformers.js
+reads `config.json` from the moving `main` ref even when pinned, so a hosted
+download of that one file is not commit-pinned (imported copies are hash-checked).
+
+## P41 addendum: Catalan and Basque (2026-10-29)
+
+Fixtures grew to 20 documents (one tuning and one acceptance each for CA and EU).
+Results are in [M06-01-evaluation-results.txt](M06-01-evaluation-results.txt)
+(BERT and nym-large rows for the earlier fixtures were not re-run). On the
+single acceptance document per language: Catalan, rules (new `ca` pack) 100 %,
++BERT 100 %, +nym-small 100 %. Basque, rules (new `eu` pack) 100 %, +BERT 93.3 %,
+**+nym-small 68.3 %** (two sensitive spans missed, 12.8 % extra characters
+masked). The multilingual model does not list Basque or Catalan among its
+languages, and for Basque it made results worse; the rules-only mode stays the
+dependable option there. One document per language is an anecdote, not a gate.

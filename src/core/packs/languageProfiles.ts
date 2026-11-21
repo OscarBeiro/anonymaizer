@@ -17,6 +17,14 @@ export const LANGUAGE_PROFILES = {
     profileWords: ['o', 'a', 'os', 'as', 'do', 'da', 'dos', 'das', 'que', 'para', 'por', 'com', 'uma', 'um', 'não', 'já', 'hoje', 'também', 'quando', 'porque', 'nosso', 'nossa', 'seu', 'sua', 'seus', 'suas', 'tem', 'são', 'foi', 'é', 'em', 'no', 'na', 'nos', 'nas', 'ao', 'aos', 'pelo', 'pela', 'você', 'vocês'],
     characterHints: [/(?:ção|ções)$/u, /ã|õ/u],
   },
+  ca: {
+    profileWords: ['la', 'els', 'les', 'dels', 'per', 'amb', 'una', 'això', 'també', 'quan', 'perquè', 'nostre', 'nostra', 'seva', 'té', 'és', 'són', 'molt', 'però', 'aquest', 'aquesta', 'aquests', 'hem', 'han', 'ens', 'vostè', 'gràcies', 'sense', 'doncs', 'als'],
+    characterHints: [/l·l/u, /ny/u, /ç/u, /[àèò]/u],
+  },
+  eu: {
+    profileWords: ['eta', 'da', 'dira', 'ez', 'bat', 'hau', 'hori', 'zen', 'du', 'dute', 'izan', 'egin', 'baina', 'ere', 'edo', 'nire', 'gure', 'zure', 'beren', 'honetan', 'honek', 'batean', 'zuen', 'dago', 'daude', 'gaur', 'mesedez', 'agur', 'kaixo', 'dugu', 'duzu', 'zuek', 'gutxi', 'asko', 'ondo', 'oso', 'bezala', 'eskerrik'],
+    characterHints: [/tx/u, /tz/u],
+  },
   fr: {
     profileWords: ['le', 'la', 'les', 'des', 'du', 'de', 'un', 'une', 'et', 'avec', 'ce', 'cette', 'ces', 'pour', 'par', 'est', 'sont', 'pas', 'nous', 'vous', 'notre', 'vos', 'votre', 'leur', 'leurs', 'qui', 'que', 'dans', 'dont', 'quand', 'avez', 'veuillez'],
     characterHints: [/ç/u, /œ/u],

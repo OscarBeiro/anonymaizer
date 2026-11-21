@@ -23,5 +23,6 @@ export interface LanguagePack {
 export interface JurisdictionPack {
   readonly id: string;
   readonly defaultLanguages: readonly DetectedLanguage[];
+  readonly categoryPreset: readonly string[];
   readonly detectors: readonly PackDetector[];
 }

@@ -9,12 +9,18 @@
 // src/core/ner.ts and is unit-tested there without ever touching this file
 // or the model.
 import { env, pipeline, type TokenClassificationPipeline } from '@huggingface/transformers';
-import { aggregateBioTokens, chunkText, computeTokenOffsets, mergeChunkEntities, type NerEntity, type RawNerToken } from '../core/ner';
+import { getNerModel, type NerModelSpec } from '../core/nerModels';
+import { aggregateBioTokens, chunkText, computeTokenOffsets, mergeChunkEntities, NER_CHUNK_CHARS, NER_CHUNK_OVERLAP, type NerEntity, type RawNerToken, type TextChunk } from '../core/ner';
+import { nerCoverage, type NerCoverage } from '../core/nerWindows';
 import { createIndexedDbModelCache } from './nerModelCache';
 
 // Never look for a locally-bundled copy — the model is deliberately not part
 // of the single-file build (P7d decision log, docs/plans/done/m2-detection-ner.md).
 env.allowLocalModels = false;
+
+// Reports a failed cache write to the page, so "cached for next time" is only
+// ever claimed when the write really happened.
+const cacheWriteFailures: unknown[] = [];
 
 // IndexedDB-backed cache instead of the library's default Cache Storage API
 // — Cache Storage is unavailable on the `file://` origin this single-file
@@ -23,78 +29,132 @@ env.allowLocalModels = false;
 // nerModelCache.ts for the full explanation.
 env.useBrowserCache = false;
 env.useCustomCache = true;
-env.customCache = createIndexedDbModelCache();
+env.customCache = createIndexedDbModelCache({ onWriteError: (_key, error) => cacheWriteFailures.push(error) });
 
-// P8sec: left env.backends.onnx.wasm.wasmPaths unset (library default is
-// https://cdn.jsdelivr.net/npm/onnxruntime-web@<installed version>/dist/).
-// Verified by hand that this resolves for the installed -dev version
-// (1.31.0-dev.20260914-8d85527a0 as of 2026-09-21) — curl returned 200 for
-// both the .wasm and .mjs files. Revisit if that dep version ever moves to
-// one jsdelivr hasn't mirrored yet.
+// P38: the onnxruntime runtime is served from this origin (vite.config.ts
+// copies it to /ort/), never from a CDN. Runs single-threaded: the page is not
+// cross-origin isolated, so worker threads would not be available anyway.
+env.backends.onnx.wasm!.wasmPaths = {
+  mjs: `${import.meta.env.BASE_URL}ort/ort-wasm-simd-threaded.asyncify.mjs`,
+  wasm: `${import.meta.env.BASE_URL}ort/ort-wasm-simd-threaded.asyncify.wasm`,
+};
+env.backends.onnx.wasm!.numThreads = 1;
 
-export type NerWorkerRequest = { type: 'run'; requestId: number; text: string };
+// Room for the special tokens ([CLS]/[SEP] or their equivalents) in every window.
+const SPECIAL_TOKENS = 2;
+const MIN_CHUNK_CHARS = 100;
+
+export type NerWorkerRequest = { type: 'run'; requestId: number; text: string; allowDownload: boolean; modelId: string };
 
 export type NerWorkerResponse =
   | { type: 'scanning'; requestId: number }
   // One per finished window: tells the client the scan is alive (idle timeout).
   | { type: 'chunk'; requestId: number; done: number; total: number }
   | { type: 'progress'; requestId: number; status: string; progress?: number }
-  | { type: 'result'; requestId: number; entities: NerEntity[] }
+  | { type: 'result'; requestId: number; entities: NerEntity[]; coverage: NerCoverage; cacheWriteFailed?: 'quota' | 'other'; modelId: string }
   | { type: 'error'; requestId: number; message: string };
 
-let currentRequestId = 0;
-let extractorPromise: Promise<TokenClassificationPipeline> | null = null;
-
-const getExtractor = (): Promise<TokenClassificationPipeline> => {
-  extractorPromise ??= pipeline('token-classification', 'Xenova/bert-base-NER', {
-    // v2's `quantized: true` became `dtype` in transformers.js v3; 'q8' is
-    // the same int8-quantized ONNX weights that v2's flag selected, so the
-    // cached ~104MB file and its cache keys are unchanged.
-    dtype: 'q8',
-    progress_callback: (progress: { status: string; progress?: number }) => {
-      const message: NerWorkerResponse = {
-        type: 'progress',
-        requestId: currentRequestId,
-        status: progress.status,
-        progress: progress.progress,
-      };
-      postMessage(message);
-    },
-  }) as Promise<TokenClassificationPipeline>;
-  return extractorPromise;
+// transformers.js refuses to run with local and remote models both disabled, so
+// "no network" is enforced here instead: a cache miss on an origin that may not
+// download fails without any request being made.
+let downloadAllowed = false;
+const realFetch = env.fetch;
+const notStored: string[] = [];
+env.fetch = (input, init) => {
+  const url = new URL(String(input), self.location.href);
+  // The runtime under /ort/ is part of the app itself; only other origins are the model host.
+  if (downloadAllowed || url.origin === self.location.origin) return realFetch(input, init);
+  // Answer as a missing file, so optional files (generation_config.json) are skipped
+  // and required ones fail; either way no request is made.
+  notStored.push(String(input));
+  return Promise.resolve(new Response(null, { status: 404 }));
 };
+
+let currentRequestId = 0;
+const extractors = new Map<string, Promise<TokenClassificationPipeline>>();
+
+const getExtractor = (spec: NerModelSpec): Promise<TokenClassificationPipeline> => {
+  let extractor = extractors.get(spec.id);
+  if (!extractor) {
+    const options = spec.subfolder
+      ? { revision: spec.revision, subfolder: spec.subfolder, model_file_name: spec.modelFileName, dtype: spec.dtype }
+      : { dtype: spec.dtype };
+    extractor = (pipeline('token-classification', spec.repo, {
+      ...options,
+      progress_callback: (progress: { status: string; progress?: number }) => {
+        const message: NerWorkerResponse = {
+          type: 'progress',
+          requestId: currentRequestId,
+          status: progress.status,
+          progress: progress.progress,
+        };
+        postMessage(message);
+      },
+    } as never) as Promise<TokenClassificationPipeline>).catch((error: unknown) => {
+      // A rejected load must not stay cached, or an explicit retry would
+      // re-throw the same failure forever.
+      extractors.delete(spec.id);
+      throw error;
+    });
+    extractors.set(spec.id, extractor);
+  }
+  return extractor;
+};
+
+const quotaFailure = (errors: readonly unknown[]): boolean =>
+  errors.some((error) => error instanceof DOMException && error.name === 'QuotaExceededError');
 
 self.onmessage = async (event: MessageEvent<NerWorkerRequest>) => {
   if (event.data.type !== 'run') return;
-  currentRequestId = event.data.requestId;
+  const { requestId, text, allowDownload, modelId } = event.data;
+  currentRequestId = requestId;
   try {
-    const extractor = await getExtractor();
-    // The pipeline returns one BIO-tagged prediction per token, so
-    // aggregateBioTokens (src/core/ner.ts, pure and unit-tested) does the
-    // B-/I- merging into whole entities ourselves rather than relying on
-    // the library — that keeps the merge rules testable without a model.
-    postMessage({ type: 'scanning', requestId: event.data.requestId } satisfies NerWorkerResponse);
-    // M06-02: one call only ever saw the first ~512 tokens; run every
-    // overlapping window and merge (chunkText/mergeChunkEntities, core/ner.ts).
+    // Hosted, opted-in builds may fetch the model; every other origin may only
+    // use what is already cached locally.
+    downloadAllowed = allowDownload;
+    notStored.length = 0;
+    cacheWriteFailures.length = 0;
+    const spec = getNerModel(modelId);
+    if (!spec) throw new Error(`Unknown model: ${modelId}`);
+    const extractor = await getExtractor(spec);
+    const countTokens = (chunk: string): number =>
+      (extractor.tokenizer(chunk, { add_special_tokens: false }) as { input_ids: { size: number } }).input_ids.size;
+    postMessage({ type: 'scanning', requestId } satisfies NerWorkerResponse);
+    // M06-02 chunking (chunkText/mergeChunkEntities, core/ner.ts) is the only
+    // chunker. P38 adds a guard from the model's own tokenizer: the 800-character
+    // window is shrunk until every window fits the model's token budget, so
+    // models whose tokenizer splits text into many pieces are never truncated.
+    const budget = spec.windowTokens - SPECIAL_TOKENS;
+    let chunks: TextChunk[] = chunkText(text);
+    for (let maxChars = NER_CHUNK_CHARS; maxChars > MIN_CHUNK_CHARS && chunks.some((c) => countTokens(c.text) > budget);) {
+      maxChars = Math.max(MIN_CHUNK_CHARS, Math.floor(maxChars * 0.7));
+      chunks = chunkText(text, maxChars, Math.min(NER_CHUNK_OVERLAP, Math.floor(maxChars / 4)));
+    }
     const results: { start: number; entities: NerEntity[] }[] = [];
-    const chunks = chunkText(event.data.text);
     for (const chunk of chunks) {
-      if (currentRequestId !== event.data.requestId) return;
-      const raw = (await extractor(chunk.text)) as unknown as RawNerToken[];
-      // P8sec: v4 no longer returns start/end itself (see core/ner.ts).
+      if (currentRequestId !== requestId) return;
+      // ignore_labels: [] keeps the non-entity tokens, so every token has a
+      // neighbour to anchor its offset on (see computeTokenOffsets).
+      const raw = (await extractor(chunk.text, { ignore_labels: [] })) as unknown as RawNerToken[];
       const withOffsets = computeTokenOffsets(raw, chunk.text);
       results.push({ start: chunk.start, entities: aggregateBioTokens(withOffsets, chunk.text) });
-      postMessage({ type: 'chunk', requestId: event.data.requestId, done: results.length, total: chunks.length } satisfies NerWorkerResponse);
+      postMessage({ type: 'chunk', requestId, done: results.length, total: chunks.length } satisfies NerWorkerResponse);
     }
     const entities: NerEntity[] = mergeChunkEntities(results);
+    const windows = chunks.map((c) => ({ start: c.start, end: c.start + c.text.length }));
 
-    const response: NerWorkerResponse = { type: 'result', requestId: event.data.requestId, entities };
+    const response: NerWorkerResponse = {
+      type: 'result', requestId, entities,
+      coverage: nerCoverage(text.length, windows),
+      cacheWriteFailed: cacheWriteFailures.length === 0 ? undefined : quotaFailure(cacheWriteFailures) ? 'quota' : 'other',
+      modelId: spec.id,
+    };
     postMessage(response);
   } catch (err) {
     const response: NerWorkerResponse = {
       type: 'error',
-      requestId: event.data.requestId,
-      message: err instanceof Error ? err.message : String(err),
+      requestId,
+      message: (err instanceof Error ? err.message : String(err)) + (notStored.length ? ` [not stored: ${notStored.join(', ')}]` : ''),
     };
     postMessage(response);
   }

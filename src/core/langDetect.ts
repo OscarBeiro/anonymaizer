@@ -1,10 +1,11 @@
 import type { DetectionProfile } from './packs/profile';
 import { LANGUAGE_PROFILES } from './packs/languageProfiles';
 import type { DetectedLanguage } from './packs/languageProfiles';
+import { LANGUAGE_PACKS } from './packs/registry';
 export type { DetectedLanguage } from './packs/languageProfiles';
 
 /** Languages with implemented anonymization rules, separate from suggestions. */
-export type DocumentLanguage = 'en' | 'es' | 'gl';
+export type DocumentLanguage = 'en' | 'es' | 'gl' | 'pt' | 'ca' | 'eu';
 export type DocumentLanguageChoice = 'auto' | DocumentLanguage;
 export interface LanguageScore { lang: DetectedLanguage; score: number }
 export interface LanguageSummary {
@@ -105,7 +106,7 @@ export const langDetect = (text: string): LanguageDetection => {
 export const documentLanguages = (text: string, choice: DocumentLanguageChoice): DocumentLanguage[] => {
   if (choice !== 'auto') return [choice];
   const detected = langDetect(text).languages.filter((lang): lang is DocumentLanguage =>
-    lang === 'en' || lang === 'es' || lang === 'gl');
+    lang in LANGUAGE_PACKS);
   if (!detected.length) return ['en', 'es', 'gl'];
   // M06-02: Galician and Spanish share most of their profile words, so a
   // Galician document is often scored as Spanish (or the reverse) and lost

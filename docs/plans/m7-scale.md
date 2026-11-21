@@ -19,6 +19,8 @@ storage capacity does not imply permission to persist sensitive content.
 
 ### [ ] P29 — Detection in a Web Worker
 
+Status 2026-11-19: same implementation as M09-01 task 02 / phase 11. `src/workers/detection.worker.ts` and `src/lib/detectionClient.ts` exist with tests but are not wired into the UI (nothing outside those files imports `DetectionClient`).
+
 > Move `anonymize`/`anonymizeWithNer` calls from `App.tsx` into
 > `src/workers/detect.worker.ts` (the pattern is `nerClient.ts`). Report
 > progress and support cancel. Check first that the worker still works in

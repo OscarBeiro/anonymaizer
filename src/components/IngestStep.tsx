@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { parseDocument, supportedExtensions } from '../core/parsers';
 import type { DocumentFormat } from '../core/types';
 import type { AppMode } from '../lib/session';
@@ -16,6 +16,7 @@ interface IngestStepProps {
   /** S2: the remembered mode gets the primary button. */
   defaultMode: AppMode;
   onRun: (mode: AppMode) => void;
+  setup?: ReactNode;
 }
 
 export const IngestStep = ({
@@ -27,6 +28,7 @@ export const IngestStep = ({
   onFileImport,
   defaultMode,
   onRun,
+  setup,
 }: IngestStepProps) => {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -90,6 +92,8 @@ export const IngestStep = ({
           }}
         />
       </div>
+
+      {setup}
 
       <div className="mode-choice" role="group" aria-label={t('IngestStep.how_to_anonymize')}>
         {!rawMarkdown && <span className="empty-hint">{t('IngestStep.paste_or_drop_a_document_first')}</span>}

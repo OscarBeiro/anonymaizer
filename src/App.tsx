@@ -1,5 +1,9 @@
 import { LanguagePicker } from './components/LanguagePicker';
-import { t } from './i18n';
+import { t, useLocale } from './i18n';
+import { LanguageRegionSetup } from './components/LanguageRegionSetup';
+import { langDetect } from './core/langDetect';
+import { enableJurisdictionPresets, suggestProfile } from './core/profileSelection';
+import type { DetectionProfile } from './core/packs/profile';
 import { AppMarkIcon } from './components/AppMark';
 import { BrandName } from './components/BrandName';
 import { BetaBadge } from './components/BetaBadge';
@@ -21,7 +25,6 @@ import { sanitizeRenderedHtml } from './lib/sanitizeHtml';
 import { markdownToHtml, markdownToPlainText, type RestoreFormat } from './core/markdownRender';
 import { applyTheme, watchSystemTheme } from './lib/theme';
 import { anonymize, anonymizeWithNer } from './core/anonymize';
-import { autoDetectionProfile } from './core/langDetect';
 import { isCategoryOn, toggleableCategories, type CategorySettings } from './core/categories';
 import { applyEnabledMappings } from './core/apply';
 import { mergeMappings, splitMapping } from './core/mappingEdits';
@@ -34,8 +37,12 @@ import { linkProps } from './lib/router';
 import { SiteLinks } from './landing/SiteLinks';
 import { Copyright } from './components/Copyright';
 import { NerClient, type NerStatus } from './lib/nerClient';
-import { NerQueue } from './lib/nerQueue';
 import { modelDownloadAllowed } from './lib/analytics';
+import { readNerChoice, saveNerChoice } from './lib/nerChoice';
+import { importModelPackage, isModelProvisioned } from './lib/nerPackage';
+import { getNerModel, modelTotalBytes, type NerModelSpec } from './core/nerModels';
+import { formatMegabytes } from './lib/formatBytes';
+import { NerQueue } from './lib/nerQueue';
 import { deleteModelCache } from './workers/nerModelCache';
 import { reverseText } from './core/reverse';
 import type { CopyAction } from './components/StepFooter';
@@ -44,6 +51,8 @@ import { QuickResult } from './components/QuickResult';
 import {
   clearLocalData,
   loadAppMode,
+  loadPinnedProfile,
+  savePinnedProfile,
   loadCategorySettings,
   loadDictionaryRules,
   loadMoneyRange,
@@ -82,6 +91,18 @@ const emptySession = (): MappingSession => ({
 
 function App() {
   const [session, setSession] = useState<MappingSession>(() => loadSession() ?? emptySession());
+  const locale = useLocale();
+  const [pinnedProfile, setPinnedProfile] = useState<DetectionProfile | null>(loadPinnedProfile);
+  const [documentProfile, setDocumentProfile] = useState<DetectionProfile | null>(() => session.detectionProfile ?? null);
+  const [profileSaved, setProfileSaved] = useState(true);
+  const languageDetection = useMemo(() => langDetect(session.rawMarkdown), [session.rawMarkdown]);
+  const activeProfile = useMemo(() => documentProfile ?? suggestProfile(languageDetection, pinnedProfile, locale),
+    [documentProfile, languageDetection, pinnedProfile, locale]);
+  const profileSignature = JSON.stringify(activeProfile);
+  const scannedProfile = useRef(session.detectionProfile ? JSON.stringify(session.detectionProfile) : null);
+  const scanRevision = useRef(0);
+  const profileForText = (text: string): DetectionProfile =>
+    documentProfile ?? suggestProfile(langDetect(text), pinnedProfile, locale);
   const [dictionaryRules, setDictionaryRules] = useState<CustomDictionaryRule[]>(() => loadDictionaryRules());
   const [categorySettings, setCategorySettings] = useState<CategorySettings>(() =>
     loadCategorySettings(toggleableCategories(loadDictionaryRules())),
@@ -107,6 +128,21 @@ function App() {
   const nerClientRef = useRef<NerClient | null>(null);
   const [nerEnabled, setNerEnabled] = useState(false);
   const [nerStatus, setNerStatus] = useState<NerStatus>({ state: 'idle' });
+  const [nerModelId, setNerModelId] = useState(readNerChoice);
+  const [nerProvisioned, setNerProvisioned] = useState(false);
+  const [nerImportMessage, setNerImportMessage] = useState<string | undefined>();
+  const [nerRetry, setNerRetry] = useState(0);
+  const nerReady = nerStatus.state === 'ready';
+  const nerModel: NerModelSpec = getNerModel(nerModelId) ?? getNerModel('bert-base-ner')!;
+  // Which model a queued scan should use is read when it runs, so a changed
+  // choice never lets a stale closure scan with the old one.
+  const nerModelRef = useRef(nerModel);
+  nerModelRef.current = nerModel;
+  useEffect(() => {
+    let current = true;
+    void isModelProvisioned(nerModel).then((provisioned) => { if (current) setNerProvisioned(provisioned); });
+    return () => { current = false; };
+  }, [nerModel, nerReady, nerImportMessage]);
 
   // L1: false when the document is too large for localStorage; it then lives in memory only.
   const [sessionSaved, setSessionSaved] = useState(true);
@@ -149,6 +185,9 @@ function App() {
   // file metadata, session id (so realistic output reseeds) and AI response.
   // Custom rules and settings belong to the user and are kept.
   const resetForNewDocument = (): void => {
+    scanRevision.current++;
+    scannedProfile.current = null;
+    setDocumentProfile(null);
     setSession(emptySession());
     setAiResponse('');
     setImportWarnings([]);
@@ -156,9 +195,11 @@ function App() {
     setRestoreSubStep('response');
   };
 
-  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings) => {
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings, [], autoDetectionProfile(rawMarkdown));
-    setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText }));
+  const runAnonymize = (rawMarkdown: string, rules: CustomDictionaryRule[], settings = categorySettings, profile = profileForText(rawMarkdown)) => {
+    scanRevision.current++;
+    scannedProfile.current = JSON.stringify(profile);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, rules, settings, [], profile);
+    setSession((prev) => ({ ...prev, rawMarkdown, mappings, anonymizedMarkdown: anonymizedText, detectionProfile: profile }));
   };
 
   const handleFileImport = (
@@ -169,7 +210,9 @@ function App() {
   ) => {
     resetForNewDocument();
     setImportWarnings(warnings);
-    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings, [], autoDetectionProfile(rawMarkdown));
+    const profile = suggestProfile(langDetect(rawMarkdown), pinnedProfile, locale);
+    scannedProfile.current = JSON.stringify(profile);
+    const { mappings, anonymizedText } = anonymize(rawMarkdown, dictionaryRules, categorySettings, [], profile);
     setSession(() => ({
       ...emptySession(),
       rawMarkdown,
@@ -178,6 +221,7 @@ function App() {
       inputType: 'FILE',
       fileName,
       originalFormat: format,
+      detectionProfile: profile,
     }));
   };
 
@@ -188,7 +232,7 @@ function App() {
     if (!handoff) return;
     if (handoff.kind === 'text') {
       handleNewDocumentText(handoff.text);
-      setStep('review');
+      setStep('ingest');
       return;
     }
     void handoff.file
@@ -196,7 +240,7 @@ function App() {
       .then((bytes) => parseDocument(handoff.file.name, bytes))
       .then((parsed) => {
         handleFileImport(parsed.markdown, parsed.format, handoff.file.name, parsed.warnings ?? []);
-        setStep('review');
+        setStep('ingest');
       })
       .catch((e: unknown) => {
         setStep('ingest');
@@ -212,38 +256,68 @@ function App() {
     rawMarkdown: string;
     rules: CustomDictionaryRule[];
     settings: CategorySettings;
-  }>(async ({ rawMarkdown, rules, settings }, isCurrent) => {
+    profile: DetectionProfile;
+    revision: number;
+  }>(async ({ rawMarkdown, rules, settings, profile, revision }, isCurrent) => {
     nerClientRef.current ??= new NerClient();
     try {
-      const entities = await nerClientRef.current.runNer(rawMarkdown, (status) => {
-        if (isCurrent()) setNerStatus(status);
-      });
-      if (!isCurrent()) return;
-      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings, [], autoDetectionProfile(rawMarkdown));
-      setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText }));
+      const { entities } = await nerClientRef.current.runNer(rawMarkdown, (status) => {
+        if (isCurrent() && revision === scanRevision.current) setNerStatus(status);
+      }, { allowDownload: modelDownloadAllowed(), modelId: nerModelRef.current.id });
+      if (!isCurrent() || revision !== scanRevision.current) return;
+      const { mappings, anonymizedText } = anonymizeWithNer(rawMarkdown, rules, entities, settings, [], profile, nerModelRef.current);
+      setSession((prev) => ({ ...prev, mappings, anonymizedMarkdown: anonymizedText, detectionProfile: profile }));
     } catch (error) {
-      if (isCurrent()) setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'NER processing failed.' });
+      if (isCurrent() && revision === scanRevision.current) setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'NER processing failed.' });
     }
   }));
 
-  useEffect(() => {
-    if (nerEnabled) {
-      nerQueue.submit({ rawMarkdown: session.rawMarkdown, rules: dictionaryRules, settings: categorySettings });
-    }
-    return () => nerQueue.invalidate();
-  }, [nerEnabled, session.sessionId, session.rawMarkdown, dictionaryRules, categorySettings, nerQueue]);
-
-  const handlePasteChange = (rawMarkdown: string) => {
+  const handlePasteChange = (rawMarkdown: string, newDocument = false) => {
     // Editing the text by hand makes the imported document's warnings stale.
     setImportWarnings([]);
-    runAnonymize(rawMarkdown, dictionaryRules);
+    const profile = newDocument ? suggestProfile(langDetect(rawMarkdown), pinnedProfile, locale) : profileForText(rawMarkdown);
+    runAnonymize(rawMarkdown, dictionaryRules, categorySettings, profile);
   };
 
   // A paste that replaces the document (see PastePanel) or text from the
   // landing: start clean, then detect as usual.
   const handleNewDocumentText = (rawMarkdown: string) => {
     resetForNewDocument();
-    handlePasteChange(rawMarkdown);
+    handlePasteChange(rawMarkdown, true);
+  };
+
+  // Changes to pins or the locale fallback may change the automatic profile.
+  // Document edits already scanned by their handlers are skipped here.
+  useEffect(() => {
+    if (!session.rawMarkdown || scannedProfile.current === profileSignature) return;
+    runAnonymize(session.rawMarkdown, dictionaryRules, categorySettings, activeProfile);
+  }, [profileSignature, session.rawMarkdown, activeProfile, nerEnabled, dictionaryRules, categorySettings]);
+
+  useEffect(() => {
+    if (nerEnabled && session.rawMarkdown) {
+      nerQueue.submit({ rawMarkdown: session.rawMarkdown, rules: dictionaryRules, settings: categorySettings,
+        profile: activeProfile, revision: scanRevision.current });
+    }
+    return () => nerQueue.invalidate();
+  }, [nerEnabled, nerRetry, nerModelId, session.sessionId, session.rawMarkdown, dictionaryRules, categorySettings, activeProfile, nerQueue]);
+
+  const updateProfile = (profile: DetectionProfile) => {
+    const settings = enableJurisdictionPresets(categorySettings, activeProfile, profile);
+    setDocumentProfile(profile);
+    setCategorySettings(settings);
+    runAnonymize(session.rawMarkdown, dictionaryRules, settings, profile);
+  };
+
+  const pinProfile = () => {
+    setPinnedProfile(activeProfile);
+    setDocumentProfile(activeProfile);
+    setProfileSaved(savePinnedProfile(activeProfile));
+  };
+
+  const clearProfilePins = () => {
+    setPinnedProfile(null);
+    setDocumentProfile(null);
+    setProfileSaved(savePinnedProfile(null));
   };
 
   const handleNerToggle = (checked: boolean) => {
@@ -253,13 +327,47 @@ function App() {
     if (checked && isLongForNer(session.rawMarkdown) && !window.confirm(nerLongDocumentMessage(session.rawMarkdown.length))) {
       return;
     }
+    // Hosted: the checkbox is the opt-in, but the size and host are confirmed
+    // first — unless the model is already on this device.
+    if (checked && !nerProvisioned && modelDownloadAllowed()
+        && !window.confirm(t('NerToggle.download_confirm', { p0: nerModel.name, p1: formatMegabytes(modelTotalBytes(nerModel)) }))) {
+      return;
+    }
     setNerEnabled(checked);
     if (!checked) {
+      nerClientRef.current?.terminate();
+      nerClientRef.current = null;
+      setNerStatus({ state: 'idle' });
       nerQueue.invalidate();
       // Falls back to the instant M1/P7a-c heuristics — the model stays
       // loaded (in the worker and in IndexedDB) for a fast re-enable.
       runAnonymize(session.rawMarkdown, dictionaryRules);
     }
+  };
+
+  // The choice is remembered, applies from the next time the model is switched
+  // on, and never starts a download by itself.
+  const handleModelChange = (id: string) => {
+    saveNerChoice(id);
+    setNerModelId(id);
+    setNerImportMessage(undefined);
+    setNerStatus({ state: 'idle' });
+  };
+
+  const handleRetry = () => {
+    nerClientRef.current?.terminate();
+    nerClientRef.current = null;
+    setNerStatus({ state: 'idle' });
+    setNerRetry((count) => count + 1);
+  };
+
+  const handleImportPackage = (files: File[]) => {
+    void importModelPackage(nerModel, files).then((result) => {
+      setNerImportMessage(result.ok ? t('NerToggle.package_imported')
+        : result.reason === 'missing' ? t('NerToggle.package_missing', { p0: result.detail })
+        : result.reason === 'mismatch' ? t('NerToggle.package_mismatch', { p0: result.detail })
+        : t('NerToggle.package_storage', { p0: result.detail }));
+    });
   };
 
   // Distinct from handleNerToggle(false): turning off just stops using the
@@ -274,7 +382,9 @@ function App() {
     setNerEnabled(false);
     setNerStatus({ state: 'idle' });
     runAnonymize(session.rawMarkdown, dictionaryRules);
-    void deleteModelCache();
+    deleteModelCache()
+      .then(() => { setNerProvisioned(false); setNerImportMessage(undefined); })
+      .catch((error: unknown) => setNerStatus({ state: 'error', message: error instanceof Error ? error.message : 'Could not delete the model.' }));
   };
 
   const handleToggle = (id: string) => {
@@ -370,11 +480,7 @@ function App() {
         t('App.your_custom_rules_are_kept'),
     );
     if (!ok) return;
-    setSession(emptySession());
-    setAiResponse('');
-    setImportWarnings([]);
-    setReviewSubStep('placeholders');
-    setRestoreSubStep('response');
+    resetForNewDocument();
     setStep('ingest');
     setViewMode(defaultMode);
   };
@@ -404,6 +510,10 @@ function App() {
             doneMessage: t('App.copied_your_restored_text_is_on_the'),
           }
         : undefined;
+
+  const languageSetup = <LanguageRegionSetup detection={languageDetection} profile={activeProfile}
+    pinned={pinnedProfile} onChange={updateProfile} onPin={pinProfile} onClearPins={clearProfilePins}
+    onUseSuggestions={() => setDocumentProfile(null)} />;
 
   return (
     <div className="app-shell">
@@ -461,6 +571,7 @@ function App() {
             <p className="session-unsaved" role="alert">
               {t('App.this_document_is_too_large_to_survive')}</p>
           )}
+          {!profileSaved && <p className="session-unsaved" role="alert">{t('LanguageRegion.not_saved')}</p>}
 
           {step === 'ingest' && (
             <IngestStep
@@ -472,6 +583,7 @@ function App() {
               onFileImport={handleFileImport}
               defaultMode={defaultMode}
               onRun={runInMode}
+              setup={languageSetup}
             />
           )}
 
@@ -548,6 +660,7 @@ function App() {
         onDefaultModeChange={setDefaultMode}
         detection={
           <>
+            {languageSetup}
             <CategoryToggles
               settings={categorySettings}
               rules={dictionaryRules}
@@ -560,7 +673,14 @@ function App() {
                 enabled={nerEnabled}
                 longDocument={isLongForNer(session.rawMarkdown)}
                 status={nerStatus}
+                modelId={nerModel.id}
+                downloadAllowed
+                provisioned={nerProvisioned}
+                importMessage={nerImportMessage}
+                onModelChange={handleModelChange}
                 onToggle={handleNerToggle}
+                onRetry={handleRetry}
+                onImportPackage={handleImportPackage}
                 onDeleteModel={handleDeleteModel}
               />
             ) : (

@@ -1,16 +1,19 @@
 import type { NerEntity } from '../core/ner';
+import type { NerCoverage } from '../core/nerWindows';
 import type { NerWorkerRequest, NerWorkerResponse } from '../workers/ner.worker';
 import { NER_MAX_CHARS } from './nerLimits';
 // M06-02: the worker reports each window it finishes, so the timeout is on
 // silence, not on the whole run. A whole-run limit also counted the ~104 MB
 // download and cut off long documents that were still making progress.
 export const NER_IDLE_TIMEOUT_MS = 180_000;
-export type NerStatus = { state: 'idle' } | { state: 'loading'; detail?: string } | { state: 'scanning' } | { state: 'cancelled' } | { state: 'ready' } | { state: 'error'; message: string };
+export type NerStatus = { state: 'idle' } | { state: 'loading'; detail?: string } | { state: 'scanning'; done?: number; total?: number } | { state: 'cancelled' } | { state: 'ready'; coverage?: NerCoverage; cacheWriteFailed?: 'quota' | 'other'; modelId?: string } | { state: 'error'; message: string };
+export interface NerScanResult { entities: NerEntity[]; coverage?: NerCoverage; cacheWriteFailed?: 'quota' | 'other'; modelId?: string }
+export interface NerRunOptions { allowDownload?: boolean; modelId?: string }
 export class NerClient {
   private worker: Worker | null = null;
   private pending = new Map<number, (error: Error) => void>();
   private serial = 0;
-  runNer(text: string, onStatus: (status: NerStatus) => void): Promise<NerEntity[]> {
+  runNer(text: string, onStatus: (status: NerStatus) => void, { allowDownload = false, modelId = 'bert-base-ner' }: NerRunOptions = {}): Promise<NerScanResult> {
     if (this.pending.size) this.terminate();
     if (text.length > NER_MAX_CHARS) return Promise.reject(new Error(`NER is limited to ${NER_MAX_CHARS.toLocaleString('en')} characters.`));
     const requestId = ++this.serial;
@@ -29,14 +32,19 @@ export class NerClient {
         watch();
         if (msg.type === 'progress') onStatus({ state: 'loading', detail: msg.status });
         else if (msg.type === 'scanning') onStatus({ state: 'scanning' });
-        else if (msg.type === 'result') { cleanup(); onStatus({ state: 'ready' }); resolve(msg.entities); }
-        else if (msg.type === 'error') fail(new Error('NER processing failed. Retry or disable the model.'));
+        else if (msg.type === 'chunk') onStatus({ state: 'scanning', done: msg.done, total: msg.total });
+        else if (msg.type === 'result') { cleanup(); onStatus({ state: 'ready', coverage: msg.coverage, cacheWriteFailed: msg.cacheWriteFailed, modelId: msg.modelId }); resolve({ entities: msg.entities, coverage: msg.coverage, cacheWriteFailed: msg.cacheWriteFailed, modelId: msg.modelId }); }
+        else if (msg.type === 'error') {
+          // A failed load leaves a worker that could only fail again: start a fresh one on retry.
+          this.worker?.terminate(); this.worker = null;
+          fail(new Error((allowDownload ? 'NER processing failed. Retry or disable the model.' : 'The model is not available on this device. Import its files or disable local AI.') + ` (${msg.message})`));
+        }
       };
       this.pending.set(requestId, fail);
       onStatus({ state: 'loading' });
       worker.addEventListener('message', handleMessage);
       worker.addEventListener('error', handleError);
-      const request: NerWorkerRequest = { type: 'run', requestId, text };
+      const request: NerWorkerRequest = { type: 'run', requestId, text, allowDownload, modelId };
       worker.postMessage(request);
     });
   }

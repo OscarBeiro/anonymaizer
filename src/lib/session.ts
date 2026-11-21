@@ -5,6 +5,8 @@ import type { RestoreFormat } from '../core/markdownRender';
 import { parseCategorySettings, type CategorySettings } from '../core/categories';
 import { normalizeMoneyRange, PSEUDONYM_LANGS, type MoneyRange, type PseudonymLang } from '../core/pseudonymize';
 import type { CustomDictionaryRule, MappingSession } from '../core/types';
+import { parsePinnedProfile } from '../core/profileSelection';
+import type { DetectionProfile } from '../core/packs/profile';
 
 const SESSION_KEY = 'anonymaizer.session';
 const RULES_KEY = 'anonymaizer.dictionaryRules';
@@ -15,6 +17,7 @@ const RESTORE_FORMAT_KEY = 'anonymaizer.restoreFormat';
 const MONEY_RANGE_KEY = 'anonymaizer.moneyRange';
 const PSEUDONYM_LANG_KEY = 'anonymaizer.pseudonymLang';
 const APP_MODE_KEY = 'anonymaizer.appMode';
+export const PINNED_PROFILE_KEY = 'anonymaizer.pinnedProfile';
 
 // L1: localStorage has a ~5 MB quota and a 1000-page PDF is 2-3 M characters,
 // so a write can throw QuotaExceededError (or be blocked outright). Every save
@@ -140,6 +143,11 @@ export const loadSession = (): MappingSession | null => {
     if (session.identity && (!/^[A-F0-9]{32}$/.test(session.identity.scope) || typeof session.identity.documentId !== 'string' ||
       ![session.identity.documentRevision, session.identity.policyRevision, session.identity.mappingRevision].every(n => Number.isSafeInteger(n) && n >= 0))) return null;
     if (session.snapshots) { if (!Array.isArray(session.snapshots) || session.snapshots.length > 1000) return null; session.snapshots = session.snapshots.map(validateSnapshot); }
+    if (session.detectionProfile !== undefined) {
+      const profile = parsePinnedProfile(JSON.stringify(session.detectionProfile));
+      if (!profile) return null;
+      session.detectionProfile = profile;
+    }
     // A session saved before P7c's entity clustering has no `variants` on
     // its mappings — backfill it so applyEnabledMappings' flatMap doesn't
     // crash on an old localStorage session.
@@ -196,6 +204,10 @@ export const loadCategorySettings = (known: readonly string[]): CategorySettings
 export const saveCategorySettings = (settings: CategorySettings): void => {
   write(CATEGORY_SETTINGS_KEY, JSON.stringify(settings));
 };
+
+export const loadPinnedProfile = (): DetectionProfile | null => parsePinnedProfile(read(PINNED_PROFILE_KEY));
+export const savePinnedProfile = (profile: DetectionProfile | null): boolean =>
+  write(PINNED_PROFILE_KEY, JSON.stringify(profile));
 
 // P18: "clear all local data". Wipes every `anonymaizer.`-prefixed key — not
 // just the ones this file names — so a key added later cannot be missed. The

@@ -27,7 +27,7 @@ const openDb = (): Promise<IDBDatabase> =>
     request.onerror = () => reject(request.error as Error);
   });
 
-export const createIndexedDbModelCache = () => ({
+export const createIndexedDbModelCache = (options: { onWriteError?: (key: string, error: unknown) => void } = {}) => ({
   async match(key: string): Promise<Response | undefined> {
     try {
       const db = await openDb();
@@ -67,6 +67,7 @@ export const createIndexedDbModelCache = () => ({
       // Best-effort — e.g. IndexedDB quota exceeded. Model still loaded
       // fine this run, but it WILL re-download next time — surface that.
       console.warn('[NER cache] put failed, will re-download next time', key, err);
+      options.onWriteError?.(key, err);
     }
   },
 });
@@ -78,7 +79,37 @@ export const createIndexedDbModelCache = () => ({
 export const deleteModelCache = (): Promise<void> =>
   new Promise((resolve, reject) => {
     const request = indexedDB.deleteDatabase(DB_NAME);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error as Error);
-    request.onblocked = () => resolve();
+    let blockedTimer: ReturnType<typeof setTimeout> | undefined;
+    request.onsuccess = () => { clearTimeout(blockedTimer); resolve(); };
+    request.onerror = () => { clearTimeout(blockedTimer); reject(request.error as Error); };
+    // Blocked means another tab still holds the database open; the delete only
+    // happens once it lets go. Do not claim success until it does.
+    request.onblocked = () => {
+      blockedTimer = setTimeout(() => reject(new Error('The model cache is in use by another tab. Close other AnonymAIzer tabs and try again.')), 3000);
+    };
   });
+
+/** True when a file is already stored: lets the page tell "needs a download" from "ready offline". */
+export const isCached = async (key: string): Promise<boolean> => {
+  try {
+    return (await createIndexedDbModelCache().match(key)) !== undefined;
+  } catch {
+    return false;
+  }
+};
+
+/** Stores a verified file under the key transformers.js will look up. Throws on failure. */
+export const storeInCache = async (key: string, body: ArrayBuffer): Promise<void> => {
+  const db = await openDb();
+  try {
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put({ body, headers: [['content-type', 'application/octet-stream']] } satisfies CacheEntry, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error as Error);
+      tx.onabort = () => reject(tx.error as Error);
+    });
+  } finally {
+    db.close();
+  }
+};

@@ -1,5 +1,6 @@
 // L3 / M06-02: NER runs the ~104 MB model over the whole text in overlapping
-// windows of about 800 characters (core/ner.ts), so its cost grows with
+// windows of about 800 characters (core/ner.ts, shrunk further when the
+// model's tokenizer finds a window too long), so its cost grows with
 // length — unlike the regex detectors, which L2 measured at well under a
 // second for 3 MB. It is already opt-in (off at load).
 //

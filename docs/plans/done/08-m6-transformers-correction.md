@@ -2,7 +2,7 @@
 
 Documentation portion resolved by the 2026-10-12 review; dependency updates and
 implementation checks remain unstarted. See
-[M06-01](M06-01-Browser-local-model-review-plan.md). P38–P40 identifiers were retained
+[M06-01](../M06-01-Browser-local-model-review-plan.md). P38–P40 identifiers were retained
 for reference stability: P38 now covers runtime correctness, P39 model evaluation,
 and P40 model choice. No dependency, version or changelog changes were made.
 
@@ -26,12 +26,12 @@ The M6 plan (merged in PR #5) assumed the app is on `@xenova/transformers`
    - Require exact artifact/browser validation despite architecture registration.
 2. **Patch the lockfile**: `npm update sharp source-map-js`, then
    `npm test` and `npm run build`.
-3. **Housekeeping**: bump the `package.json` version and add a changelog
+3. **[-] Housekeeping — obsolete 2026-11-19: version stays 0.19.0-dev, no per-session bumps**: bump the `package.json` version and add a changelog
    entry (per the project rules).
 
 ## Done when
 
 - [x] M6 and index are consistent; P38–P40 retained with corrected scope
-- [ ] Lockfile moves to patched `sharp` / `source-map-js`
-- [ ] `npm test` and `npm run build` pass
-- [ ] Version bumped, changelog entry added
+- [x] Lockfile moves to patched `sharp` / `source-map-js` (2026-11-19: `package-lock.json` has sharp 0.35.5, source-map-js 1.2.2; `npm audit` reports 0 vulnerabilities)
+- [x] `npm test` and `npm run build` pass (2026-11-19 on `feat/m6-stack`: 82 files, 839 tests; build and portable build OK)
+- [-] Version bumped, changelog entry added (obsolete 2026-11-19: version stays 0.19.0-dev, no per-session bumps)

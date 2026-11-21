@@ -2,6 +2,8 @@
 
 Status: in progress. Browser round-trip foundation implemented 2026-10-12; full acceptance remains open. See [implementation evidence and remaining phase gates](../m9-acceptance.md).
 
+> **Note 2026-11-19:** M06-03 task 3 made save-by-default the current behaviour (owner decision 2026-11-11), which contradicts this plan's "ephemeral by default" text. The owner has not yet decided whether the M09 UI will be wired back after the 2026-10-12 frontend rollback (commit `b9b8a34`).
+
 ## Outcome and priority
 
 Make the common journey dependable: import or paste → review sensitive content →
@@ -166,6 +168,8 @@ preview, with no active scripts or remote resources. Test structure with synthet
 fixtures rather than pixel-perfect comparisons. DOCX is optional and deferred.
 
 ### [ ] 04 — Private restoration key and explicit retention
+
+> Note 2026-11-19: "ephemeral by default" below is not current behaviour; see the note at the top (M06-03 task 3, save-by-default).
 
 Add a versioned restoration-key envelope containing mappings, token namespace,
 policy/engine versions, and immutable export revision. Exclude raw documents by
@@ -429,6 +433,8 @@ late commits, and allows a new document to complete. Check hosted and portable
 worker behavior before considering this phase complete.
 
 ### [ ] 12 — Complete retention policy and clearing across tabs
+
+> Note 2026-11-19: save-by-default is an owner decision of 2026-11-11; whether the M09 UI is wired back is undecided (see the note at the top).
 
 > 2026-11-11 (M06-03): until the "Remember on this device" switches exist,
 > documents and rules are saved by default again — `remembered()` in

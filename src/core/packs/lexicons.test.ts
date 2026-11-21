@@ -21,11 +21,23 @@ describe('detector language lexicons', () => {
     expect(en.streetKeywords).not.toContain('Calle');
   });
 
-  it('returns no heuristic vocabulary for unsupported Portuguese', () => {
-    const pt = languageLexicon(['pt']);
-    for (const value of Object.values(pt)) {
+  it('returns no heuristic vocabulary for a language without a pack', () => {
+    const fr = languageLexicon(['fr']);
+    for (const value of Object.values(fr)) {
       expect(value).toEqual(typeof value === 'string' ? '' : []);
     }
+  });
+
+  it.each([
+    ['pt', 'Segunda', 'Rua', 'Lda'],
+    ['ca', 'Dilluns', 'Carrer', 'SCCL'],
+    ['eu', 'Astelehena', 'Kalea', 'Udala'],
+  ])('ships real %s vocabulary without Spanish weekday or street words', (language, weekday, street, suffix) => {
+    const lexicon = languageLexicon([language]);
+    expect(lexicon.stopwords).toContain(weekday);
+    expect(lexicon.streetKeywords).toContain(street);
+    expect([...lexicon.companySuffixes, ...lexicon.companyPrefixes].join('|')).toContain(suffix);
+    expect(lexicon.stopwords).not.toContain('Lunes');
   });
 
   it('adds Galician company prefixes and vocabulary for Galician', () => {

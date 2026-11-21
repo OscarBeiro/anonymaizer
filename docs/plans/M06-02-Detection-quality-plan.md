@@ -51,6 +51,8 @@ No accuracy measurement exists — `benchmark.test.ts` only times detectors.
 - Later mentions of a detected name: honorific + surname, surname alone.
 
 ### [ ] 4 — Multilingual model (M6 P39/P40)
+
+Status 2026-11-19: duplicates [P39/P40](m6-language-packs.md); the evaluation against the corpus was done in P39 and nym-small is an experimental opt-in, but P40 gate D is open, so this stays open.
 Evaluate `Wismut/nym-pii-multilingual-small` against the corpus before switching.
 Not in this plan's PR.
 

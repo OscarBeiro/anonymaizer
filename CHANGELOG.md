@@ -9,6 +9,10 @@ _Working version: 0.19.0-dev._
 
 - New TICGAL look: a new logo, TICGAL blue colours, and new fonts for headings and text.
 - Better detection in Galician documents: whole street addresses, later mentions of a person and names after a greeting or title are now hidden.
+- New "Language & region" step that suggests which languages and countries to look for in your document.
+- Support for documents in Portuguese, Catalan and Basque.
+- Portuguese tax numbers, citizen card numbers, phone numbers and addresses are now detected.
+- On the hosted site you can choose between AI models after seeing the download size.
 
 ### Bugs
 
