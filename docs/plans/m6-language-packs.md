@@ -261,9 +261,9 @@ Status 2026-11-19: evidence `src/core/nerModels.ts`, `src/core/nerEval.ts`, `scr
 > choosing. Resolve all model labels explicitly; the current PER/ORG adapter
 > would discard most PII labels. Failing candidates remain experimental.
 
-### [~] P40 — Validated model choice and provisioning UI
+### [x] P40 — Validated model choice and provisioning UI
 
-Status 2026-11-19: `src/components/NerToggle.tsx` (chooser, remembered choice, hosted opt-in, package import), `src/lib/nerChoice.ts`, `src/lib/nerPackage.ts` exist. Gate D (offline cold/warm browser run, `scripts/p40-browser.mjs`) has no full green run, so P40 stays open.
+Status 2026-11-19: `src/components/NerToggle.tsx` (chooser, remembered choice, hosted opt-in, package import), `src/lib/nerChoice.ts`, `src/lib/nerPackage.ts` exist. Gate D (offline cold/warm browser run, `scripts/p40-browser.mjs`) ran green on 2026-11-23 (7 checks, 0 external requests) after two fixes: local copies show the package import again (`NerToggle` always rendered, `downloadAllowed` gates only the download), and `tokenizer_config.json` is also cached under the `main` key, because `pipeline()` probes it there without the pinned revision and silently skips the tokenizer otherwise. Packages imported before that fix must be re-imported. Left for P40: WebGPU is untested.
 
 > Offer the selected compact model with its measured complete download size,
 > tested language coverage and initialization/scan progress. Offer a larger model

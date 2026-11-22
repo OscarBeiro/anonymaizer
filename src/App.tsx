@@ -321,8 +321,8 @@ function App() {
   };
 
   const handleNerToggle = (checked: boolean) => {
-    // Hard rule 2: no model download from a local copy.
-    if (checked && !modelDownloadAllowed()) return;
+    // Hard rule 2: a local copy never downloads; it may only use an imported package.
+    if (checked && !modelDownloadAllowed() && !nerProvisioned) return;
     // L3: NER is slow on a book-length text; the user may still turn it on.
     if (checked && isLongForNer(session.rawMarkdown) && !window.confirm(nerLongDocumentMessage(session.rawMarkdown.length))) {
       return;
@@ -668,24 +668,20 @@ function App() {
               onChange={updateCategorySettings}
               defaultOpen
             />
-            {modelDownloadAllowed() ? (
-              <NerToggle
-                enabled={nerEnabled}
-                longDocument={isLongForNer(session.rawMarkdown)}
-                status={nerStatus}
-                modelId={nerModel.id}
-                downloadAllowed
-                provisioned={nerProvisioned}
-                importMessage={nerImportMessage}
-                onModelChange={handleModelChange}
-                onToggle={handleNerToggle}
-                onRetry={handleRetry}
-                onImportPackage={handleImportPackage}
-                onDeleteModel={handleDeleteModel}
+            <NerToggle
+              enabled={nerEnabled}
+              longDocument={isLongForNer(session.rawMarkdown)}
+              status={nerStatus}
+              modelId={nerModel.id}
+              downloadAllowed={modelDownloadAllowed()}
+              provisioned={nerProvisioned}
+              importMessage={nerImportMessage}
+              onModelChange={handleModelChange}
+              onToggle={handleNerToggle}
+              onRetry={handleRetry}
+              onImportPackage={handleImportPackage}
+              onDeleteModel={handleDeleteModel}
               />
-            ) : (
-              <p className="panel-hint">{t('NerToggle.only_on_the_hosted_site')}</p>
-            )}
           </>
         }
         dictionary={<RulesEditor rules={dictionaryRules} onChange={updateRules} />}

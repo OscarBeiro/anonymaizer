@@ -119,7 +119,7 @@ expose whether the current document revision actually completed NER.
 
 ### [ ] B — Reproducible browser feasibility (M6 P39)
 
-Status 2026-11-19: partly done — pinned registry (`src/core/nerModels.ts`), WASM benchmark, local runtime assets and package import exist. Open: WebGPU untested, and the offline cold/warm start with network denied has no green run (gate D).
+Status 2026-11-19: partly done — pinned registry (`src/core/nerModels.ts`), WASM benchmark, local runtime assets and package import exist. Open: WebGPU untested, and gate D (offline cold/warm start, network denied) ran green 2026-11-23.
 
 Pin revision and complete artifact manifest before testing. Keep each compressed
 graph with its matching tokenizer/configuration; do not mix root and pruned

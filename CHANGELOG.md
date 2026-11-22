@@ -22,6 +22,7 @@ _Working version: 0.19.0-dev._
 - Your document and custom rules are saved in the browser again, so reloading the page no longer loses them.
 - Merging two entries in the review list no longer makes one of them visible again in the sanitized text.
 - The restored text no longer loads images or other remote content from an AI reply.
+- Local and portable copies can import an AI model package again, and the imported multilingual model now loads instead of failing silently.
 - The portable version and local copies no longer offer the AI model download, which needs the internet.
 - Saved web pages highlight placeholders in the TICGAL blue instead of the old purple.
 
