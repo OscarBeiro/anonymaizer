@@ -61,13 +61,14 @@ export const modelFileUrl = (model: NerModelSpec, path: string): string =>
 
 /**
  * Every key a file must be stored under. transformers.js reads config.json
- * from the moving `main` ref even when a revision is given, so that one file
- * is also keyed there; its content is still checked against the pinned hash on
+ * and probes tokenizer_config.json (to decide whether the model has a
+ * tokenizer at all; without it the tokenizer is silently skipped) on the moving
+ * `main` ref even when a revision is given, so those two files are also keyed there; its content is still checked against the pinned hash on
  * import, but a hosted download of it is not pinned by the library.
  */
 export const modelCacheKeys = (model: NerModelSpec, path: string): string[] => {
   const keys = [modelFileUrl(model, path)];
-  if (path === 'config.json' || path.endsWith('/config.json')) keys.push(modelFileUrl({ ...model, revision: 'main' }, path));
+  if (['config.json', 'tokenizer_config.json'].some((name) => path === name || path.endsWith(`/${name}`))) keys.push(modelFileUrl({ ...model, revision: 'main' }, path));
   return keys;
 };
 

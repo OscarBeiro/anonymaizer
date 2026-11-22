@@ -55,4 +55,14 @@ describe('matchPackageFile', () => {
     expect(matchPackageFile(model, 'C:\\dl\\config.json')).toBe('config.json');
     expect(matchPackageFile(model, 'readme.md')).toBeUndefined();
   });
+
+  it('also keys tokenizer_config.json under main, which pipeline() probes without a revision', async () => {
+    const { modelCacheKeys } = await import('../core/nerModels');
+    const model = await spec();
+    expect(modelCacheKeys(model, 'tokenizer_config.json')).toEqual([
+      'https://huggingface.co/Org/test/resolve/abc/tokenizer_config.json',
+      'https://huggingface.co/Org/test/resolve/main/tokenizer_config.json',
+    ]);
+    expect(modelCacheKeys(model, 'tokenizer.json')).toEqual(['https://huggingface.co/Org/test/resolve/abc/tokenizer.json']);
+  });
 });

@@ -90,13 +90,16 @@ it('automatically scans files imported after the model is ready', async () => {
   expect(loadSession().anonymizedMarkdown).toBe('[[NAME_001]]');
 });
 
-it('does not offer the model where it may not be downloaded (hard rule 2)', async () => {
+it('offers only a package import where the model may not be downloaded (hard rule 2)', async () => {
   await act(async () => root.unmount());
   state.modelAllowed = false;
   state.ner = null;
   root = createRoot(document.createElement('div'));
   await act(async () => root.render(createElement(App)));
-  expect(state.ner).toBeNull();
+  const ner = state.ner as ComponentProps<typeof NerToggle> | null;
+  expect(ner?.downloadAllowed).toBe(false);
+  expect(ner?.provisioned).toBe(false);
+  await act(async () => ner!.onToggle(true));
   await act(async () => state.ingest!.onChange('Zorvax'));
   expect(state.scans).toHaveLength(0);
 });

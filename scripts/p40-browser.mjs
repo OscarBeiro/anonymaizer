@@ -71,6 +71,9 @@ const quick = async () => {
 };
 const load = async () => {
   await call('Page.navigate', { url: app });
+  // The document is saved by default, so a reload may restore the last result.
+  await wait("!!document.querySelector('.ingest-step textarea') || [...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'New document')");
+  await evaluate("(() => { if (!document.querySelector('.ingest-step textarea')) [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'New document').click(); })()");
   await wait("!!document.querySelector('.ingest-step textarea')");
 };
 const passed = [];
